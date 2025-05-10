@@ -125,8 +125,16 @@
     position: relative; /* ensures z-index works */
     z-index: 100;
   }
+  /* update associated cell highlighting: add animation */
   .cell.associated {
     background: #1f1f33;
+    animation: associatedFlash 0.3s ease;
+  }
+  /* new animation keyframes for neighboring cell highlighting */
+  @keyframes associatedFlash {
+    0% { background: #1a1a1a; }
+    50% { background: #1f1f33; }
+    100% { background: #1f1f33; }
   }
 
   .pad-container {
@@ -220,6 +228,14 @@
   /* New rule: Make user-input numbers more white */
   .cell:not(.fixed) .value {
     color: #ffffff;
+  }
+  .cell.duplicate {
+    background: #4f1e1e;
+    animation: duplicateFlash 0.3s ease;
+  }
+  @keyframes duplicateFlash {
+    0% { background: #1f1f33; }
+    100% { background: #4f1e1e; }
   }
 </style>
 </head>
