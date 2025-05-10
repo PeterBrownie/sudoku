@@ -237,6 +237,27 @@
     0% { background: #1f1f33; }
     100% { background: #4f1e1e; }
   }
+
+  /* Remove or ignore .board-timer-container styles */
+  /* New container to center the puzzle */
+  .board-container {
+    position: relative;
+    width: 405px; /* 9 cells × 45px each */
+    margin: 0 auto 16px auto; /* center horizontally with bottom margin */
+  }
+  /* Update timer style to position it to the right of the board */
+  .timer {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 10px); /* 10px gap from the board */
+    background: #1e1e2e;
+    color: #e0e0e0;
+    border: 1px solid #5a4d7f;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 1.2em;
+    font-family: sans-serif;
+  }
 </style>
 </head>
 <body>
@@ -251,13 +272,17 @@
     <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
   </div>
 
-  <!-- Moved board here -->
-  <div class="board" id="board"></div>
+  <!-- Wrap board and timer in a flex container -->
+  <div class="board-container">
+    <!-- Moved board here -->
+    <div class="board" id="board"></div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
 
   <div class="pad-container">
     <div class="number-pad" id="pad"></div>
   </div>
-
+  
   <div class="candidate-toggle">
     <label><input type="checkbox" id="candidateMode"> Candidate Mode</label>
   </div>
@@ -272,6 +297,7 @@
       <li>Click a cell to select</li>
     </ul>
   </div>
+  
   <script>
   (() => {
   const boardEl = document.getElementById('board');
@@ -288,6 +314,7 @@
   const indicatorEls = [];
   let gameCompleted = false;
   let hasGameStarted = false; // new variable to track if a game has begun
+  let timerStarted = false; // new variable to track if the timer has started
 
   // NEW: Global puzzle queue for difficulties 1-5
   const puzzleQueue = { 1: [], 2: [], 3: [], 4: [], 5: [] };
@@ -378,7 +405,8 @@
     solution = puzzleData.solution;
     puzzle = puzzleData.puzzle;
     clues = puzzleData.clues;
-    hasGameStarted = true;
+    // Instead of marking game as started, reset timer control:
+    timerStarted = false; // reset timer; it hasn't started yet for the new puzzle
     
     render();
     await new Promise(resolve => setTimeout(resolve, 10));
@@ -458,6 +486,11 @@
 
   function onPadClick(n) {
     if (selected === null) return;
+    // Start the timer on the very first guess or candidate placement.
+    if (!timerStarted) {
+      startTimer();
+      timerStarted = true;
+    }
     // Only block non-clear actions if a value is already present
     if (n !== 0 && puzzle[selected] !== null) return;
 
@@ -670,7 +703,8 @@
       solution = puzzleData.solution;
       puzzle = puzzleData.puzzle;
       clues = puzzleData.clues;
-      hasGameStarted = true;
+      // Instead of marking game as started, reset timer control:
+      timerStarted = false; // reset timer; it hasn't started yet for the new puzzle
       
       // Render new board and then fade in numbers and indicators
       render();
@@ -681,6 +715,30 @@
       // NEW: Refill the background queue for all difficulties.
       fillQueue();
     }
+
+    let timerInterval;
+    let startTime;
+
+    function startTimer() {
+      startTime = Date.now();
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const minutes = Math.floor(elapsed / 60000).toString().padStart(2, '0');
+        const seconds = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
+        document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+      }, 1000);
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      document.getElementById('timer').textContent = '00:00';
+    }
+
+    // Reset timer when a new game is started
+    newGameBtn.addEventListener('click', () => {
+      resetTimer();
+    });
 
     function shuffle(a) {
       for (let i = a.length - 1; i > 0; i--) {
