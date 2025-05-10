@@ -271,6 +271,106 @@
   let gameCompleted = false;
   let hasGameStarted = false; // new variable to track if a game has begun
 
+  // NEW: Global puzzle queue for difficulties 1-5
+  const puzzleQueue = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+
+  // NEW: Extracted puzzle generation logic returning {puzzle, solution, clues}
+  async function generatePuzzleData(diff) {
+    const cluesArray = [56, 44, 35, 26, 17];
+    const desiredClues = cluesArray[diff - 1];
+    let sol = Array(81).fill(0);
+    const rows = Array.from({ length: 9 }, () => new Set());
+    const cols = Array.from({ length: 9 }, () => new Set());
+    const boxes = Array.from({ length: 9 }, () => new Set());
+    function fill(i = 0) {
+      if (i === 81) return true;
+      const r = Math.floor(i / 9), c = i % 9;
+      const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+      for (const n of nums) {
+        if (!rows[r].has(n) && !cols[c].has(n) && !boxes[b].has(n)) {
+          rows[r].add(n);
+          cols[c].add(n);
+          boxes[b].add(n);
+          sol[i] = n;
+          if (fill(i + 1)) return true;
+          rows[r].delete(n);
+          cols[c].delete(n);
+          boxes[b].delete(n);
+        }
+      }
+      return false;
+    }
+    fill();
+    
+    let pus = sol.slice();
+    const indices = shuffle([...Array(81).keys()]);
+    for (const i of indices) {
+      if (pus.filter(v => v !== null).length <= desiredClues) break;
+      const backup = pus[i];
+      pus[i] = null;
+      if (!hasUniqueSolution(pus)) {
+        pus[i] = backup;
+      }
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    const clueFlags = pus.map(v => v !== null);
+    console.log("Background generated puzzle for diff " + diff + " with " + pus.filter(v => v !== null).length + " clues.");
+    return { puzzle: pus, solution: sol, clues: clueFlags };
+  }
+
+  // NEW: Background queue fill function ensuring 2 puzzles per difficulty
+  function fillQueue() {
+    for (let d = 1; d <= 5; d++) {
+      if (puzzleQueue[d].length < 4) {
+        // Schedule generation in the background
+        setTimeout(() => {
+          generatePuzzleData(d).then(result => {
+            puzzleQueue[d].push(result);
+          });
+        }, 0);
+      }
+    }
+  }
+
+  // Modified generate() to serve queued puzzle if available; otherwise generate immediately.
+  async function generate() {
+    // Immediately unselect any selected cell and trigger fade-out
+    selected = null;
+    render();
+    const valueEls = document.querySelectorAll('.cell .value');
+    const indicatorContainers = document.querySelectorAll('.count-indicator');
+    if (valueEls.length) {
+      valueEls.forEach(el => el.classList.add('fade-out'));
+    }
+    if (indicatorContainers.length) {
+      indicatorContainers.forEach(el => el.classList.add('fade-out'));
+    }
+    await new Promise(resolve => setTimeout(resolve, 100)); // reduced delay
+
+    // NEW: Use queued puzzle if available for the current diff.
+    const diff = Number(diffEl.value);
+    let puzzleData;
+    if (puzzleQueue[diff].length > 0) {
+      puzzleData = puzzleQueue[diff].shift();
+    } else {
+      puzzleData = await generatePuzzleData(diff);
+    }
+    // Set global puzzle state
+    solution = puzzleData.solution;
+    puzzle = puzzleData.puzzle;
+    clues = puzzleData.clues;
+    hasGameStarted = true;
+    
+    render();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    valueEls.forEach(el => el.classList.remove('fade-out'));
+    indicatorContainers.forEach(el => el.classList.remove('fade-out'));
+
+    // NEW: Refill the background queue for all difficulties.
+    fillQueue();
+  }
+
   function buildBoard() {
     boardEl.innerHTML = '';
     candidates = Array(81).fill().map(() => new Set());
@@ -540,53 +640,18 @@
         await new Promise(resolve => setTimeout(resolve, 100)); // was 500
       }
       
-      const cluesArray = [56, 44, 35, 26, 17]; // Mapping for difficulty 1-5
-      const diffValue = Number(diffEl.value);
-      const desiredClues = cluesArray[diffValue - 1];
-      
-      // Generate a complete solution
-      solution = Array(81).fill(0);
-      const rows = Array.from({ length: 9 }, () => new Set());
-      const cols = Array.from({ length: 9 }, () => new Set());
-      const boxes = Array.from({ length: 9 }, () => new Set());
-      function fill(i = 0) {
-        if (i === 81) return true;
-        const r = Math.floor(i / 9), c = i % 9;
-        const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-        const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-        for (const n of nums) {
-          if (!rows[r].has(n) && !cols[c].has(n) && !boxes[b].has(n)) {
-            rows[r].add(n);
-            cols[c].add(n);
-            boxes[b].add(n);
-            solution[i] = n;
-            if (fill(i + 1)) return true;
-            rows[r].delete(n);
-            cols[c].delete(n);
-            boxes[b].delete(n);
-          }
-        }
-        return false;
+      // NEW: Use queued puzzle if available for the current diff.
+      const diff = Number(diffEl.value);
+      let puzzleData;
+      if (puzzleQueue[diff].length > 0) {
+        puzzleData = puzzleQueue[diff].shift();
+      } else {
+        puzzleData = await generatePuzzleData(diff);
       }
-      fill();
-      
-      // Initialize puzzle and progressively remove cells
-      puzzle = solution.slice();
-      const indices = shuffle([...Array(81).keys()]);
-      for (const i of indices) {
-        if (puzzle.filter(v => v !== null).length <= desiredClues) break;
-        const backup = puzzle[i];
-        puzzle[i] = null;
-        if (!hasUniqueSolution(puzzle)) {
-          puzzle[i] = backup;
-        }
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-      console.log("Generated puzzle with " + puzzle.filter(v => v !== null).length + " clues.");
-      
-      clues = puzzle.map(v => v !== null); // <-- NEW: record which cells are original clues
-      
-      // Set game started once a puzzle is generated.
+      // Set global puzzle state
+      solution = puzzleData.solution;
+      puzzle = puzzleData.puzzle;
+      clues = puzzleData.clues;
       hasGameStarted = true;
       
       // Render new board and then fade in numbers and indicators
@@ -594,6 +659,9 @@
       await new Promise(resolve => setTimeout(resolve, 10)); // minimal delay before fade in
       valueEls.forEach(el => el.classList.remove('fade-out'));
       indicatorContainers.forEach(el => el.classList.remove('fade-out'));
+
+      // NEW: Refill the background queue for all difficulties.
+      fillQueue();
     }
 
     function shuffle(a) {
@@ -711,7 +779,11 @@
       render();
     });
     
+    // Start by generating an immediate puzzle for the selected difficulty.
     generate();
+    
+    // Initially fill queue for all difficulties.
+    fillQueue();
   })();
   </script>
 </body>
