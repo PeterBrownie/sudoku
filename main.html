@@ -24,6 +24,7 @@
   .candidate-toggle {
     display: flex;
     justify-content: center;
+    margin-top: 16px; /* added to shift the checkbox lower */
     margin-bottom: 16px;
   }
   .controls label,
@@ -80,6 +81,10 @@
     box-sizing: border-box;
     border: 1px solid #5a4d7f;
     cursor: pointer;
+    transition: opacity 0.5s ease;
+  }
+  .cell.fade-out {
+    opacity: 0;
   }
   .cell.border-top { border-top-width: 2px; }
   .cell.border-bottom { border-bottom-width: 2px; }
@@ -90,6 +95,11 @@
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.2em; pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+  }
+  .cell .value.fade-out {
+    opacity: 0;
   }
   .cell .candidates {
     position: absolute; inset: 2px;
@@ -97,6 +107,7 @@
     grid-template-columns: repeat(3,1fr);
     grid-template-rows: repeat(3,1fr);
     font-size: 0.6em; color: #888;
+    visibility: hidden;
   }
   .cell .candidate {
     display: flex; align-items: center; justify-content: center;
@@ -121,6 +132,7 @@
     display: flex;
     align-items: flex-start;
     gap: 16px;
+    min-height: 55px; /* added to reserve space when red circles fade out */
   }
   .number-pad {
     display: flex;
@@ -149,6 +161,13 @@
     margin-top: 4px;
     /* optional: ensure it’s exactly 3 columns wide */
     width: calc(3 * 6px + 2 * 2px);
+    transition: opacity 0.2s ease;
+    opacity: 1;
+    height: 22px;          /* fixed height to reserve space */
+    flex-shrink: 0;        /* prevent shrinking if in flex container */
+  }
+  .count-indicator.fade-out {
+    opacity: 0;
   }
   .count-indicator .circle {
     width: 6px;
@@ -166,6 +185,40 @@
   button#newGame.glow {
     animation: pulse 1s infinite;
   }
+  .cell.mistake, .cell.conflict {
+    z-index: 10; /* ensure this cell is above adjacent cells */
+    position: relative;
+    outline-offset: 2px; /* push the outline outward */
+  }
+
+  /* Updated style for control instructions label */
+  .controls-label {
+    font-size: 0.8em;
+    color: #aaa;
+    background: #1e1e2e;
+    padding: 10px 15px;
+    border-radius: 5px;
+    text-align: left;
+    max-width: 400px;
+    margin-top: 12px;
+  }
+  .controls-label ul {
+    list-style: disc inside;
+    padding-left: 20px;
+    margin: 5px 0 0 0;
+  }
+  .controls-label li {
+    margin-bottom: 5px;
+  }
+
+  /* New rule: Make original clue numbers slightly darker */
+  .cell.fixed .value {
+    color: #b0b0b0;
+  }
+  /* New rule: Make user-input numbers more white */
+  .cell:not(.fixed) .value {
+    color: #ffffff;
+  }
 </style>
 </head>
 <body>
@@ -175,155 +228,165 @@
       <!-- Changed slider to have 5 values -->
       <input type="range" id="difficulty" min="1" max="5" value="1">
     </label>
-    <!-- New: display skipped puzzle counter -->
-    <span id="skippedCounter">Skipped: 0</span>
     <button id="newGame">New Game</button>
     <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
     <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
   </div>
 
-  <div class="candidate-toggle">
-    <label><input type="checkbox" id="candidateMode"> Candidate Mode</label>
-  </div>
-
+  <!-- Moved board here -->
   <div class="board" id="board"></div>
 
   <div class="pad-container">
     <div class="number-pad" id="pad"></div>
   </div>
 
+  <div class="candidate-toggle">
+    <label><input type="checkbox" id="candidateMode"> Candidate Mode</label>
+  </div>
+
+  <!-- Updated controls instructions label -->
+  <div class="controls-label">
+    <strong>Keyboard Controls</strong>
+    <ul>
+      <li>Press 1-9 to enter numbers</li>
+      <li>Press C or Space to toggle Candidate Mode</li>
+      <li>Press 0 or Backspace to clear entry</li>
+      <li>Click a cell to select</li>
+    </ul>
+  </div>
   <script>
   (() => {
-    const boardEl = document.getElementById('board');
-    const padEl = document.getElementById('pad');
-    const newGameBtn = document.getElementById('newGame');
-    const diffEl = document.getElementById('difficulty');
-    const showMistakesEl = document.getElementById('showMistakes');
-    const showConflictsEl = document.getElementById('showConflicts');
-    const candidateModeEl = document.getElementById('candidateMode');
-    const skippedCounterEl = document.getElementById('skippedCounter');
+  const boardEl = document.getElementById('board');
+  const padEl = document.getElementById('pad');
+  const newGameBtn = document.getElementById('newGame');
+  const diffEl = document.getElementById('difficulty');
+  const showMistakesEl = document.getElementById('showMistakes');
+  const showConflictsEl = document.getElementById('showConflicts');
+  const candidateModeEl = document.getElementById('candidateMode');
 
-    let solution = [], puzzle = [], candidates = [];
-    let selected = null;
-    const indicatorEls = []; // store references to each number's indicator
-    let gameCompleted = false;
-    let skippedPuzzles = 0;
+  let solution = [], puzzle = [], candidates = [];
+  let selected = null;
+  let clues = [];  // <-- NEW: track original clues
+  const indicatorEls = [];
+  let gameCompleted = false;
+  let hasGameStarted = false; // new variable to track if a game has begun
 
-    function buildBoard() {
-      boardEl.innerHTML = '';
-      candidates = Array(81).fill().map(() => new Set());
-      for (let i = 0; i < 81; i++) {
-        const r = Math.floor(i/9), c = i % 9;
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        if (r % 3 === 0) cell.classList.add('border-top');
-        if (r % 3 === 2) cell.classList.add('border-bottom');
-        if (c % 3 === 0) cell.classList.add('border-left');
-        if (c % 3 === 2) cell.classList.add('border-right');
-        cell.dataset.index = i;
-        cell.addEventListener('click', () => selectCell(i));
-
-        const valEl = document.createElement('div');
-        valEl.className = 'value';
-        cell.appendChild(valEl);
-
-        const candEl = document.createElement('div');
-        candEl.className = 'candidates';
-        for (let n = 1; n <= 9; n++) {
-          const cd = document.createElement('div');
-          cd.className = 'candidate';
-          cd.textContent = n;
-          candEl.appendChild(cd);
-        }
-        cell.appendChild(candEl);
-
-        boardEl.appendChild(cell);
-      }
-    }
-
-    function buildPad() {
-      padEl.innerHTML = '';
-      indicatorEls.length = 0;
-      for (let n = 1; n <= 9; n++) {
-        const item = document.createElement('div');
-        item.className = 'pad-item';
-
-        const btn = document.createElement('button');
-        btn.textContent = n;
-        btn.addEventListener('click', () => onPadClick(n));
-        item.appendChild(btn);
-
-        const ind = document.createElement('div');
-        ind.className = 'count-indicator';
-        item.appendChild(ind);
-
-        padEl.appendChild(item);
-        indicatorEls[n] = ind;
-      }
-      const clearItem = document.createElement('div');
-      clearItem.className = 'pad-item';
-      const clearBtn = document.createElement('button');
-      clearBtn.textContent = 'C';
-      clearBtn.className = 'clear';
-      clearBtn.addEventListener('click', () => onPadClick(0));
-      clearItem.appendChild(clearBtn);
-      // no indicator for clear
-      padEl.appendChild(clearItem);
-    }
-
-    function selectCell(idx) {
-      selected = idx;
-      render();
-    }
-
-    function onPadClick(n) {
-      if (selected === null) return;
-      // Only block non-clear actions if a value is already present
-      if (n !== 0 && puzzle[selected] !== null) return;
-
-      // Always treat n===0 as “clear value”
-      if (n === 0) {
-        setValue(selected, n);
-      }
-      else if (candidateModeEl.checked) {
-        setCandidate(selected, n);
-      }
-      else {
-        setValue(selected, n);
-      }
-      render();
-    }
-
-    function setValue(i, n) {
-      puzzle[i] = n || null;
-      candidates[i].clear();
-      if (n) removeCandidatesPeers(i, n);
-    }
-
-    function setCandidate(i, n) {
-      if (!n) return;
-      candidates[i].has(n) ? candidates[i].delete(n) : candidates[i].add(n);
-    }
-
-    function removeCandidatesPeers(i, n) {
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    candidates = Array(81).fill().map(() => new Set());
+    for (let i = 0; i < 81; i++) {
       const r = Math.floor(i/9), c = i % 9;
-      const br = r - r % 3, bc = c - c % 3;
-      for (let j = 0; j < 9; j++) {
-        candidates[r*9 + j].delete(n);
-        candidates[j*9 + c].delete(n);
-      }
-      for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) {
-        candidates[(br+dr)*9 + bc+dc].delete(n);
-      }
-    }
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if (r % 3 === 0) cell.classList.add('border-top');
+      if (r % 3 === 2) cell.classList.add('border-bottom');
+      if (c % 3 === 0) cell.classList.add('border-left');
+      if (c % 3 === 2) cell.classList.add('border-right');
+      cell.dataset.index = i;
+      cell.addEventListener('click', () => selectCell(i));
 
-    function render() {
-      const cells = boardEl.children;
-      for (let i = 0; i < 81; i++) {
+      const valEl = document.createElement('div');
+      valEl.className = 'value';
+      cell.appendChild(valEl);
+
+      const candEl = document.createElement('div');
+      candEl.className = 'candidates';
+      for (let n = 1; n <= 9; n++) {
+        const cd = document.createElement('div');
+        cd.className = 'candidate';
+        cd.textContent = n;
+        candEl.appendChild(cd);
+      }
+      cell.appendChild(candEl);
+
+      boardEl.appendChild(cell);
+    }
+  }
+
+  function buildPad() {
+    padEl.innerHTML = '';
+    indicatorEls.length = 0;
+    for (let n = 1; n <= 9; n++) {
+      const item = document.createElement('div');
+      item.className = 'pad-item';
+
+      const btn = document.createElement('button');
+      btn.textContent = n;
+      btn.addEventListener('click', () => onPadClick(n));
+      item.appendChild(btn);
+
+      const ind = document.createElement('div');
+      ind.className = 'count-indicator';
+      item.appendChild(ind);
+
+      padEl.appendChild(item);
+      indicatorEls[n] = ind;
+    }
+    const clearItem = document.createElement('div');
+    clearItem.className = 'pad-item';
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = 'C';
+    clearBtn.className = 'clear';
+    clearBtn.addEventListener('click', () => onPadClick(0));
+    clearItem.appendChild(clearBtn);
+    // no indicator for clear
+    padEl.appendChild(clearItem);
+  }
+
+  function selectCell(idx) {
+    selected = idx;
+    render();
+  }
+
+  function onPadClick(n) {
+    if (selected === null) return;
+    // Only block non-clear actions if a value is already present
+    if (n !== 0 && puzzle[selected] !== null) return;
+
+    // Always treat n===0 as “clear value”
+    if (n === 0) {
+      setValue(selected, n);
+    }
+    else if (candidateModeEl.checked) {
+      setCandidate(selected, n);
+    }
+    else {
+      setValue(selected, n);
+    }
+    render();
+  }
+
+  function setValue(i, n) {
+    puzzle[i] = n || null;
+    candidates[i].clear();
+    if (n) removeCandidatesPeers(i, n);
+  }
+
+  function setCandidate(i, n) {
+    if (!n) return;
+    candidates[i].has(n) ? candidates[i].delete(n) : candidates[i].add(n);
+  }
+
+  function removeCandidatesPeers(i, n) {
+    const r = Math.floor(i/9), c = i % 9;
+    const br = r - r % 3, bc = c - c % 3;
+    for (let j = 0; j < 9; j++) {
+      candidates[r*9 + j].delete(n);
+      candidates[j*9 + c].delete(n);
+    }
+    for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) {
+      candidates[(br+dr)*9 + bc+dc].delete(n);
+    }
+  }
+
+  function render() {
+    const cells = boardEl.children;
+    for (let i = 0; i < 81; i++) {
           const cell = cells[i];
           const v = puzzle[i];
           cell.querySelector('.value').textContent = v || '';
-          cell.classList.toggle('fixed', !!v);
+          // Modified: use clues[i] instead of !!v to toggle original given style
+          cell.classList.toggle('fixed', clues[i]);
           const candEls = cell.querySelectorAll('.candidate');
           candEls.forEach((cEl, idx) => {
               cEl.style.visibility = candidates[i].has(idx+1) ? 'visible' : 'hidden';
@@ -352,38 +415,16 @@
           if (v) for (let k = 0; k < 81; k++) {
               if (puzzle[k] === v) cells[k].classList.add('duplicate');
           }
-          if (showMistakesEl.checked) checkMistakes();
-          if (showConflictsEl.checked) checkConflicts();
           cells[selected].classList.remove('associated');
           cells[selected].classList.add('selected');
       }
       updateIndicators();
       
-      if (selected !== null) {
-        const v = puzzle[selected];
-        const r = Math.floor(selected/9), c = selected % 9;
-        const br = r - r % 3, bc = c - c % 3;
-        for (let j = 0; j < 9; j++) {
-          if (r*9 + j !== selected) cells[r*9 + j].classList.add('associated');
-          if (j*9 + c !== selected) cells[j*9 + c].classList.add('associated');
-        }
-        for (let dr = 0; dr < 3; dr++) {
-          for (let dc = 0; dc < 3; dc++) {
-            const idx = (br+dr)*9 + bc+dc;
-            if (idx !== selected) cells[idx].classList.add('associated');
-          }
-        }
-        if (v) for (let k = 0; k < 81; k++) {
-          if (puzzle[k] === v) cells[k].classList.add('duplicate');
-        }
-        if (showMistakesEl.checked) checkMistakes();
-        if (showConflictsEl.checked) checkConflicts();
-        cells[selected].classList.remove('associated');
-        cells[selected].classList.add('selected');
-      }
+      // NEW: Always highlight mistakes and conflicts regardless of cell selection.
+      if (showMistakesEl.checked) checkMistakes();
+      if (showConflictsEl.checked) checkConflicts();
       
-      // New: check if puzzle is solved
-      if (isSolved() && !gameCompleted) {
+      if (isSolved() && hasGameStarted && !gameCompleted) { // added hasGameStarted check
         gameCompleted = true;
         newGameBtn.classList.add("glow");
         startConfetti();
@@ -478,50 +519,81 @@
     
     // Updated generate() with verifier and counter update.
     async function generate() {
-      skippedPuzzles = 0;
-      let attempts = 0, maxAttempts = 1500;
+      // Immediately unselect any selected cell and trigger fade out
+      selected = null;
+      render();
+      const valueEls = document.querySelectorAll('.cell .value');
+      const indicatorContainers = document.querySelectorAll('.count-indicator');
+      if (valueEls.length) {
+          valueEls.forEach(el => el.classList.add('fade-out'));
+      }
+      if (indicatorContainers.length) {
+          indicatorContainers.forEach(el => el.classList.add('fade-out'));
+      }
+      // Reduced delay: start generating a new puzzle almost immediately
+      await new Promise(resolve => setTimeout(resolve, 100)); // was 500
+
+      // Optionally remove the following block or also reduce its timing
+      const currentValues = document.querySelectorAll('.cell .value');
+      if (currentValues.length) {
+        currentValues.forEach(el => el.classList.add('fade-out'));
+        await new Promise(resolve => setTimeout(resolve, 100)); // was 500
+      }
+      
       const cluesArray = [56, 44, 35, 26, 17]; // Mapping for difficulty 1-5
       const diffValue = Number(diffEl.value);
       const desiredClues = cluesArray[diffValue - 1];
-      do {
-        // Prepare a complete solution
-        solution = Array(81).fill(0);
-        const rows = Array.from({ length: 9 }, () => new Set());
-        const cols = Array.from({ length: 9 }, () => new Set());
-        const boxes = Array.from({ length: 9 }, () => new Set());
-        function fill(i = 0) {
-          if (i === 81) return true;
-          const r = Math.floor(i / 9), c = i % 9;
-          const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-          const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-          for (const n of nums) {
-            if (!rows[r].has(n) && !cols[c].has(n) && !boxes[b].has(n)) {
-              rows[r].add(n);
-              cols[c].add(n);
-              boxes[b].add(n);
-              solution[i] = n;
-              if (fill(i + 1)) return true;
-              rows[r].delete(n);
-              cols[c].delete(n);
-              boxes[b].delete(n);
-            }
+      
+      // Generate a complete solution
+      solution = Array(81).fill(0);
+      const rows = Array.from({ length: 9 }, () => new Set());
+      const cols = Array.from({ length: 9 }, () => new Set());
+      const boxes = Array.from({ length: 9 }, () => new Set());
+      function fill(i = 0) {
+        if (i === 81) return true;
+        const r = Math.floor(i / 9), c = i % 9;
+        const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+        const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        for (const n of nums) {
+          if (!rows[r].has(n) && !cols[c].has(n) && !boxes[b].has(n)) {
+            rows[r].add(n);
+            cols[c].add(n);
+            boxes[b].add(n);
+            solution[i] = n;
+            if (fill(i + 1)) return true;
+            rows[r].delete(n);
+            cols[c].delete(n);
+            boxes[b].delete(n);
           }
-          return false;
         }
-        fill();
-        // Copy full solution to puzzle and remove cells based on desired clues
-        puzzle = solution.slice();
-        const idxs = shuffle([...Array(81).keys()]);
-        idxs.slice(0, 81 - desiredClues).forEach(i => puzzle[i] = null);
-        attempts++;
+        return false;
+      }
+      fill();
+      
+      // Initialize puzzle and progressively remove cells
+      puzzle = solution.slice();
+      const indices = shuffle([...Array(81).keys()]);
+      for (const i of indices) {
+        if (puzzle.filter(v => v !== null).length <= desiredClues) break;
+        const backup = puzzle[i];
+        puzzle[i] = null;
         if (!hasUniqueSolution(puzzle)) {
-          skippedPuzzles++;
-          skippedCounterEl.textContent = "Skipped: " + skippedPuzzles;
-          await new Promise(resolve => setTimeout(resolve, 0));
+          puzzle[i] = backup;
         }
-      } while (!hasUniqueSolution(puzzle) && attempts < maxAttempts);
-      console.log("Verified unique after " + attempts + " attempts; skipped " + skippedPuzzles + " puzzles.");
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      console.log("Generated puzzle with " + puzzle.filter(v => v !== null).length + " clues.");
+      
+      clues = puzzle.map(v => v !== null); // <-- NEW: record which cells are original clues
+      
+      // Set game started once a puzzle is generated.
+      hasGameStarted = true;
+      
+      // Render new board and then fade in numbers and indicators
       render();
+      await new Promise(resolve => setTimeout(resolve, 10)); // minimal delay before fade in
+      valueEls.forEach(el => el.classList.remove('fade-out'));
+      indicatorContainers.forEach(el => el.classList.remove('fade-out'));
     }
 
     function shuffle(a) {
@@ -609,7 +681,8 @@
       // ignore if focus is in an input (so sliders, checkboxes still work)
       if (e.target.tagName === 'INPUT') return;
 
-      if (e.key.toLowerCase() === 'c') { // toggle candidate mode when "C" is pressed
+      // Toggle candidate mode on "C" key or space bar
+      if (e.key.toLowerCase() === 'c' || e.key === ' ') {
         candidateModeEl.checked = !candidateModeEl.checked;
         render();
         e.preventDefault();
