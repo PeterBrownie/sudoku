@@ -247,13 +247,15 @@
   /* Remove or ignore .board-timer-container styles */
   /* New container to center the puzzle */
   .board-container {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin: 0 auto 16px auto;
+    position: relative;
+    display: inline-block;
+    margin-bottom: 16px; /* removed flex properties */
   }
-  /* New row container to hold timer and copy button inline */
+  /* CHANGE: Position info-col absolutely to the right of the board */
   .info-col {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 16px); /* 16px gap between board and info-col */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -279,6 +281,7 @@
     cursor: pointer;
     padding: 6px;
     border-radius: 4px;
+    width: 60px; /* fixed width added to match timer */
   }
   button#copyPuzzle svg {
     width: 20px;
@@ -287,6 +290,43 @@
   }
   button#copyPuzzle:hover {
     background: rgba(0, 0, 0, 0.1);
+  }
+  /* NEW: CSS for pause button */
+  button#pauseGame {
+    background: #1e1e2e;
+    border: 1px solid #5a4d7f;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #e0e0e0;
+    cursor: pointer;
+    width: 80px; /* fixed width added */
+  }
+  /* NEW: Blur effect for paused puzzle */
+  .board-container.paused {
+    filter: blur(5px);
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  .pad-container.paused {
+    filter: blur(5px);
+    pointer-events: none;
+  }
+
+  /* NEW: Container wrapping board and unblurred controls */
+  .puzzle-wrapper {
+    position: relative;
+    display: inline-block;
+    margin: 20px auto; /* centers the whole puzzle wrapper on the page */
+  }
+
+  .puzzle-wrapper .info-col {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 16px); /* 16px gap between board and info-col */
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
   }
 </style>
 </head>
@@ -305,12 +345,19 @@
     <button id="autoCandidate">Auto-Candidate</button>
   </div>
 
-  <!-- Updated board container: board on left, info-col on right -->
-  <div class="board-container">
-    <!-- Moved board here -->
-    <div class="board" id="board"></div>
+  <div class="puzzle-wrapper">
+    <!-- CHANGE: Wrap board-container without info-col -->
+    <div class="board-container" id="boardContainer">
+      <!-- Moved board here -->
+      <div class="board" id="board"></div>
+    </div>
+    <!-- NEW: Place info-col outside board-container so it is never blurred -->
     <div class="info-col">
-      <div class="timer" id="timer">00:00</div>
+      <!-- Wrap timer and pause button in a flex row -->
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="timer" id="timer">00:00</div>
+        <button id="pauseGame" style="visibility:hidden;">Pause</button>
+      </div>
       <!-- Copy button remains unchanged -->
       <button id="copyPuzzle" title="Copy Puzzle">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -322,7 +369,7 @@
     </div>
   </div>
 
-  <div class="pad-container">
+  <div class="pad-container" id="padContainer">
     <div class="number-pad" id="pad"></div>
   </div>
   
@@ -358,6 +405,9 @@
   let gameCompleted = false;
   let hasGameStarted = false; // new variable to track if a game has begun
   let timerStarted = false; // new variable to track if the timer has started
+  let timerInterval, startTime;
+  let isPaused = false;
+  let pausedElapsed = 0;  // Time elapsed at pause
 
   // NEW: Global puzzle queue for difficulties 1-5
   const puzzleQueue = { 1: [], 2: [], 3: [], 4: [], 5: [] };
@@ -790,24 +840,50 @@
       fillQueue();
     }
 
-    let timerInterval;
-    let startTime;
-
     function startTimer() {
-      startTime = Date.now();
+      startTime = Date.now() - pausedElapsed;
       clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
         const minutes = Math.floor(elapsed / 60000).toString().padStart(2, '0');
         const seconds = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
         document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+        const pauseBtn = document.getElementById('pauseGame');
+        // Hide pause button until elapsed time is at least 1 second
+        pauseBtn.style.visibility = elapsed >= 1000 ? "visible" : "hidden";
       }, 1000);
     }
 
     function resetTimer() {
       clearInterval(timerInterval);
+      pausedElapsed = 0;
       document.getElementById('timer').textContent = '00:00';
+      document.getElementById('pauseGame').style.visibility = "hidden";
     }
+
+    // NEW: Pause button event listener
+    document.getElementById('pauseGame').addEventListener('click', () => {
+      const boardContainer = document.getElementById('boardContainer');
+      const padContainer = document.getElementById('padContainer');
+      const pauseBtn = document.getElementById('pauseGame');
+      if (!isPaused) {
+        // Pause the timer and save elapsed time
+        pausedElapsed = Date.now() - startTime;
+        clearInterval(timerInterval);
+        // Blur puzzle areas
+        boardContainer.classList.add('paused');
+        padContainer.classList.add('paused');
+        pauseBtn.textContent = "Resume";
+        isPaused = true;
+      } else {
+        // Resume the timer
+        startTimer();
+        boardContainer.classList.remove('paused');
+        padContainer.classList.remove('paused');
+        pauseBtn.textContent = "Pause";
+        isPaused = false;
+      }
+    });
 
     // Reset timer when a new game is started
     newGameBtn.addEventListener('click', () => {
@@ -898,6 +974,7 @@
       gameCompleted = false;
       hasGameStarted = false;
       newGameBtn.classList.remove("glow");
+      resetTimer();
       generate();
     });
     diffEl.addEventListener('input', () => {
