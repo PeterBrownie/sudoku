@@ -301,6 +301,8 @@
     <!-- Removed copy puzzle button from here -->
     <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
     <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
+    <!-- NEW: Added Auto-Candidate button -->
+    <button id="autoCandidate">Auto-Candidate</button>
   </div>
 
   <!-- Updated board container: board on left, info-col on right -->
@@ -561,6 +563,22 @@
   function setCandidate(i, n) {
     if (!n) return;
     candidates[i].has(n) ? candidates[i].delete(n) : candidates[i].add(n);
+  }
+
+  // NEW: autoCandidate function to fill each empty cell with all eligible candidates.
+  function autoCandidate() {
+    for (let i = 0; i < 81; i++) {
+      if (puzzle[i] === null) {
+        const r = Math.floor(i / 9), c = i % 9;
+        candidates[i].clear();
+        for (let n = 1; n <= 9; n++) {
+          if (isValid(puzzle, r, c, n)) {
+            candidates[i].add(n);
+          }
+        }
+      }
+    }
+    render();
   }
 
   function removeCandidatesPeers(i, n) {
@@ -875,7 +893,7 @@
     buildPad();
     newGameBtn.addEventListener('click', () => {
       gameCompleted = false;
-      hasGameStarted = false;  // Reset game start flag to prevent celebration on new game
+      hasGameStarted = false;
       newGameBtn.classList.remove("glow");
       generate();
     });
@@ -883,6 +901,8 @@
     showMistakesEl.addEventListener('change', render);
     showConflictsEl.addEventListener('change', render);
     candidateModeEl.addEventListener('change', render);
+    // NEW: Register Auto-Candidate button event listener.
+    document.getElementById('autoCandidate').addEventListener('click', autoCandidate);
     
     // ← new: keyboard support for 1–9, 0/backspace = clear
     document.addEventListener('keydown', e => {
