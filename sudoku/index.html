@@ -126,6 +126,11 @@
     position: relative; /* ensures z-index works */
     z-index: 100;
   }
+  /* New rule: when candidate mode is enabled, selected cell gets a faded white border */
+  .cell.selected.candidate-selected {
+    border: 2px solid rgba(255,255,255,0.5);
+    box-shadow: none;
+  }
   /* update associated cell highlighting: add animation */
   .cell.associated {
     background: #1f1f33;
@@ -551,24 +556,34 @@
           cell.classList.remove('selected','associated');
       }
       if (selected !== null) {
-          const v = puzzle[selected];
           const r = Math.floor(selected/9), c = selected % 9;
           const br = r - r % 3, bc = c - c % 3;
+          // mark associated cells for row, column, and block
           for (let j = 0; j < 9; j++) {
-              if (r*9 + j !== selected) cells[r*9 + j].classList.add('associated');
-              if (j*9 + c !== selected) cells[j*9 + c].classList.add('associated');
+              if (r * 9 + j !== selected) cells[r * 9 + j].classList.add('associated');
+              if (j * 9 + c !== selected) cells[j * 9 + c].classList.add('associated');
           }
           for (let dr = 0; dr < 3; dr++) {
               for (let dc = 0; dc < 3; dc++) {
-                  const idx = (br+dr)*9 + bc+dc;
+                  const idx = (br + dr) * 9 + bc + dc;
                   if (idx !== selected) cells[idx].classList.add('associated');
               }
           }
-          if (v) for (let k = 0; k < 81; k++) {
-              if (puzzle[k] === v) cells[k].classList.add('duplicate');
+          // New: duplicate highlight for matching values
+          if (puzzle[selected]) {
+            for (let k = 0; k < 81; k++) {
+              if (puzzle[k] === puzzle[selected] && k !== selected)
+                cells[k].classList.add('duplicate');
+            }
           }
           cells[selected].classList.remove('associated');
           cells[selected].classList.add('selected');
+          // If candidate mode is enabled, add candidate-selected extra border style.
+          if (candidateModeEl.checked) {
+              cells[selected].classList.add('candidate-selected');
+          } else {
+              cells[selected].classList.remove('candidate-selected');
+          }
       }
       updateIndicators();
       
