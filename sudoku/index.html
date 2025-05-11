@@ -247,15 +247,21 @@
   /* Remove or ignore .board-timer-container styles */
   /* New container to center the puzzle */
   .board-container {
-    position: relative;
-    width: 405px; /* 9 cells × 45px each */
-    margin: 0 auto 16px auto; /* center horizontally with bottom margin */
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 0 auto 16px auto;
   }
-  /* Update timer style to position it to the right of the board */
+  /* New row container to hold timer and copy button inline */
+  .info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  /* Remove absolute positioning from timer */
   .timer {
-    position: absolute;
-    top: 0;
-    left: calc(100% + 10px); /* 10px gap from the board */
+    position: static;
     background: #1e1e2e;
     color: #e0e0e0;
     border: 1px solid #5a4d7f;
@@ -263,6 +269,22 @@
     padding: 8px 12px;
     font-size: 1.2em;
     font-family: sans-serif;
+  }
+
+  button#copyPuzzle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+  }
+  button#copyPuzzle svg {
+    width: 20px;
+    height: 20px;
+    fill: #e0e0e0;
+  }
+  button#copyPuzzle:hover {
+    background: rgba(0, 0, 0, 0.1);
   }
 </style>
 </head>
@@ -274,15 +296,26 @@
       <input type="range" id="difficulty" min="1" max="5" value="1">
     </label>
     <button id="newGame">New Game</button>
+    <!-- Removed copy puzzle button from here -->
     <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
     <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
   </div>
 
-  <!-- Wrap board and timer in a flex container -->
+  <!-- Updated board container: board on left, info-col on right -->
   <div class="board-container">
     <!-- Moved board here -->
     <div class="board" id="board"></div>
-    <div class="timer" id="timer">00:00</div>
+    <div class="info-col">
+      <div class="timer" id="timer">00:00</div>
+      <!-- Copy button remains unchanged -->
+      <button id="copyPuzzle" title="Copy Puzzle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M16 1H4c-1.11 0-2 .89-2 2v14h2V3h12V1zm3 4H8
+                   c-1.11 0-2 .89-2 2v14c0 1.11.89 2 2 2h11
+                   c1.11 0 2-.89 2-2V7c0-1.11-.89-2-2-2zm0 16H8V7h11v14z"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <div class="pad-container">
@@ -754,6 +787,14 @@
     // Reset timer when a new game is started
     newGameBtn.addEventListener('click', () => {
       resetTimer();
+    });
+
+    // New: copy puzzle functionality without text changes.
+    const copyPuzzleBtn = document.getElementById('copyPuzzle');
+    copyPuzzleBtn.addEventListener('click', () => {
+      const puzzleText = puzzle.map(cell => cell ? cell : '.').join('');
+      navigator.clipboard.writeText(puzzleText)
+        .catch(err => console.error('Failed to copy puzzle: ', err));
     });
 
     function shuffle(a) {
