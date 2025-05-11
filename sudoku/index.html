@@ -269,6 +269,8 @@
     padding: 8px 12px;
     font-size: 1.2em;
     font-family: sans-serif;
+    width: 60px; /* fixed width */
+    text-align: center;
   }
 
   button#copyPuzzle {
@@ -529,6 +531,10 @@
     if (!timerStarted) {
       startTimer();
       timerStarted = true;
+    }
+    // Mark game as started on first valid input.
+    if (!hasGameStarted) {
+      hasGameStarted = true;
     }
     // Only block non-clear actions if a value is already present
     if (n !== 0 && puzzle[selected] !== null) return;
@@ -869,6 +875,7 @@
     buildPad();
     newGameBtn.addEventListener('click', () => {
       gameCompleted = false;
+      hasGameStarted = false;  // Reset game start flag to prevent celebration on new game
       newGameBtn.classList.remove("glow");
       generate();
     });
