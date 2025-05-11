@@ -649,6 +649,7 @@
       if (showConflictsEl.checked) checkConflicts();
       
       if (isSolved() && hasGameStarted && !gameCompleted) { // added hasGameStarted check
+        clearInterval(timerInterval); // Pause the timer after game is completed
         gameCompleted = true;
         newGameBtn.classList.add("glow");
         startConfetti();
