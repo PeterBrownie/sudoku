@@ -893,12 +893,18 @@
     buildBoard();
     buildPad();
     newGameBtn.addEventListener('click', () => {
+      // Clear all candidates for new game
+      candidates = Array(81).fill().map(() => new Set());
       gameCompleted = false;
       hasGameStarted = false;
       newGameBtn.classList.remove("glow");
       generate();
     });
-    diffEl.addEventListener('input', generate);
+    diffEl.addEventListener('input', () => {
+      // Clear all candidates when difficulty changes
+      candidates = Array(81).fill().map(() => new Set());
+      generate();
+    });
     showMistakesEl.addEventListener('change', render);
     showConflictsEl.addEventListener('change', render);
     candidateModeEl.addEventListener('change', render);
