@@ -1,0 +1,299 @@
+/* Sudoku Dark Mode Styles - extracted from index.html */
+body {
+  margin: 0;
+  background: #121212;
+  color: #e0e0e0;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.controls {
+  margin: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.candidate-toggle {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+.controls label,
+.candidate-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #5a4d7f;
+  border-radius: 3px;
+  background: #121212;
+  position: relative;
+  cursor: pointer;
+}
+input[type="checkbox"]:checked {
+  background: #5a4d7f;
+}
+input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 0;
+  left: 2px;
+  font-size: 12px;
+  color: #e0e0e0;
+}
+.controls > *:not(label) {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 8px;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(9, 45px);
+  grid-template-rows: repeat(9, 45px);
+}
+.cell {
+  position: relative;
+  width: 45px;
+  height: 45px;
+  background: #1a1a1a;
+  box-sizing: border-box;
+  border: 1px solid #5a4d7f;
+  cursor: pointer;
+  transition: opacity 0.5s ease;
+}
+.cell.fade-out {
+  opacity: 0;
+}
+.cell.border-top { border-top-width: 2px; }
+.cell.border-bottom { border-bottom-width: 2px; }
+.cell.border-left { border-left-width: 2px; }
+.cell.border-right { border-right-width: 2px; }
+.cell.fixed .candidates { visibility: hidden; }
+.cell .value {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2em; pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+.cell .value.fade-out {
+  opacity: 0;
+}
+.cell .candidates {
+  position: absolute; inset: 2px;
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  grid-template-rows: repeat(3,1fr);
+  font-size: 0.6em; color: #888;
+  visibility: hidden;
+}
+.cell .candidate {
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.cell.highlight   { background: #2e1e4f; }
+.cell.duplicate   { background: #4f1e1e; }
+.cell.mistake     { outline: 2px solid #ff3366; }
+.cell.conflict    { outline: 2px dashed #ff9933; }
+.cell .candidate.highlight { color: #ff3366; }
+.cell.selected {
+  background: #3b3b5e;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 8px 2px rgba(255,255,255,0.5);
+  position: relative;
+  z-index: 100;
+}
+.cell.selected.candidate-selected {
+  border: 2px solid rgba(255,255,255,0.5);
+  box-shadow: none;
+}
+.cell.associated {
+  background: #1f1f33;
+  animation: associatedFlash 0.3s ease;
+}
+@keyframes associatedFlash {
+  0% { background: #1a1a1a; }
+  50% { background: #1f1f33; }
+  100% { background: #1f1f33; }
+}
+.pad-container {
+  margin-top: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 55px;
+}
+.number-pad {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.pad-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pad-item button {
+  width: 40px; height: 45px;
+  background: #2a2a3a; border: 1px solid #5a4d7f;
+  border-radius: 4px; color: #e0e0e0; cursor: pointer;
+}
+.pad-item button.clear {
+  background: #3a2a2a;
+}
+.count-indicator {
+  display: grid;
+  grid-template-columns: repeat(3, 6px);
+  grid-auto-rows: 6px;
+  gap: 2px;
+  margin-top: 4px;
+  width: calc(3 * 6px + 2 * 2px);
+  transition: opacity 0.2s ease;
+  opacity: 1;
+  height: 22px;
+  flex-shrink: 0;
+}
+.count-indicator.fade-out {
+  opacity: 0;
+}
+.count-indicator .circle {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff3366;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 5px #fff; }
+  50% { box-shadow: 0 0 20px #fff; }
+  100% { box-shadow: 0 0 5px #fff; }
+}
+button#newGame.glow {
+  animation: pulse 1s infinite;
+}
+.cell.mistake, .cell.conflict {
+  z-index: 10;
+  position: relative;
+  outline-offset: 2px;
+}
+.controls-label {
+  font-size: 0.8em;
+  color: #aaa;
+  background: #1e1e2e;
+  padding: 10px 15px;
+  border-radius: 5px;
+  text-align: left;
+  max-width: 400px;
+  margin-top: 12px;
+}
+.controls-label ul {
+  list-style: disc inside;
+  padding-left: 20px;
+  margin: 5px 0 0 0;
+}
+.controls-label li {
+  margin-bottom: 5px;
+}
+.cell.fixed .value {
+  color: #b0b0b0;
+}
+.cell:not(.fixed) .value {
+  color: #ffffff;
+}
+.cell.duplicate {
+  background: #4f1e1e;
+  animation: duplicateFlash 0.3s ease;
+}
+@keyframes duplicateFlash {
+  0% { background: #1f1f33; }
+  100% { background: #4f1e1e; }
+}
+.board-container {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+.info-col {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.timer {
+  position: static;
+  background: #1e1e2e;
+  color: #e0e0e0;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 1.2em;
+  font-family: sans-serif;
+  width: 60px;
+  text-align: center;
+}
+button#copyPuzzle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  width: 60px;
+}
+button#copyPuzzle svg {
+  width: 20px;
+  height: 20px;
+  fill: #e0e0e0;
+}
+button#copyPuzzle:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+button#pauseGame {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #e0e0e0;
+  cursor: pointer;
+  width: 80px;
+}
+.board-container.paused {
+  filter: blur(5px);
+  pointer-events: none;
+  opacity: 0.7;
+}
+.pad-container.paused {
+  filter: blur(5px);
+  pointer-events: none;
+}
+.puzzle-wrapper {
+  position: relative;
+  display: inline-block;
+  margin: 20px auto;
+}
+.puzzle-wrapper .info-col {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
