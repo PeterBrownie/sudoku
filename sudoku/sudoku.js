@@ -60,11 +60,30 @@
       if (!hasUniqueSolution(pus)) {
         pus[i] = backup;
       }
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await yieldIdle();
     }
     const clueFlags = pus.map(v => v !== null);
     console.log("Background generated puzzle for diff " + diff + " with " + pus.filter(v => v !== null).length + " clues.");
     return { puzzle: pus, solution: sol, clues: clueFlags };
+  }
+
+  // NEW: Helper functions to yield control to the browser when idle
+  function yieldIdle() {
+    return new Promise(resolve => {
+      if (window.requestIdleCallback) {
+        requestIdleCallback(resolve);
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
+  }
+
+  function idleCallback(callback) {
+    if (window.requestIdleCallback) {
+      requestIdleCallback(callback);
+    } else {
+      setTimeout(callback, 0);
+    }
   }
 
   // NEW: Background queue fill function ensuring 2 puzzles per difficulty
@@ -72,11 +91,11 @@
     for (let d = 1; d <= 5; d++) {
       if (puzzleQueue[d].length < 4) {
         // Schedule generation in the background
-        setTimeout(() => {
+        idleCallback(() => {
           generatePuzzleData(d).then(result => {
             puzzleQueue[d].push(result);
           });
-        }, 0);
+        });
       }
     }
   }
