@@ -509,11 +509,14 @@
 
       // NEW: Refill the background queue for all difficulties.
       fillQueue();
-    }
-
-    function startTimer() {
+    }    function startTimer() {
       startTime = Date.now() - pausedElapsed;
       clearInterval(timerInterval);
+      
+      // Make timer visible with fade effect
+      const timerEl = document.getElementById('timer');
+      timerEl.classList.add('visible');
+      
       timerInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
         let minutes = Math.floor(elapsed / 60000);
@@ -525,22 +528,26 @@
           displayTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         } else {
           displayTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }        
+        timerEl.textContent = displayTime;        const pauseBtn = document.getElementById('pauseGame');
+        // Make pause button visible with fade effect when elapsed time is at least 1 second
+        if (elapsed >= 1000 && !pauseBtn.classList.contains('visible')) {
+          pauseBtn.classList.add('visible');
         }
-        document.getElementById('timer').textContent = displayTime;
-        const pauseBtn = document.getElementById('pauseGame');
-        // Hide pause button until elapsed time is at least 1 second
-        pauseBtn.style.visibility = elapsed >= 1000 ? "visible" : "hidden";
-      }, 1000);
-    }
-
-    function resetTimer() {
+      }, 1000);}    function resetTimer() {
       clearInterval(timerInterval);
       pausedElapsed = 0;
-      document.getElementById('timer').textContent = '00:00';
-      document.getElementById('pauseGame').style.visibility = "hidden";
-    }
-
-    // NEW: Pause button event listener
+      const timerEl = document.getElementById('timer');
+      timerEl.textContent = '00:00';
+      timerEl.classList.remove('visible');
+      
+      const pauseBtn = document.getElementById('pauseGame');
+      pauseBtn.classList.remove('visible');
+      
+      // Reset to pause icon when game is reset
+      document.querySelector('#pauseGame .pause-icon').style.display = 'block';
+      document.querySelector('#pauseGame .play-icon').style.display = 'none';
+    }// NEW: Pause button event listener
     document.getElementById('pauseGame').addEventListener('click', () => {
       // Prevent action if an animation is still in progress
       if (isPauseAnimating) return;
@@ -549,18 +556,29 @@
       const boardContainer = document.getElementById('boardContainer');
       const padContainer = document.getElementById('padContainer');
       const pauseBtn = document.getElementById('pauseGame');
-      if (!isPaused) {
+      const pauseIcon = document.querySelector('#pauseGame .pause-icon');
+      const playIcon = document.querySelector('#pauseGame .play-icon');
+        if (!isPaused) {
         pausedElapsed = Date.now() - startTime;
         clearInterval(timerInterval);
+        
+        // Don't remove the visible class from the timer
+        // Just update the time display one last time before pausing
+        const timerEl = document.getElementById('timer');
+        if (!timerEl.classList.contains('visible')) {
+          timerEl.classList.add('visible');
+        }
+        
         boardContainer.classList.add('paused');
         padContainer.classList.add('paused');
-        pauseBtn.textContent = "Resume";
+        // Toggle icons
+        pauseIcon.style.display = 'none';
+        playIcon.style.display = 'block';
         isPaused = true;
         // Wait for the blurIn animation to finish before accepting new clicks
         boardContainer.addEventListener('animationend', () => {
           isPauseAnimating = false;
-        }, { once: true });
-      } else {
+        }, { once: true });} else {
         startTimer();
         boardContainer.classList.add('unpausing');
         padContainer.classList.add('unpausing');
@@ -571,7 +589,9 @@
         padContainer.addEventListener('animationend', () => {
           padContainer.classList.remove('paused', 'unpausing');
         }, { once: true });
-        pauseBtn.textContent = "Pause";
+        // Toggle icons back
+        pauseIcon.style.display = 'block';
+        playIcon.style.display = 'none';
         isPaused = false;
       }
     });

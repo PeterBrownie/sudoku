@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
+<head>  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="../peter.png">
   <title>Dark Mode Sudoku</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Additional inline styles for toggle arrow -->
-  <style>
-    .game-options-header { cursor: pointer; user-select: none; }
-    .game-options-header .toggle-arrow { display: inline-block; transition: transform 0.2s; }
+  <link rel="stylesheet" href="style.css">  <!-- Additional inline styles for toggle arrow -->  <style>
+    .game-options-header { user-select: none; }
+    .game-options-header .toggle-arrow { 
+      display: inline-block; 
+      transition: transform 0.3s ease;
+      color: var(--primary-color);
+      margin-right: 5px;
+    }
     .game-options-header.expanded .toggle-arrow { transform: rotate(90deg); }
+    .game-options-header:hover { color: var(--primary-color); }
   </style>
 </head>
-<body>
-  <div class="controls">
+<body>  <div class="controls">
     <div class="game-controls">
       <!-- Moved Difficulty slider and New Game button into their own container -->
       <label>
@@ -33,7 +35,13 @@
         <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
       </div>
     </div>
-    <button id="autoCandidate">Auto-Candidate</button>
+    <button id="autoCandidate">Auto-Candidate</button>    <button id="copyPuzzle" title="Copy Puzzle">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
+        <path d="M16 1H4c-1.11 0-2 .89-2 2v14h2V3h12V1zm3 4H8
+                c-1.11 0-2 .89-2 2v14c0 1.11.89 2 2 2h11
+                c1.11 0 2-.89 2-2V7c0-1.11-.89-2-2-2zm0 16H8V7h11v14z"/>
+      </svg>
+    </button>
   </div>
 
   <div class="puzzle-wrapper">
@@ -41,22 +49,20 @@
     <div class="board-container" id="boardContainer">
       <!-- Moved board here -->
       <div class="board" id="board"></div>
-    </div>
-    <!-- NEW: Place info-col outside board-container so it is never blurred -->
-    <div class="info-col">
-      <!-- Wrap timer and pause button in a flex row -->
-      <div style="display: flex; gap: 10px; align-items: center;">
+    </div>    <!-- NEW: Place info-col outside board-container so it is never blurred -->    <div class="info-col">      <!-- Wrap timer and pause button in a flex row -->
+      <div class="control-row">
         <div class="timer" id="timer">00:00</div>
-        <button id="pauseGame" style="visibility:hidden;">Pause</button>
+        <button id="pauseGame" title="Pause Game">
+          <!-- Pause icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pause-icon">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
+          <!-- Play icon (hidden initially) -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="play-icon" style="display: none;">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </button>
       </div>
-      <!-- Copy button remains unchanged -->
-      <button id="copyPuzzle" title="Copy Puzzle">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M16 1H4c-1.11 0-2 .89-2 2v14h2V3h12V1zm3 4H8
-                   c-1.11 0-2 .89-2 2v14c0 1.11.89 2 2 2h11
-                   c1.11 0 2-.89 2-2V7c0-1.11-.89-2-2-2zm0 16H8V7h11v14z"/>
-        </svg>
-      </button>
     </div>
   </div>
 
@@ -78,8 +84,7 @@
       <li>Click a cell to select</li>
     </ul>
   </div>
-  
-  <!-- Inline script to toggle the Game Options container -->
+    <!-- Inline script to toggle the Game Options container -->
   <script>
     const header = document.querySelector('.game-options-header');
     const bodyEl = document.querySelector('.game-options-body');
@@ -88,13 +93,19 @@
       header.classList.toggle('expanded', isExpanded);
       header.querySelector('.toggle-arrow').textContent = isExpanded ? ' ▶' : ' ▶';
     });
+    
+    // Add some hover effects for better UX
+    document.querySelectorAll('button').forEach(button => {
+      button.addEventListener('mouseenter', () => {
+        button.style.transition = 'all 0.3s ease';
+      });
+    });
   </script>
   
   <script src="sudoku.js"></script>
-  
-  <!-- NEW: Credit text at the bottom left -->
+    <!-- NEW: Credit text at the bottom left -->
   <div id="credit">
-    This was created by <a href="https://peterbrown.space" target="_blank">Peter Brown</a>, with the help of AI
+    Created by <a href="https://peterbrown.space" target="_blank">Peter Brown</a>, with the help of AI
   </div>
 </body>
 </html>
