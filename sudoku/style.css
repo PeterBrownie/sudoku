@@ -10,7 +10,7 @@ body {
 }
 
 .controls {
-  margin: 16px;
+  margin: 12px;
   display: flex;
   gap: 12px;
   align-items: center;
@@ -228,10 +228,10 @@ button#newGame.glow {
   color: #aaa;
   background: #1e1e2e;
   padding: 10px 15px;
-  border-radius: 5px;
+  border-radius: 10px;
   text-align: left;
   max-width: 400px;
-  margin-top: 12px;
+  margin-top: 3px;
 }
 .controls-label ul {
   list-style: disc inside;
@@ -372,4 +372,35 @@ button#pauseGame {
 }
 .shake {
   animation: shake 0.3s ease;
+}
+
+/* NEW: Barrel roll animation for pad buttons */
+@keyframes barrelRoll {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.barrel-roll {
+  animation: barrelRoll 1s ease;
+}
+
+/* Prevent text selection in sudoku cells and all child elements */
+.cell, .cell * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* NEW: Style for the credit text */
+#credit {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: 8px;
+  font-size: 0.8em;
+  color: #444;
+}
+#credit a {
+  color: grey;
+  text-decoration: underline;
 }

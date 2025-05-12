@@ -197,8 +197,20 @@
     }, 300);
   }
 
+  // NEW: Track secret pad sequence when no cell is selected
+  let secretSequence = [];
+
   function onPadClick(n) {
-    if (selected === null) return;
+    // NEW: If no cell is selected, process potential secret sequence
+    if (selected === null) {
+      secretSequence.push(n);
+      if (secretSequence.length > 4) secretSequence.shift();
+      if (secretSequence.join('') === '6969') {
+        triggerBarrelRoll();
+        secretSequence = [];
+      }
+      return;
+    }
     // If the selected cell is a given clue, trigger shake animation and block value entry.
     if (clues[selected]) {
         const cell = boardEl.children[selected];
@@ -228,6 +240,17 @@
       userSetValue(selected, n);
     }
     render();
+  }
+
+  // NEW: Trigger barrel roll animation on all number pad buttons
+  function triggerBarrelRoll() {
+    const numberBtns = document.querySelectorAll('.pad-item button:not(.clear)');
+    numberBtns.forEach(btn => {
+      btn.classList.add('barrel-roll');
+      btn.addEventListener('animationend', () => {
+        btn.classList.remove('barrel-roll');
+      }, { once: true });
+    });
   }
 
   function setValue(i, n) {
