@@ -1,24 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="../peter.png">
-<title>Dark Mode Sudoku</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="../peter.png">
+  <title>Dark Mode Sudoku</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Additional inline styles for toggle arrow -->
+  <style>
+    .game-options-header { cursor: pointer; user-select: none; }
+    .game-options-header .toggle-arrow { display: inline-block; transition: transform 0.2s; }
+    .game-options-header.expanded .toggle-arrow { transform: rotate(90deg); }
+  </style>
 </head>
 <body>
   <div class="controls">
-    <label>
-      Difficulty:
-      <!-- Changed slider to have 5 values -->
-      <input type="range" id="difficulty" min="1" max="5" value="1">
-    </label>
-    <button id="newGame">New Game</button>
-    <!-- Removed copy puzzle button from here -->
-    <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
-    <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
-    <!-- NEW: Added Auto-Candidate button -->
+    <div class="game-controls">
+      <!-- Moved Difficulty slider and New Game button into their own container -->
+      <label>
+        Difficulty:
+        <input type="range" id="difficulty" min="1" max="5" value="1">
+      </label>
+      <button id="newGame">New Game</button>
+    </div>
+    <div class="game-options">
+      <div class="game-options-header">
+        <span class="toggle-arrow">▶</span> Game Options
+      </div>
+      <!-- Removed inline display style -->
+      <div class="game-options-body">
+        <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
+        <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
+      </div>
+    </div>
     <button id="autoCandidate">Auto-Candidate</button>
   </div>
 
@@ -64,6 +78,17 @@
       <li>Click a cell to select</li>
     </ul>
   </div>
+  
+  <!-- Inline script to toggle the Game Options container -->
+  <script>
+    const header = document.querySelector('.game-options-header');
+    const bodyEl = document.querySelector('.game-options-body');
+    header.addEventListener('click', () => {
+      const isExpanded = bodyEl.classList.toggle('expanded');
+      header.classList.toggle('expanded', isExpanded);
+      header.querySelector('.toggle-arrow').textContent = isExpanded ? ' ▶' : ' ▶';
+    });
+  </script>
   
   <script src="sudoku.js"></script>
 </body>

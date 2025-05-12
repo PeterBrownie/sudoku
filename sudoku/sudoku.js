@@ -182,33 +182,50 @@
   }
 
   function selectCell(idx) {
+    // Allow selecting any cell, even a given clue.
     selected = idx;
     render();
   }
 
+  function userSetValue(i, n) {
+    setValue(i, n);
+    const cell = boardEl.children[i];
+    const valueEl = cell.querySelector('.value');
+    valueEl.classList.add('fade-in');
+    setTimeout(() => {
+      valueEl.classList.remove('fade-in');
+    }, 300);
+  }
+
   function onPadClick(n) {
     if (selected === null) return;
-    // Start the timer on the very first guess or candidate placement.
+    // If the selected cell is a given clue, trigger shake animation and block value entry.
+    if (clues[selected]) {
+        const cell = boardEl.children[selected];
+        cell.classList.remove('shake');
+        void cell.offsetWidth; // trigger reflow
+        cell.classList.add('shake');
+        cell.addEventListener('animationend', () => {
+            cell.classList.remove('shake');
+        }, { once: true });
+        return;
+    }
     if (!timerStarted) {
       startTimer();
       timerStarted = true;
     }
-    // Mark game as started on first valid input.
     if (!hasGameStarted) {
       hasGameStarted = true;
     }
-    // Only block non-clear actions if a value is already present
-    if (n !== 0 && puzzle[selected] !== null) return;
-
-    // Always treat n===0 as “clear value”
+    // Block input if the same value is already present in the cell (ignore candidate mode)
+    if (n !== 0 && !candidateModeEl.checked && puzzle[selected] === n) return;
+    
     if (n === 0) {
-      setValue(selected, n);
-    }
-    else if (candidateModeEl.checked) {
+      userSetValue(selected, n);
+    } else if (candidateModeEl.checked) {
       setCandidate(selected, n);
-    }
-    else {
-      setValue(selected, n);
+    } else {
+      userSetValue(selected, n);
     }
     render();
   }
@@ -262,9 +279,11 @@
           cell.classList.toggle('fixed', clues[i]);
           const candEls = cell.querySelectorAll('.candidate');
           candEls.forEach((cEl, idx) => {
-              cEl.style.visibility = candidates[i].has(idx+1) ? 'visible' : 'hidden';
+              const hasCandidate = candidates[i].has(idx+1);
+              cEl.style.opacity = hasCandidate ? '1' : '0';
               cEl.classList.toggle('highlight',
                   selected !== null &&
+                  hasCandidate && // NEW: only highlight if candidate is still present
                   idx+1 === (puzzle[selected] || null)
               );
           });
@@ -454,9 +473,17 @@
       clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        const minutes = Math.floor(elapsed / 60000).toString().padStart(2, '0');
-        const seconds = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
-        document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+        let minutes = Math.floor(elapsed / 60000);
+        let seconds = Math.floor((elapsed % 60000) / 1000);
+        let displayTime;
+        if (minutes >= 60) {
+          const hours = Math.floor(minutes / 60);
+          minutes = minutes % 60;
+          displayTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+          displayTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        document.getElementById('timer').textContent = displayTime;
         const pauseBtn = document.getElementById('pauseGame');
         // Hide pause button until elapsed time is at least 1 second
         pauseBtn.style.visibility = elapsed >= 1000 ? "visible" : "hidden";

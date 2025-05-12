@@ -15,6 +15,11 @@ body {
   gap: 12px;
   align-items: center;
 }
+.game-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .candidate-toggle {
   display: flex;
   justify-content: center;
@@ -43,6 +48,7 @@ input[type="checkbox"] {
   background: #121212;
   position: relative;
   cursor: pointer;
+  transition: opacity 0.2s ease;
 }
 input[type="checkbox"]:checked {
   background: #5a4d7f;
@@ -61,6 +67,21 @@ input[type="checkbox"]:checked::after {
   border-radius: 4px;
   color: #e0e0e0;
   padding: 8px;
+}
+button#newGame {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+button {
+  transition: background-color 0.2s ease, filter 0.2s ease;
+  cursor: pointer;
+}
+button:hover {
+  filter: brightness(1.25);
 }
 .board {
   display: grid;
@@ -92,6 +113,15 @@ input[type="checkbox"]:checked::after {
   opacity: 1;
   transition: opacity 0.2s ease;
 }
+
+/* NEW: Fade-in animation for user-updated cell values */
+.cell .value.fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .cell .value.fade-out {
   opacity: 0;
 }
@@ -101,11 +131,13 @@ input[type="checkbox"]:checked::after {
   grid-template-columns: repeat(3,1fr);
   grid-template-rows: repeat(3,1fr);
   font-size: 0.6em; color: #888;
-  visibility: hidden;
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
 .cell .candidate {
   display: flex; align-items: center; justify-content: center;
   pointer-events: none;
+  transition: opacity 0.2s ease; /* NEW: Fade animation on candidate changes */
 }
 .cell.highlight   { background: #2e1e4f; }
 .cell.duplicate   { background: #4f1e1e; }
@@ -256,6 +288,7 @@ button#copyPuzzle {
   padding: 6px;
   border-radius: 4px;
   width: 60px;
+  align-self: flex-start;
 }
 button#copyPuzzle svg {
   width: 20px;
@@ -263,8 +296,14 @@ button#copyPuzzle svg {
   fill: #e0e0e0;
 }
 button#copyPuzzle:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(35, 35, 35, 0.894);
 }
+/* Adding click animation*/
+button:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
 button#pauseGame {
   background: #1e1e2e;
   border: 1px solid #5a4d7f;
@@ -296,4 +335,41 @@ button#pauseGame {
   flex-direction: column;
   gap: 8px;
   align-items: center;
+}
+.game-options {
+  /* Ensure the container is positioned relative so the body can be absolute */
+  position: relative;
+  align-self: flex-start; /* align to top in flex container */
+  z-index: 9999; /* ensure the game options container is above all other content */
+}
+.game-options-header {
+  cursor: pointer;
+  user-select: none;
+  width: 150px; /* fixed width for the game options header */
+}
+.game-options-body {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  z-index: 10; /* overlays other content without shifting layout */
+  opacity: 0;
+}
+.game-options-body.expanded {
+  max-height: 200px; /* Adjust as needed */
+  opacity: 1;
+}
+
+/* NEW: Shake animation for unmodifiable cells */
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  50% { transform: translateX(2px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+.shake {
+  animation: shake 0.3s ease;
 }
