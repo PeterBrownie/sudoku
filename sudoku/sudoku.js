@@ -17,6 +17,7 @@
   let timerInterval, startTime;
   let isPaused = false;
   let pausedElapsed = 0;  // Time elapsed at pause
+  let isPauseAnimating = false;  // NEW: Prevent rapid pause/resume clicks
 
   // NEW: Global puzzle queue for difficulties 1-5
   const puzzleQueue = { 1: [], 2: [], 3: [], 4: [], 5: [] };
@@ -522,23 +523,35 @@
 
     // NEW: Pause button event listener
     document.getElementById('pauseGame').addEventListener('click', () => {
+      // Prevent action if an animation is still in progress
+      if (isPauseAnimating) return;
+      isPauseAnimating = true;
+      
       const boardContainer = document.getElementById('boardContainer');
       const padContainer = document.getElementById('padContainer');
       const pauseBtn = document.getElementById('pauseGame');
       if (!isPaused) {
-        // Pause the timer and save elapsed time
         pausedElapsed = Date.now() - startTime;
         clearInterval(timerInterval);
-        // Blur puzzle areas
         boardContainer.classList.add('paused');
         padContainer.classList.add('paused');
         pauseBtn.textContent = "Resume";
         isPaused = true;
+        // Wait for the blurIn animation to finish before accepting new clicks
+        boardContainer.addEventListener('animationend', () => {
+          isPauseAnimating = false;
+        }, { once: true });
       } else {
-        // Resume the timer
         startTimer();
-        boardContainer.classList.remove('paused');
-        padContainer.classList.remove('paused');
+        boardContainer.classList.add('unpausing');
+        padContainer.classList.add('unpausing');
+        boardContainer.addEventListener('animationend', () => {
+          boardContainer.classList.remove('paused', 'unpausing');
+          isPauseAnimating = false;
+        }, { once: true });
+        padContainer.addEventListener('animationend', () => {
+          padContainer.classList.remove('paused', 'unpausing');
+        }, { once: true });
         pauseBtn.textContent = "Pause";
         isPaused = false;
       }

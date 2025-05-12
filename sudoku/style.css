@@ -317,10 +317,13 @@ button#pauseGame {
   filter: blur(5px);
   pointer-events: none;
   opacity: 0.7;
+  animation: blurIn 0.5s forwards;
 }
 .pad-container.paused {
   filter: blur(5px);
   pointer-events: none;
+  opacity: 0.7;
+  animation: blurIn 0.5s forwards;
 }
 .puzzle-wrapper {
   position: relative;
@@ -403,4 +406,29 @@ button#pauseGame {
 #credit a {
   color: grey;
   text-decoration: underline;
+}
+
+/* NEW: Keyframes for blur animations */
+@keyframes blurIn {
+  from { filter: blur(0px); }
+  to   { filter: blur(5px); }
+}
+@keyframes blurOut {
+  from { filter: blur(5px); }
+  to   { filter: blur(0px); }
+}
+
+/* Update paused state with blurIn animation */
+.board-container.paused,
+.pad-container.paused {
+  filter: blur(5px);
+  pointer-events: none;
+  opacity: 1;
+  animation: blurIn 0.5s forwards;
+}
+
+/* NEW: Class to animate back to a non-blurred state */
+.board-container.unpausing,
+.pad-container.unpausing {
+  animation: blurOut 0.5s forwards;
 }
