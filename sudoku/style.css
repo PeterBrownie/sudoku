@@ -185,10 +185,10 @@ button:hover {
   100% { background: #1f1f33; }
 }
 .pad-container {
-  margin-top: 12px;
+  margin-top: 3px;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 8px;
   min-height: 55px;
 }
 .number-pad {
