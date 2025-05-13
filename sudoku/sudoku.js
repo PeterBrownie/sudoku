@@ -18,6 +18,7 @@
   let isPaused = false;
   let pausedElapsed = 0;  // Time elapsed at pause
   let isPauseAnimating = false;  // NEW: Prevent rapid pause/resume clicks
+  let isPuzzleTransitioning = false;  // new variable to track puzzle fade-in
 
   // NEW: Global puzzle queue for difficulties 1-5
   const puzzleQueue = { 1: [], 2: [], 3: [], 4: [], 5: [] };
@@ -102,7 +103,8 @@
 
   // Modified generate() to serve queued puzzle if available; otherwise generate immediately.
   async function generate() {
-    // Immediately unselect any selected cell and trigger fade-out
+    isPuzzleTransitioning = true; // mark transition start
+    // Immediately unselect any selected cell and trigger fade out
     selected = null;
     render();
     const valueEls = document.querySelectorAll('.cell .value');
@@ -134,6 +136,7 @@
     await new Promise(resolve => setTimeout(resolve, 10));
     valueEls.forEach(el => el.classList.remove('fade-out'));
     indicatorContainers.forEach(el => el.classList.remove('fade-out'));
+    isPuzzleTransitioning = false; // fade-in finished
 
     // NEW: Refill the background queue for all difficulties.
     fillQueue();
@@ -465,6 +468,7 @@
     
     // Updated generate() with verifier and counter update.
     async function generate() {
+      isPuzzleTransitioning = true; // mark transition start
       // Immediately unselect any selected cell and trigger fade out
       selected = null;
       render();
@@ -506,6 +510,7 @@
       await new Promise(resolve => setTimeout(resolve, 10)); // minimal delay before fade in
       valueEls.forEach(el => el.classList.remove('fade-out'));
       indicatorContainers.forEach(el => el.classList.remove('fade-out'));
+      isPuzzleTransitioning = false; // fade-in finished
 
       // NEW: Refill the background queue for all difficulties.
       fillQueue();
@@ -514,6 +519,8 @@
     function startTimer() {
       startTime = Date.now() - pausedElapsed;
       clearInterval(timerInterval);
+      // Ensure timer is visible when starting
+      document.getElementById('timer').classList.add('visible');
       timerInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
         let minutes = Math.floor(elapsed / 60000);
@@ -528,8 +535,12 @@
         }
         document.getElementById('timer').textContent = displayTime;
         const pauseBtn = document.getElementById('pauseGame');
-        // Hide pause button until elapsed time is at least 1 second
-        pauseBtn.style.visibility = elapsed >= 1000 ? "visible" : "hidden";
+        // Toggle "visible" class to fade in/out the pause button
+        if (elapsed >= 1000) {
+          pauseBtn.classList.add('visible');
+        } else {
+          pauseBtn.classList.remove('visible');
+        }
       }, 1000);
     }
 
@@ -537,7 +548,10 @@
       clearInterval(timerInterval);
       pausedElapsed = 0;
       document.getElementById('timer').textContent = '00:00';
-      document.getElementById('pauseGame').style.visibility = "hidden";
+      // Remove visible class so that the pause button fades out
+      document.getElementById('pauseGame').classList.remove('visible');
+      // Hide timer after reset
+      document.getElementById('timer').classList.remove('visible');
     }
 
     // NEW: Pause button event listener
@@ -660,6 +674,7 @@
     buildBoard();
     buildPad();
     newGameBtn.addEventListener('click', () => {
+      if (isPuzzleTransitioning) return; // do nothing if puzzle is still fading in
       // Clear all candidates for new game
       candidates = Array(81).fill().map(() => new Set());
       gameCompleted = false;

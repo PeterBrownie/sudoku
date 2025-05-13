@@ -3,7 +3,8 @@ body {
   margin: 0;
   background: #121212;
   color: #e0e0e0;
-  font-family: sans-serif;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -96,7 +97,12 @@ button:hover {
   box-sizing: border-box;
   border: 1px solid #5a4d7f;
   cursor: pointer;
-  transition: opacity 0.5s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, opacity 0.5s ease;  /* UPDATED: Smooth hover transition */
+}
+.cell:hover:not(.selected) {
+  background: #2a2a2a; /* Slightly lighter than #1a1a1a */
+  border-color: #5a4d7f;
+  z-index: 10;
 }
 .cell.fade-out {
   opacity: 0;
@@ -126,24 +132,38 @@ button:hover {
   opacity: 0;
 }
 .cell .candidates {
-  position: absolute; inset: 2px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px;   /* ensures consistent inner spacing */
   display: grid;
-  grid-template-columns: repeat(3,1fr);
-  grid-template-rows: repeat(3,1fr);
-  font-size: 0.6em; color: #888;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  font-size: 0.6em;
+  color: #888;
   opacity: 1;
   transition: opacity 0.2s ease;
 }
 .cell .candidate {
   display: flex; align-items: center; justify-content: center;
   pointer-events: none;
-  transition: opacity 0.2s ease; /* NEW: Fade animation on candidate changes */
+  transition: opacity 0.2s ease, transform 0.2s ease; /* updated to include transform */
+  transform: scale(1); /* ensure default scale */
+  font-family: 'Poppins', sans-serif;  /* ensure using variable font */
+  font-variation-settings: 'wght' 400;   /* set initial weight */
 }
 .cell.highlight   { background: #2e1e4f; }
 .cell.duplicate   { background: #4f1e1e; }
 .cell.mistake     { outline: 2px solid #ff3366; }
 .cell.conflict    { outline: 2px dashed #ff9933; }
-.cell .candidate.highlight { color: #ff3366; }
+.cell .candidate.highlight { 
+  color: #ff3366; 
+  transform: scale(1.2); /* add slight growth without shifting layout */
+  text-shadow: 0 0 5px #ff3366; /* new: glowing effect behind the number */
+  animation: weightGrow 0.3s forwards; /* animate weight smoothly */
+}
 .cell.selected {
   background: #3b3b5e;
   border: 2px solid #ffffff;
@@ -219,7 +239,7 @@ button#newGame.glow {
   animation: pulse 1s infinite;
 }
 .cell.mistake, .cell.conflict {
-  z-index: 10;
+  z-index: 15; /* increased to ensure red outlines appear over adjacent hovered cells */
   position: relative;
   outline-offset: 2px;
 }
@@ -258,12 +278,11 @@ button#newGame.glow {
 .board-container {
   position: relative;
   display: inline-block;
-  margin-bottom: 16px;
 }
 .info-col {
   position: absolute;
-  top: 0;
-  left: calc(100% + 16px);
+  top: 120px;  /* adjusted to align with the top of the puzzle container */
+  left: calc(50% + 220px);  /* ensures info-col sits a few pixels from the puzzle container */
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -280,6 +299,14 @@ button#newGame.glow {
   font-family: sans-serif;
   width: 60px;
   text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+  z-index: 100 !important;  /* ensure timer appears on top */
+}
+.timer.visible {
+  opacity: 1;
+  visibility: visible;
 }
 button#copyPuzzle {
   background: transparent;
@@ -312,6 +339,13 @@ button#pauseGame {
   color: #e0e0e0;
   cursor: pointer;
   width: 80px;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+  opacity: 0;             /* added: hide by default */
+  visibility: hidden;      /* added: hide by default */
+}
+button#pauseGame.visible {
+  opacity: 1;
+  visibility: visible;
 }
 .board-container.paused {
   filter: blur(5px);
@@ -329,6 +363,11 @@ button#pauseGame {
   position: relative;
   display: inline-block;
   margin: 20px auto;
+  /* border-radius: 12px; */
+  /* box-shadow: 0 4px 20px rgba(0,0,0,0.25); */
+  overflow: hidden;  /* NEW: Ensure rounded corners clip the board */
+  padding: 15px;        /* NEW: remove extra spacing so bottom aligns directly */
+  /* border: 2px solid #5a4d7f;  NEW: add matching edge border */
 }
 .puzzle-wrapper .info-col {
   position: absolute;
@@ -431,4 +470,32 @@ button#pauseGame {
 .board-container.unpausing,
 .pad-container.unpausing {
   animation: blurOut 0.5s forwards;
+}
+
+/* NEW: Keyframes for font weight animation */
+@keyframes weightGrow {
+  from {
+    font-variation-settings: 'wght' 400;
+  }
+  to {
+    font-variation-settings: 'wght' 700;
+  }
+}
+.board > .cell:nth-child(1) {
+  border-top-left-radius: 12px;
+}
+.board > .cell:nth-child(9) {
+  border-top-right-radius: 12px;
+}
+.board > .cell:nth-child(73) {
+  border-bottom-left-radius: 12px;
+}
+.board > .cell:nth-child(81) {
+  border-bottom-right-radius: 12px;
+}
+.cell.selected .candidates {
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
 }

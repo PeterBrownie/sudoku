@@ -42,22 +42,23 @@
       <!-- Moved board here -->
       <div class="board" id="board"></div>
     </div>
-    <!-- NEW: Place info-col outside board-container so it is never blurred -->
-    <div class="info-col">
-      <!-- Wrap timer and pause button in a flex row -->
-      <div style="display: flex; gap: 10px; align-items: center;">
-        <div class="timer" id="timer">00:00</div>
-        <button id="pauseGame" style="visibility:hidden;">Pause</button>
-      </div>
-      <!-- Copy button remains unchanged -->
-      <button id="copyPuzzle" title="Copy Puzzle">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M16 1H4c-1.11 0-2 .89-2 2v14h2V3h12V1zm3 4H8
-                   c-1.11 0-2 .89-2 2v14c0 1.11.89 2 2 2h11
-                   c1.11 0 2-.89 2-2V7c0-1.11-.89-2-2-2zm0 16H8V7h11v14z"/>
-        </svg>
-      </button>
+    <!-- Removed info-col from here -->
+  </div>
+  <!-- Insert info-col outside the puzzle-wrapper -->
+  <div class="info-col">
+    <!-- Wrap timer and pause button in a flex row -->
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <div class="timer" id="timer">00:00</div>
+      <button id="pauseGame">Pause</button>
     </div>
+    <!-- Copy button remains unchanged -->
+    <button id="copyPuzzle" title="Copy Puzzle">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M16 1H4c-1.11 0-2 .89-2 2v14h2V3h12V1zm3 4H8
+                 c-1.11 0-2 .89-2 2v14c0 1.11.89 2 2 2h11
+                 c1.11 0 2-.89 2-2V7c0-1.11-.89-2-2-2zm0 16H8V7h11v14z"/>
+      </svg>
+    </button>
   </div>
 
   <div class="pad-container" id="padContainer">
@@ -94,7 +95,7 @@
   
   <!-- NEW: Credit text at the bottom left -->
   <div id="credit">
-    This was created by <a href="https://peterbrown.space" target="_blank">Peter Brown</a>, with the help of AI
+    Created by <a href="https://peterbrown.space" target="_blank">Peter Brown</a>, with the help of AI
   </div>
 </body>
 </html>
