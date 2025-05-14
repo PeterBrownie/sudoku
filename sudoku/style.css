@@ -231,9 +231,9 @@ button:hover {
   background: #ff3366;
 }
 @keyframes pulse {
-  0% { box-shadow: 0 0 5px #fff; }
-  50% { box-shadow: 0 0 20px #fff; }
-  100% { box-shadow: 0 0 5px #fff; }
+  0% { box-shadow: 0 0 5px #aaa; }
+  50% { box-shadow: 0 0 10px #fff; }
+  100% { box-shadow: 0 0 5px #aaa; }
 }
 button#newGame.glow {
   animation: pulse 1s infinite;
@@ -323,6 +323,23 @@ button#copyPuzzle svg {
   fill: #e0e0e0;
 }
 button#copyPuzzle:hover {
+  background: rgba(35, 35, 35, 0.894);
+}
+button#openPuzzle {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  width: 60px;
+  align-self: flex-start;
+  cursor: pointer;
+}
+button#openPuzzle svg {
+  width: 20px;
+  height: 20px;
+  fill: #e0e0e0;
+}
+button#openPuzzle:hover {
   background: rgba(35, 35, 35, 0.894);
 }
 /* Adding click animation*/

@@ -603,6 +603,15 @@
         .catch(err => console.error('Failed to copy puzzle: ', err));
     });
 
+    // New: open puzzle functionality.
+    const openPuzzleBtn = document.getElementById('openPuzzle');
+    openPuzzleBtn.addEventListener('click', () => {
+      // Build puzzle string using '0' for empty cells
+      const puzzleText = puzzle.map(cell => cell ? cell : '0').join('');
+      const url = "https://www.sudokuwiki.org/sudoku.htm?bd=" + puzzleText;
+      window.open(url, '_blank');
+    });
+
     function shuffle(a) {
       for (let i = a.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
