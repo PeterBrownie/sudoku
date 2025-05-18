@@ -514,7 +514,8 @@
       if (showMistakesEl.checked) checkMistakes();
       if (showConflictsEl.checked) checkConflicts();
       
-      if (isSolved() && hasGameStarted && !gameCompleted) { // added hasGameStarted check
+      // NEW: Prevent celebration on initial load by checking puzzle length and non-empty cells.
+      if (puzzle.length === 81 && puzzle.some(cell => cell !== null) && isSolved() && !gameCompleted) {
         clearInterval(timerInterval); // Pause the timer after game is completed
         gameCompleted = true;
         newGameBtn.classList.add("glow");
