@@ -24,7 +24,7 @@ body {
 .candidate-toggle {
   display: flex;
   justify-content: center;
-  margin-top: 16px;
+  margin-top: 8px;
   margin-bottom: 16px;
 }
 .controls label,

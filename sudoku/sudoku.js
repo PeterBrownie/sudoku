@@ -91,7 +91,7 @@
   function fillQueue() {
     const currentDiff = Number(diffEl.value);
     // Fill queue for the currently selected difficulty first
-    if (puzzleQueue[currentDiff].length < 4) {
+    if (puzzleQueue[currentDiff].length < 2) {  // changed from < 4
       idleCallback(() => {
         generatePuzzleData(currentDiff).then(result => {
           puzzleQueue[currentDiff].push(result);
@@ -100,7 +100,7 @@
     }
     // Then fill for higher difficulties
     for (let d = currentDiff + 1; d <= 5; d++) {
-      if (puzzleQueue[d].length < 4) {
+      if (puzzleQueue[d].length < 2) {  // changed from < 4
         idleCallback(() => {
           generatePuzzleData(d).then(result => {
             puzzleQueue[d].push(result);
@@ -110,7 +110,7 @@
     }
     // Finally, fill for lower difficulties
     for (let d = 1; d < currentDiff; d++) {
-      if (puzzleQueue[d].length < 4) {
+      if (puzzleQueue[d].length < 2) {  // changed from < 4
         idleCallback(() => {
           generatePuzzleData(d).then(result => {
             puzzleQueue[d].push(result);
@@ -514,8 +514,8 @@
       if (showMistakesEl.checked) checkMistakes();
       if (showConflictsEl.checked) checkConflicts();
       
-      // NEW: Prevent celebration on initial load by checking puzzle length and non-empty cells.
-      if (puzzle.length === 81 && puzzle.some(cell => cell !== null) && isSolved() && !gameCompleted) {
+      // NEW: Prevent celebration on initial load and after starting a new game by checking hasGameStarted.
+      if (puzzle.length === 81 && puzzle.some(cell => cell !== null) && isSolved() && hasGameStarted && !gameCompleted) {
         clearInterval(timerInterval); // Pause the timer after game is completed
         gameCompleted = true;
         newGameBtn.classList.add("glow");
@@ -895,6 +895,10 @@
     buildPad();
     newGameBtn.addEventListener('click', () => {
       if (isPuzzleTransitioning) return; // do nothing if puzzle is still fading in
+      // Clear history for undo/redo
+      undoStack = [];
+      redoStack = [];
+      updateUndoRedoButtons(); // disable undo (and redo) button on New Game
       // Clear all candidates for new game
       candidates = Array(81).fill().map(() => new Set());
       gameCompleted = false;
