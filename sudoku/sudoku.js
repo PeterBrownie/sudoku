@@ -10,6 +10,7 @@
   let solution = [], puzzle = [], candidates = [];
   let selected = null;
   let clues = [];  // <-- NEW: track original clues
+  let puzzleImported = false;  // <-- NEW: initialize imported flag for mistake highlighting
   const indicatorEls = [];
   let gameCompleted = false;
   let hasGameStarted = false; // new variable to track if a game has begun
@@ -380,6 +381,17 @@
   }
     // For candidate mode.
     else {
+      // NEW: Prevent candidate addition if the cell already has a value.
+      if (puzzle[selected] !== null) {
+        const cell = boardEl.children[selected];
+        cell.classList.remove('shake');
+        void cell.offsetWidth; // trigger reflow
+        cell.classList.add('shake');
+        cell.addEventListener('animationend', () => {
+          cell.classList.remove('shake');
+        }, { once: true });
+        return;
+      }
       const wasPresent = candidates[selected].has(n);
       recordAction({
         type: "toggleCandidate",
@@ -895,6 +907,7 @@
     buildPad();
     newGameBtn.addEventListener('click', () => {
       if (isPuzzleTransitioning) return; // do nothing if puzzle is still fading in
+      puzzleImported = false;  // <-- NEW: reset imported flag on new game
       // Clear history for undo/redo
       undoStack = [];
       redoStack = [];
