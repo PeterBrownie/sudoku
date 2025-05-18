@@ -62,6 +62,10 @@ input[type="checkbox"]:checked::after {
   font-size: 12px;
   color: #e0e0e0;
 }
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .controls > *:not(label) {
   background: #1e1e2e;
   border: 1px solid #5a4d7f;
@@ -229,6 +233,7 @@ button:hover {
   height: 6px;
   border-radius: 50%;
   background: #ff3366;
+  transition: opacity 0.3s ease; /* ADDED: animate opacity changes */
 }
 @keyframes pulse {
   0% { box-shadow: 0 0 5px #aaa; }
@@ -287,6 +292,12 @@ button#newGame.glow {
   flex-direction: column;
   gap: 8px;
   align-items: center;
+}
+  
+/* NEW: Style for left side info-col (Undo/Redo) */
+.info-col.left {
+  left: calc(50% - 245px);
+  /* Optional: adjust gap, alignment, or size as needed */
 }
 .timer {
   position: static;
@@ -419,6 +430,32 @@ button#pauseGame.visible {
 .game-options-body.expanded {
   max-height: 200px; /* Adjust as needed */
   opacity: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #2a2a3a; /* NEW: Dropdown background color */
+}
+/* NEW: Style for import section inside game options */
+.game-options-body .import-section input {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  width: 250px;
+}
+.game-options-body .import-section button {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.game-options-body .import-section button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* NEW: Shake animation for unmodifiable cells */
@@ -515,4 +552,90 @@ button#pauseGame.visible {
   left: -1px;
   right: -1px;
   bottom: -1px;
+}
+
+/* NEW: Styles for board import section */
+.import-board input {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  width: 250px;
+}
+.import-board button {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.import-board button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* NEW: Style for Undo and Redo buttons to match copy and open buttons */
+button#undo, button#redo {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  width: 35px;
+  height: 35px;
+  aspect-ratio: 1;
+  align-self: center;
+  cursor: pointer;
+}
+button#undo svg, button#redo svg {
+  width: 20px;
+  height: 20px;
+  fill: #e0e0e0;
+}
+button#undo:hover, button#redo:hover {
+  background: rgba(35, 35, 35, 0.894);
+}
+
+/* NEW: Updated styles for the collapsable Keyboard Controls container with background fade */
+.keyboard-controls {
+  width: 100%;
+  transition: max-height 0.75s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              opacity 0.75s ease, 
+              background-color 0.75s ease;
+  overflow: hidden;
+}
+.keyboard-controls.collapsed {
+  max-height: 30px;
+  background-color: transparent;  /* faded out background */
+  border: none;
+  opacity: 1;
+}
+.keyboard-controls.expanded {
+  max-height: 200px;
+  background-color: #1e1e2e;  /* visible background */
+  border: 1px solid #5a4d7f;
+  opacity: 1;
+}
+.keyboard-controls-header {
+  cursor: pointer;
+  font-size: 12px;
+  padding: 8px 12px;
+  user-select: none;
+  font-weight: bold;
+}
+.keyboard-controls-content {
+  padding: 8px 12px;
+  font-size: 12px;
+  transform-origin: top;
+  transition: transform 0.75s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.75s ease;
+  transform: scaleY(1);
+  opacity: 1;
+}
+.keyboard-controls.collapsed .keyboard-controls-content {
+  transform: scaleY(0);
+  opacity: 0;
+}
+.info-col:not(.left) {
+    align-items: flex-start;
 }

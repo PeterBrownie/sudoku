@@ -89,9 +89,28 @@
 
   // NEW: Background queue fill function ensuring 2 puzzles per difficulty
   function fillQueue() {
-    for (let d = 1; d <= 5; d++) {
+    const currentDiff = Number(diffEl.value);
+    // Fill queue for the currently selected difficulty first
+    if (puzzleQueue[currentDiff].length < 4) {
+      idleCallback(() => {
+        generatePuzzleData(currentDiff).then(result => {
+          puzzleQueue[currentDiff].push(result);
+        });
+      });
+    }
+    // Then fill for higher difficulties
+    for (let d = currentDiff + 1; d <= 5; d++) {
       if (puzzleQueue[d].length < 4) {
-        // Schedule generation in the background
+        idleCallback(() => {
+          generatePuzzleData(d).then(result => {
+            puzzleQueue[d].push(result);
+          });
+        });
+      }
+    }
+    // Finally, fill for lower difficulties
+    for (let d = 1; d < currentDiff; d++) {
+      if (puzzleQueue[d].length < 4) {
         idleCallback(() => {
           generatePuzzleData(d).then(result => {
             puzzleQueue[d].push(result);
@@ -196,7 +215,8 @@
     const clearItem = document.createElement('div');
     clearItem.className = 'pad-item';
     const clearBtn = document.createElement('button');
-    clearBtn.textContent = 'C';
+    // Replace text "C" with an SVG icon for clear
+    clearBtn.innerHTML = `<svg fill='#FFFFFF' aria-hidden='true' width='20px' height='20px' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><path d='M9.15 7.15c.2-.2.5-.2.7 0L12 9.29l2.15-2.14a.5.5 0 0 1 .7.7L12.71 10l2.14 2.15a.5.5 0 0 1-.7.7L12 10.71l-2.15 2.14a.5.5 0 0 1-.7-.7L11.29 10 9.15 7.85a.5.5 0 0 1 0-.7ZM6.59 4.66A2.5 2.5 0 0 1 8.29 4h7.21A2.5 2.5 0 0 1 18 6.5v7a2.5 2.5 0 0 1-2.5 2.5H8.28a2.5 2.5 0 0 1-1.7-.66l-3.78-3.5a2.5 2.5 0 0 1 0-3.68l3.79-3.5Zm1.7.34c-.38 0-.75.14-1.03.4L3.48 8.9a1.5 1.5 0 0 0 0 2.2l3.78 3.5c.28.26.65.4 1.02.4h7.22c.83 0 1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5H8.28Z' fill='#FFFFFF'/></svg>`;
     clearBtn.className = 'clear';
     clearBtn.addEventListener('click', () => onPadClick(0));
     clearItem.appendChild(clearBtn);
@@ -210,21 +230,106 @@
     render();
   }
 
-  function userSetValue(i, n) {
-    setValue(i, n);
+  // Update setValue to capture and return automatic candidate removals
+  function setValue(i, n, actionID) {
+    let removedCandidates = [];
+    if (n) {
+        removedCandidates = removeCandidatesPeersWithHistory(i, n, actionID);
+    }
+    puzzle[i] = n || null;
+    candidates[i].clear();
+    return removedCandidates;
+  }
+
+  // Update userSetValue to return the removedCandidates from setValue
+  function userSetValue(i, n, actionID) {
+    const removedCandidates = setValue(i, n, actionID);
     const cell = boardEl.children[i];
     const valueEl = cell.querySelector('.value');
     valueEl.classList.add('fade-in');
     setTimeout(() => {
-      valueEl.classList.remove('fade-in');
+        valueEl.classList.remove('fade-in');
     }, 300);
+    return removedCandidates;
   }
 
   // NEW: Track secret pad sequence when no cell is selected
   let secretSequence = [];
 
+  // global undo/redo arrays
+  let undoStack = [];
+  let redoStack = [];
+
+  // NEW: Global action counter
+  let actionCounter = 0;
+
+  // Updated recordAction to attach uniqueActionID.
+  function recordAction(action) {
+    action.actionID = ++actionCounter;
+    undoStack.push(action);
+    redoStack = [];
+    updateUndoRedoButtons();
+  }
+
+  // Undo last recorded action.
+  function doUndo() {
+    if (!undoStack.length) return;
+    const action = undoStack.pop();
+    if (action.type === "setValue") {
+      puzzle[action.index] = action.prevValue;
+      candidates[action.index] = new Set(action.prevCandidates);
+      // Re-add candidates removed during this action.
+      action.removedCandidates.forEach(removal => {
+        candidates[removal.index].add(removal.candidate);
+      });
+    } else if (action.type === "toggleCandidate") {
+      if (action.prevPresent) {
+        candidates[action.index].add(action.candidate);
+      } else {
+        candidates[action.index].delete(action.candidate);
+      }
+    }
+    render();
+    redoStack.push(action);
+    updateUndoRedoButtons();
+  }
+
+  // Redo next action.
+  function doRedo() {
+    if (!redoStack.length) return;
+    const action = redoStack.pop();
+    if (action.type === "setValue") {
+      puzzle[action.index] = action.newValue;
+      candidates[action.index] = new Set(action.newCandidates);
+      // Remove candidates from peers again.
+      action.removedCandidates.forEach(removal => {
+        candidates[removal.index].delete(removal.candidate);
+      });
+    } else if (action.type === "toggleCandidate") {
+      if (action.newPresent) {
+        candidates[action.index].add(action.candidate);
+      } else {
+        candidates[action.index].delete(action.candidate);
+      }
+    }
+    render();
+    undoStack.push(action);
+    updateUndoRedoButtons();
+  }
+
+  // NEW: Trigger barrel roll animation on all number pad buttons
+  function triggerBarrelRoll() {
+    const numberBtns = document.querySelectorAll('.pad-item button:not(.clear)');
+    numberBtns.forEach(btn => {
+      btn.classList.add('barrel-roll');
+      btn.addEventListener('animationend', () => {
+        btn.classList.remove('barrel-roll');
+      }, { once: true });
+    });
+  }
+
   function onPadClick(n) {
-    // NEW: If no cell is selected, process potential secret sequence
+    // NEW: If no cell is selected, process potential secret sequence as before.
     if (selected === null) {
       secretSequence.push(n);
       if (secretSequence.length > 4) secretSequence.shift();
@@ -252,34 +357,40 @@
     if (!hasGameStarted) {
       hasGameStarted = true;
     }
-    // Block input if the same value is already present in the cell (ignore candidate mode)
-    if (n !== 0 && !candidateModeEl.checked && puzzle[selected] === n) return;
     
-    if (n === 0) {
-      userSetValue(selected, n);
-    } else if (candidateModeEl.checked) {
+    // For non-candidate mode (direct cell value changes).
+    if (!candidateModeEl.checked) {
+      // Block input if the same value is already present in the cell.
+      if (n !== 0 && puzzle[selected] === n) return;
+      // Record the action before applying it.
+      const prevValue = puzzle[selected];
+      const prevCandidates = Array.from(candidates[selected]);
+      let action = {
+        type: "setValue",
+        index: selected,
+        prevValue: prevValue,
+        prevCandidates: prevCandidates,
+        newValue: n,
+        newCandidates: [],  // remains empty since candidates clear on value set
+        removedCandidates: [] // will be filled next
+      };
+      recordAction(action);
+      let removals = userSetValue(selected, n, action.actionID);
+      action.removedCandidates = removals;
+  }
+    // For candidate mode.
+    else {
+      const wasPresent = candidates[selected].has(n);
+      recordAction({
+        type: "toggleCandidate",
+        index: selected,
+        candidate: n,
+        prevPresent: wasPresent,
+        newPresent: !wasPresent
+      });
       setCandidate(selected, n);
-    } else {
-      userSetValue(selected, n);
     }
     render();
-  }
-
-  // NEW: Trigger barrel roll animation on all number pad buttons
-  function triggerBarrelRoll() {
-    const numberBtns = document.querySelectorAll('.pad-item button:not(.clear)');
-    numberBtns.forEach(btn => {
-      btn.classList.add('barrel-roll');
-      btn.addEventListener('animationend', () => {
-        btn.classList.remove('barrel-roll');
-      }, { once: true });
-    });
-  }
-
-  function setValue(i, n) {
-    puzzle[i] = n || null;
-    candidates[i].clear();
-    if (n) removeCandidatesPeers(i, n);
   }
 
   function setCandidate(i, n) {
@@ -313,6 +424,37 @@
     for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) {
       candidates[(br+dr)*9 + bc+dc].delete(n);
     }
+  }
+
+  // NEW: removeCandidatesPeersWithHistory function to capture automatic removals
+  function removeCandidatesPeersWithHistory(i, n, actionID) {
+    const removed = [];
+    const r = Math.floor(i/9), c = i % 9;
+    const br = r - r % 3, bc = c - c % 3;
+    const processed = new Set();
+    for (let j = 0; j < 9; j++) {
+      let idx1 = r * 9 + j;
+      if (idx1 !== i && candidates[idx1].has(n) && !processed.has(idx1)) {
+        candidates[idx1].delete(n);
+        removed.push({ index: idx1, candidate: n, actionID: actionID });
+        processed.add(idx1);
+      }
+      let idx2 = j * 9 + c;
+      if (idx2 !== i && candidates[idx2].has(n) && !processed.has(idx2)) {
+        candidates[idx2].delete(n);
+        removed.push({ index: idx2, candidate: n, actionID: actionID });
+        processed.add(idx2);
+      }
+    }
+    for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) {
+      let idx = (br+dr)*9 + (bc+dc);
+      if (idx !== i && candidates[idx].has(n) && !processed.has(idx)) {
+        candidates[idx].delete(n);
+        removed.push({ index: idx, candidate: n, actionID: actionID });
+        processed.add(idx);
+      }
+    }
+    return removed;
   }
 
   function render() {
@@ -383,6 +525,7 @@
     }
 
     function checkMistakes() {
+      if(puzzleImported) return; // NEW: Skip mistake highlighting for imported puzzles
       for (let i = 0; i < 81; i++) {
         const v = puzzle[i];
         if (v && v !== solution[i]) {
@@ -415,11 +558,31 @@
       for (let n = 1; n <= 9; n++) {
         const rem = 9 - counts[n];
         const ind = indicatorEls[n];
-        ind.innerHTML = '';
-        for (let i = 0; i < rem; i++) {
-          const dot = document.createElement('div');
-          dot.className = 'circle';
-          ind.appendChild(dot);
+        // Get current dot count without resetting innerHTML
+        const currentDots = ind.children.length;
+        if (currentDots < rem) {
+          // Add missing dots with fade in.
+          for (let i = currentDots; i < rem; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'circle';
+            dot.style.opacity = "0";
+            ind.appendChild(dot);
+            // Force reflow and then fade in.
+            void dot.offsetWidth;
+            dot.style.opacity = "1";
+          }
+        }
+        else if (currentDots > rem) {
+          // Remove extra dots with fade out.
+          for (let i = currentDots - 1; i >= rem; i--) {
+            const dot = ind.children[i];
+            dot.style.opacity = "0";
+            setTimeout(() => {
+              if (dot.parentElement === ind) {
+                ind.removeChild(dot);
+              }
+            }, 300); // delay matches css transition duration
+          }
         }
       }
     }
@@ -612,6 +775,51 @@
       window.open(url, '_blank');
     });
 
+    // NEW: Import board functionality
+    document.getElementById('boardImport').addEventListener('input', function() {
+      const value = this.value;
+      document.getElementById('importButton').disabled = !(value.length === 81 && /^[0-9]+$/.test(value));
+    });
+    
+    document.getElementById('importButton').addEventListener('click', () => {
+      const importStr = document.getElementById('boardImport').value;
+      if (importStr.length === 81 && /^[0-9]+$/.test(importStr)) {
+        const imported = importStr.split('').map(ch => Number(ch) === 0 ? null : Number(ch));
+        puzzle = imported;
+        clues = imported.map(v => v !== null);
+        puzzleImported = true; // mark as imported so mistakes are not highlighted
+        showMistakesEl.checked = false; // uncheck mistakes checkbox
+        showMistakesEl.disabled = true; // disable mistakes checkbox for imported puzzles
+        showMistakesEl.title = "Can't show mistakes on imported puzzles"; // add tooltip
+        // Grey-out label text:
+        showMistakesEl.parentElement.style.color = "#888";
+        render();
+      }
+    });
+
+    // NEW: Add function to update Undo/Redo button states (faded grey when disabled)
+    function updateUndoRedoButtons() {
+      const undoBtn = document.getElementById('undo');
+      const redoBtn = document.getElementById('redo');
+      if (undoStack.length === 0) {
+        undoBtn.style.opacity = "0.5";
+        undoBtn.disabled = true;
+      } else {
+        undoBtn.style.opacity = "1";
+        undoBtn.disabled = false;
+      }
+      if (redoStack.length === 0) {
+        redoBtn.style.opacity = "0.5";
+        redoBtn.disabled = true;
+      } else {
+        redoBtn.style.opacity = "1";
+        redoBtn.disabled = false;
+      }
+    }
+
+    // Immediately update the buttons after initializing history arrays:
+    updateUndoRedoButtons();
+
     function shuffle(a) {
       for (let i = a.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -639,7 +847,7 @@
       document.body.appendChild(canvas);
       const ctx = canvas.getContext('2d');
       const particles = [];
-      const numParticles = 150;
+      const numParticles = 250;
       const colors = ['#FFC107', '#FF5722', '#4CAF50', '#2196F3', '#9C27B0'];
       
       for (let i = 0; i < numParticles; i++) {
@@ -661,8 +869,10 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         particles.forEach(p => {
           p.tiltAngle += p.tiltAngleIncrement;
-          p.y += (Math.cos(p.d) + 3 + p.r/2) / 2;
-          p.tilt = Math.sin(p.tiltAngle) * 15;
+          // Modified: slow down confetti with a lower vertical speed.
+          p.y += (Math.cos(p.d) + 2 + p.r/2) / 4;
+          // Modified: reduce tilt multiplication for less blur.
+          p.tilt = Math.sin(p.tiltAngle) * 8;
           ctx.beginPath();
           ctx.lineWidth = p.r;
           ctx.strokeStyle = p.color;
@@ -738,6 +948,24 @@
       render();
     });
     
+    // NEW: Close game options dropdown when clicking outside it
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.game-options')) {
+        const optionsBody = document.querySelector('.game-options-body');
+        const header = document.querySelector('.game-options-header');
+        if (optionsBody && optionsBody.classList.contains('expanded')) {
+          optionsBody.classList.remove('expanded');
+          header.classList.remove('expanded');
+          const arrow = header.querySelector('.toggle-arrow');
+          if (arrow) arrow.textContent = ' ▶';
+        }
+      }
+    });
+
+    // NEW: Add event listeners for Undo and Redo buttons.
+    document.getElementById('undo').addEventListener('click', doUndo);
+    document.getElementById('redo').addEventListener('click', doRedo);
+
     // Start by generating an immediate puzzle for the selected difficulty.
     generate();
     

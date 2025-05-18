@@ -27,13 +27,34 @@
       <div class="game-options-header">
         <span class="toggle-arrow">▶</span> Game Options
       </div>
-      <!-- Removed inline display style -->
       <div class="game-options-body">
         <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
         <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
+        <!-- NEW: Import Section moved into game options -->
+        <div class="import-section" style="margin-top: 10px; border-top: 1px solid #5a4d7f; padding-top: 10px;">
+          <input type="text" id="boardImport" placeholder="Enter 81-digit board" maxlength="81">
+          <button id="importButton" disabled>Import</button>
+        </div>
       </div>
     </div>
     <button id="autoCandidate">Auto-Candidate</button>
+    <!-- REMOVE the old undo/redo buttons -->
+  </div>
+  
+  <!-- NEW: Left side container for Undo/Redo buttons -->
+  <div class="info-col left">
+    <button id="undo">
+      <svg xmlns='http://www.w3.org/2000/svg' width='40px' height='40px' fill='#FFFFFF' viewBox='0 0 16 16'>
+        <path fill-rule='evenodd' d='M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z'/>
+        <path d='M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466'/>
+      </svg>
+    </button>
+    <button id="redo">
+      <svg xmlns='http://www.w3.org/2000/svg' width='40px' height='40px' fill='#FFFFFF' viewBox='0 0 16 16'>
+        <path fill-rule='evenodd' d='M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z'/>
+        <path d='M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466'/>
+      </svg>
+    </button>
   </div>
 
   <div class="puzzle-wrapper">
@@ -46,13 +67,13 @@
   </div>
   <!-- Insert info-col outside the puzzle-wrapper -->
   <div class="info-col">
-    <!-- Wrap timer and pause button in a flex row -->
-    <div style="display: flex; gap: 10px; align-items: center;">
+    <!-- Wrap timer and pause button in a flex row, updated to left-align content -->
+    <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-start;">
       <div class="timer" id="timer">00:00</div>
       <button id="pauseGame">Pause</button>
     </div>
     <!-- Group copy and open buttons in a flex container for inline layout -->
-    <div style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-start; align-self: flex-start; width: 100%;">
+    <div style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-start; align-items: flex-start; width: 100%;">
       <button id="copyPuzzle" title="Copy Puzzle">
       <svg fill='#FFFFFF' aria-hidden='true' width='40px' height='40px' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><path d='M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z' fill='#FFFFFF'/></svg>
       </button>
@@ -61,6 +82,19 @@
           <path d='M6 4a2 2 0 0 0-2 2v8c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2v-2.5a.5.5 0 0 1 1 0V14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h2.5a.5.5 0 0 1 0 1H6Zm5-.5c0-.28.22-.5.5-.5h5c.28 0 .5.22.5.5v5a.5.5 0 0 1-1 0V4.7l-4.15 4.15a.5.5 0 0 1-.7-.7L15.29 4H11.5a.5.5 0 0 1-.5-.5Z' fill='#FFFFFF'/>
         </svg>
       </button>
+    </div>
+    <!-- NEW: Collapsable Keyboard Controls container -->
+    <div id="keyboardControls" class="keyboard-controls collapsed">
+      <div class="keyboard-controls-header">Show Keyboard Controls</div>
+      <div class="keyboard-controls-content">
+        <strong>Keyboard Controls</strong>
+        <ul>
+          <li>Press 1–9 to enter numbers</li>
+          <li>Press C or Space to toggle Candidate Mode</li>
+          <li>Press 0 or Backspace to clear entry</li>
+          <li>Click a cell to select</li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -71,17 +105,6 @@
   <div class="candidate-toggle">
     <label><input type="checkbox" id="candidateMode"> Candidate Mode</label>
   </div>
-
-  <!-- Updated controls instructions label -->
-  <div class="controls-label">
-    <strong>Keyboard Controls</strong>
-    <ul>
-      <li>Press 1-9 to enter numbers</li>
-      <li>Press C or Space to toggle Candidate Mode</li>
-      <li>Press 0 or Backspace to clear entry</li>
-      <li>Click a cell to select</li>
-    </ul>
-  </div>
   
   <!-- Inline script to toggle the Game Options container -->
   <script>
@@ -91,6 +114,23 @@
       const isExpanded = bodyEl.classList.toggle('expanded');
       header.classList.toggle('expanded', isExpanded);
       header.querySelector('.toggle-arrow').textContent = isExpanded ? ' ▶' : ' ▶';
+    });
+  </script>
+  
+  <!-- Inline script to toggle the collapsable keyboard controls -->
+  <script>
+    const kbControls = document.getElementById("keyboardControls");
+    const kbHeader = kbControls.querySelector(".keyboard-controls-header");
+    kbHeader.addEventListener("click", () => {
+      if (kbControls.classList.contains("collapsed")) {
+        kbControls.classList.remove("collapsed");
+        kbControls.classList.add("expanded");
+        kbHeader.textContent = "Hide Keyboard Controls";
+      } else {
+        kbControls.classList.remove("expanded");
+        kbControls.classList.add("collapsed");
+        kbHeader.textContent = "Show Keyboard Controls";
+      }
     });
   </script>
   
