@@ -909,6 +909,9 @@
     newGameBtn.addEventListener('click', () => {
       if (isPuzzleTransitioning) return; // do nothing if puzzle is still fading in
       puzzleImported = false;  // <-- NEW: reset imported flag on new game
+      showMistakesEl.disabled = false; // NEW: re-enable show mistakes checkbox
+      showMistakesEl.title = "";       // NEW: clear tooltip text
+      showMistakesEl.parentElement.style.color = ""; // NEW: reset label text color
       // Clear history for undo/redo
       undoStack = [];
       redoStack = [];

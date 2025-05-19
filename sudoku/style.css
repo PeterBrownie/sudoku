@@ -420,26 +420,29 @@ button#pauseGame.visible {
   width: 150px; /* fixed width for the game options header */
 }
 .game-options-body {
+  /* Removed max-height and dynamic padding */
   position: absolute;
   top: 100%;
   left: 0;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease, opacity 0.3s ease;
-  z-index: 10; /* overlays other content without shifting layout */
+  transform: scaleY(0);
+  transform-origin: top;
   opacity: 0;
-}
-.game-options-body.expanded {
-  max-height: 200px; /* Adjust as needed */
-  opacity: 1;
-  padding: 10px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 10;
+  /* fixed inner layout */
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background-color: #2a2a3a; /* NEW: Dropdown background color */
+  padding: 10px;
+  background-color: #2a2a3a;
   border-radius: 12px;
-  /* adding bording color */
   border: 1px solid #5a4d7f;
+  pointer-events: none;
+}
+.game-options-body.expanded {
+  transform: scaleY(1);
+  opacity: 1;
+  pointer-events: auto;
 }
 /* NEW: Style for import section inside game options */
 .game-options-body .import-section input {
