@@ -589,6 +589,7 @@
           // Remove extra dots with fade out.
           for (let i = currentDots - 1; i >= rem; i--) {
             const dot = ind.children[i];
+            if (!dot) continue; // guard in case dot is undefined
             dot.style.opacity = "0";
             setTimeout(() => {
               if (dot.parentElement === ind) {
