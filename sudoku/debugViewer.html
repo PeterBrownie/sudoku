@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sudoku Debug Viewer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>Sudoku Debug Viewer</h2>
+  <div id="controls" class="controls">
+    <textarea id="snapshotsInput" placeholder="Paste snapshots JSON here…"></textarea>
+    <button id="loadBtn">Load Snapshots</button>
+    <button id="prevBtn" disabled>Prev</button>
+    <button id="nextBtn" disabled>Next</button>
+  </div>
+  <div id="grid" class="board"></div>
+  <div id="info"></div>
+
+  <script>
+    // Helper: compare two arrays for equality (order-independent)
+    function arraysEqual(a, b) {
+      if (a.length !== b.length) return false;
+      return a.every(d => b.includes(d));
+    }
+
+    let snapshots = [];
+    let idx = 0;
+
+    const gridEl = document.getElementById('grid');
+    const infoEl = document.getElementById('info');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const loadBtn = document.getElementById('loadBtn');
+    const inputEl = document.getElementById('snapshotsInput');
+
+    function render() {
+      gridEl.innerHTML = '';
+      const prev = idx > 0 ? snapshots[idx - 1] : null;
+      const changedValueCells = [];
+      const changedCandCells = [];
+      if (prev) {
+        for (let i = 0; i < 81; i++) {
+          if (prev.grid[i] !== snapshots[idx].grid[i]) {
+            changedValueCells.push(i);
+          } else {
+            const prevC = prev.candidates[i];
+            const currC = snapshots[idx].candidates[i];
+            if (prevC.length !== currC.length || 
+                prevC.some(d => !currC.includes(d)) || currC.some(d => !prevC.includes(d))) {
+              changedCandCells.push(i);
+            }
+          }
+        }
+      }
+      const pairCells = [];
+      const snap = snapshots[idx];
+      if (snap.technique === 'Naked Pair' && prev) {
+        for (let i = 0; i < 81; i++) {
+          const prevC = prev.candidates[i];
+          const currC = snap.candidates[i];
+          if (prevC.length === 2 && arraysEqual(prevC, currC)) {
+            pairCells.push(i);
+          }
+        }
+      }
+      infoEl.textContent = 
+        `Step ${snap.step}, Iteration ${snap.iteration}, Technique: ${snap.technique}`;
+      for (let i = 0; i < 81; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        // Add border classes to match main HTML style (3x3 boxes)
+        const row = Math.floor(i / 9);
+        const col = i % 9;
+        if (row === 0) cell.classList.add('border-top');
+        if (row === 8) cell.classList.add('border-bottom');
+        if (col === 0) cell.classList.add('border-left');
+        if (col === 8) cell.classList.add('border-right');
+        if (row === 2 || row === 5) cell.classList.add('border-bottom');
+        if (col === 2 || col === 5) cell.classList.add('border-right');
+        // Highlight naked-pair partner cells
+        if (pairCells.includes(i)) {
+          cell.classList.add('pair-cell');
+        }
+        if (prev) {
+          if (changedValueCells.includes(i)) {
+            cell.classList.add('changed-cell');
+          } else if (changedCandCells.includes(i)) {
+            cell.classList.add('changed-cand');
+          }
+        }
+        const val = snap.grid[i];
+        if (val !== 0) {
+          // Replace direct text assignment with a value element for centering
+          const valueEl = document.createElement('div');
+          valueEl.className = 'value';
+          valueEl.textContent = val;
+          // If newly added (no previous snapshot or previously 0), apply green highlight inline style
+          if (!prev || prev.grid[i] === 0) {
+            valueEl.style.backgroundColor = "rgba(0,255,0,0.2)";
+          }
+          cell.appendChild(valueEl);
+        } else {
+          const candContainer = document.createElement('div');
+          candContainer.className = 'candidates';
+          const prevC = prev ? prev.candidates[i] : [];
+          const currC = snap.candidates[i];
+          const baseC = prev ? prevC : currC;
+          for (const d of baseC) {
+            const dEl = document.createElement('div');
+            dEl.classList.add('candidate'); // add candidate class for proper styling
+            dEl.textContent = d;
+            // Mark removed candidates in red strikethrough: add inline style overrides
+            if (prev && prevC.includes(d) && !currC.includes(d)) {
+              dEl.classList.add('removed-cand');
+              dEl.style.color = "#ff3366";        // override color to red
+              dEl.style.textDecoration = "line-through"; // ensure strikethrough
+            }
+            candContainer.appendChild(dEl);
+          }
+          cell.appendChild(candContainer);
+        }
+        gridEl.appendChild(cell);
+      }
+      prevBtn.disabled = idx === 0;
+      nextBtn.disabled = idx === snapshots.length - 1;
+    }
+
+    loadBtn.addEventListener('click', () => {
+      try {
+        snapshots = JSON.parse(inputEl.value);
+        if (!Array.isArray(snapshots) || snapshots.length === 0) {
+          throw new Error('Invalid snapshots array');
+        }
+        idx = 0;
+        render();
+      } catch (e) {
+        alert('Failed to parse JSON: ' + e.message);
+      }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (idx > 0) { idx--; render(); }
+    });
+    nextBtn.addEventListener('click', () => {
+      if (idx < snapshots.length - 1) { idx++; render(); }
+    });
+  </script>
+</body>
+</html>

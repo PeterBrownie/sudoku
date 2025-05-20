@@ -26,6 +26,21 @@ You can 100% use this code anyway you'd like under the following conditions:
     .game-options-header { cursor: pointer; user-select: none; }
     .game-options-header .toggle-arrow { display: inline-block; transition: transform 0.2s; }
     .game-options-header.expanded .toggle-arrow { transform: rotate(90deg); }
+    /* New: Special Copy Snapshot button styling */
+    #copySnapshot {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      opacity: 0.2;
+      background: transparent;
+      border: none;
+      z-index: 1000;
+      /* extra padding to make it easier to click without affecting layout */
+      padding: 4px;
+    }
+    #copySnapshot:hover {
+      opacity: 0.5;
+    }
   </style>
 </head>
 <body>
@@ -100,6 +115,11 @@ You can 100% use this code anyway you'd like under the following conditions:
           <path d='M6 4a2 2 0 0 0-2 2v8c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2v-2.5a.5.5 0 0 1 1 0V14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h2.5a.5.5 0 0 1 0 1H6Zm5-.5c0-.28.22-.5.5-.5h5c.28 0 .5.22.5.5v5a.5.5 0 0 1-1 0V4.7l-4.15 4.15a.5.5 0 0 1-.7-.7L15.29 4H11.5a.5.5 0 0 1-.5-.5Z' fill='#FFFFFF'/>
         </svg>
       </button>
+      <!-- NEW: Special Copy Snapshot button -->
+      <button id="copySnapshot" title="Copy Snapshot Data">
+        <svg fill='#992299' aria-hidden='true' width='20px' height='20px' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><path d='M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z' fill='#FFFFFF'/></svg>
+
+      </button>
     </div>
     <!-- NEW: Collapsable Keyboard Controls container -->
     <div id="keyboardControls" class="keyboard-controls collapsed">
@@ -156,6 +176,25 @@ You can 100% use this code anyway you'd like under the following conditions:
     import * as sudokuGrader from './sudokuGrader.js';
     window.sudokuGrader = sudokuGrader;
     console.log("sudokuGrader imported and attached to window:", window.sudokuGrader);
+  </script>
+  <!-- NEW: Import and attach puzzleGenerator -->
+  <script type="module">
+    import * as puzzleGenerator from './puzzleGenerator.js';
+    window.puzzleGenerator = puzzleGenerator;
+    console.log("puzzleGenerator imported and attached to window:", window.puzzleGenerator);
+  </script>
+  <!-- NEW: Special Copy Snapshot button script -->
+  <script>
+    document.getElementById('copySnapshot').addEventListener('click', () => {
+      const data = JSON.stringify(window.snapshots, null, 2);
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(data)
+          .then(() => alert('Snapshot data copied to clipboard!'))
+          .catch(err => alert('Failed to copy snapshot data: ' + err));
+      } else {
+        alert('Clipboard API not available.');
+      }
+    });
   </script>
   <script src="sudoku.js"></script>
   

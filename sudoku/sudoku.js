@@ -25,84 +25,19 @@ You can 100% use this code anyway you'd like under the following conditions:
 
   let solution = [], puzzle = [], candidates = [];
   let selected = null;
-  let clues = [];  // <-- NEW: track original clues
-  let puzzleImported = false;  // <-- NEW: initialize imported flag for mistake highlighting
+  let clues = [];  // track original clues
+  //let puzzleImported = false;  // initialize imported flag for mistake highlighting
   const indicatorEls = [];
   let gameCompleted = false;
-  let hasGameStarted = false; // new variable to track if a game has begun
-  let timerStarted = false; // new variable to track if the timer has started
+  let hasGameStarted = false; // to track if a game has begun
+  let timerStarted = false; // to track if the timer has started
   let timerInterval, startTime;
   let isPaused = false;
   let pausedElapsed = 0;  // Time elapsed at pause
-  let isPauseAnimating = false;  // NEW: Prevent rapid pause/resume clicks
-  let isPuzzleTransitioning = false;  // new variable to track puzzle fade-in
+  let isPauseAnimating = false;  // Prevent rapid pause/resume clicks
+  let isPuzzleTransitioning = false;  //  track puzzle fade-in
 
-  // NEW: Global puzzle queue for difficulties 1-5
-  const puzzleQueue = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-
-  // NEW: Extracted puzzle generation logic returning {puzzle, solution, clues}
-  async function generatePuzzleData(diff) {
-    const cluesArray = [56, 44, 35, 26, 17];
-    const desiredClues = cluesArray[diff - 1];
-    let sol = Array(81).fill(0);
-    const rows = Array.from({ length: 9 }, () => new Set());
-    const cols = Array.from({ length: 9 }, () => new Set());
-    const boxes = Array.from({ length: 9 }, () => new Set());
-    function fill(i = 0) {
-      if (i === 81) return true;
-      const r = Math.floor(i / 9), c = i % 9;
-      const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-      const nums = shuffle([1,2,3,4,5,6,7,8,9]);
-      for (const n of nums) {
-        if (!rows[r].has(n) && !cols[c].has(n) && !boxes[b].has(n)) {
-          rows[r].add(n);
-          cols[c].add(n);
-          boxes[b].add(n);
-          sol[i] = n;
-          if (fill(i + 1)) return true;
-          rows[r].delete(n);
-          cols[c].delete(n);
-          boxes[b].delete(n);
-        }
-      }
-      return false;
-    }
-    fill();
-    
-    let pus = sol.slice();
-    const indices = shuffle([...Array(81).keys()]);
-    for (const i of indices) {
-      if (pus.filter(v => v !== null).length <= desiredClues) break;
-      const backup = pus[i];
-      pus[i] = null;
-      if (!hasUniqueSolution(pus)) {
-        pus[i] = backup;
-      }
-      await yieldIdle();
-    }
-    const clueFlags = pus.map(v => v !== null);
-    console.log("Background generated puzzle for diff " + diff + " with " + pus.filter(v => v !== null).length + " clues.");
-    
-    // NEW: For level 5 puzzles, only accept if grade is -1 or > 400.
-    if (diff === 5) {
-      const puzzleStr = pus.map(cell => cell ? cell : '0').join('');
-      let gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle 
-                       ? window.sudokuGrader.gradePuzzle(puzzleStr) 
-                       : { grade: 0 };
-      // Ensure gradeObj is an object with a grade property.
-      if (typeof gradeObj !== 'object' || gradeObj === null) {
-          gradeObj = { grade: gradeObj };
-      }
-      if (gradeObj.grade !== -1 && gradeObj.grade <= 400) {
-        console.log("Level 5 puzzle rejected (grade: " + gradeObj.grade + "). Regenerating...");
-        return generatePuzzleData(diff);
-      }
-    }
-    
-    return { puzzle: pus, solution: sol, clues: clueFlags };
-  }
-
-  // NEW: Helper functions to yield control to the browser when idle
+  // Helper functions to yield control to the browser when idle
   function yieldIdle() {
     return new Promise(resolve => {
       if (window.requestIdleCallback) {
@@ -121,58 +56,30 @@ You can 100% use this code anyway you'd like under the following conditions:
     }
   }
 
-  // Updated fillQueue: generate current difficulty puzzle first, then others.
+  // NEW: Global puzzle queue for difficulties 1-5.
+  const puzzleQueue = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+
+  // NEW: Helper function to fill the puzzle queue for all difficulties in the background.
   function fillQueue() {
-    const currentDiff = Number(diffEl.value);
-    if (puzzleQueue[currentDiff].length < 2) {
-      generatePuzzleData(currentDiff).then(result => {
-        puzzleQueue[currentDiff].push(result);
-        // Now fill for higher difficulties
-        for (let d = currentDiff + 1; d <= 5; d++) {
-          if (puzzleQueue[d].length < 2) {
-            idleCallback(() => {
-              generatePuzzleData(d).then(result => {
-                puzzleQueue[d].push(result);
-              });
-            });
-          }
-        }
-        // And lower difficulties
-        for (let d = 1; d < currentDiff; d++) {
-          if (puzzleQueue[d].length < 2) {
-            idleCallback(() => {
-              generatePuzzleData(d).then(result => {
-                puzzleQueue[d].push(result);
-              });
-            });
-          }
-        }
-      });
-    } else {
-      // If current difficulty already filled, fill others as before.
-      for (let d = currentDiff + 1; d <= 5; d++) {
-        if (puzzleQueue[d].length < 2) {
-          idleCallback(() => {
-            generatePuzzleData(d).then(result => {
-              puzzleQueue[d].push(result);
-            });
+    console.log("Filling puzzle queue for all difficulties in the background...");
+    for (let d = 1; d <= 5; d++) {
+      console.log(`Checking queue for difficulty ${d}...`);
+      if (puzzleQueue[d].length < 2) {
+        console.log(`Queue for difficulty ${d} is short. Fetching new puzzles...`);
+        idleCallback(() => {
+          console.log(`Fetching puzzle for difficulty ${d}...`);
+          window.puzzleGenerator.getPuzzle(d).then(result => {
+            puzzleQueue[d].push(result);
+            console.log(`Added puzzle for difficulty ${d}. Queue length: ${puzzleQueue[d].length}`);
           });
-        }
-      }
-      for (let d = 1; d < currentDiff; d++) {
-        if (puzzleQueue[d].length < 2) {
-          idleCallback(() => {
-            generatePuzzleData(d).then(result => {
-              puzzleQueue[d].push(result);
-            });
-          });
-        }
+        });
       }
     }
   }
 
-  // Modified generate() to serve queued puzzle if available; otherwise generate immediately.
+  // Modified generate() to serve a queued puzzle if available.
   async function generate() {
+    console.log("Generating new puzzle...");
     isPuzzleTransitioning = true; // mark transition start
     // Immediately unselect any selected cell and trigger fade out
     selected = null;
@@ -187,39 +94,41 @@ You can 100% use this code anyway you'd like under the following conditions:
     }
     await new Promise(resolve => setTimeout(resolve, 100)); // reduced delay
 
-    // NEW: Use queued puzzle if available for the current diff.
+    // NEW: Call puzzle generator from external module
     const diff = Number(diffEl.value);
     let puzzleData;
-    if (puzzleQueue[diff].length > 0) {
+    if (puzzleQueue[diff] && puzzleQueue[diff].length > 0) {
+      console.log("Serving puzzle from queue...");
       puzzleData = puzzleQueue[diff].shift();
     } else {
-      puzzleData = await generatePuzzleData(diff);
+      console.log("Fetching new puzzle...");
+      puzzleData = await window.puzzleGenerator.getPuzzle(diff);
     }
+
     // Set global puzzle state
     solution = puzzleData.solution;
     puzzle = puzzleData.puzzle;
     clues = puzzleData.clues;
-    // Instead of marking game as started, reset timer control:
-    timerStarted = false; // reset timer; it hasn't started yet for the new puzzle
-    
+    timerStarted = false;
+
     render();
+
     await new Promise(resolve => setTimeout(resolve, 10));
     valueEls.forEach(el => el.classList.remove('fade-out'));
     indicatorContainers.forEach(el => el.classList.remove('fade-out'));
     isPuzzleTransitioning = false; // fade-in finished
 
+    // Update the difficulty label based on grading result.
+    document.getElementById('diffLabel').textContent = "Loading difficulty...";
+    const puzzleStr = puzzle.map(cell => cell ? cell : '0').join('');
+    const gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle
+        ? window.sudokuGrader.gradePuzzle(puzzleStr)
+        : { grade: 0 };
+    document.getElementById('diffLabel').textContent = `Difficulty: ${gradeObj.grade.toFixed(2)}`;
+    console.log("Puzzle difficulty: " + gradeObj.grade.toFixed(2));
+    console.log("Going to fill the queue now...");
     // NEW: Refill the background queue for all difficulties.
     fillQueue();
-
-    // NEW: Set label to loading text before grading.
-    document.getElementById('diffLabel').textContent = "Loading difficulty...";
-    // Pass in a single puzzle string of 81 numbers (0 for empty)
-    const puzzleStr = puzzle.map(cell => cell ? cell : '0').join('');
-    // Delegate full grading to sudokuGrader and extract grade property
-    const gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle 
-                        ? window.sudokuGrader.gradePuzzle(puzzleStr)
-                        : { grade: 0 };
-    document.getElementById('diffLabel').textContent = `Difficulty: ${gradeObj.grade.toFixed(2)}`;
   }
 
   function buildBoard() {
@@ -727,14 +636,10 @@ You can 100% use this code anyway you'd like under the following conditions:
         await new Promise(resolve => setTimeout(resolve, 100)); // was 500
       }
       
-      // NEW: Use queued puzzle if available for the current diff.
+      // NEW: Call puzzle generator from external module
       const diff = Number(diffEl.value);
-      let puzzleData;
-      if (puzzleQueue[diff].length > 0) {
-        puzzleData = puzzleQueue[diff].shift();
-      } else {
-        puzzleData = await generatePuzzleData(diff);
-      }
+      const puzzleData = await window.puzzleGenerator.getPuzzle(diff);
+
       // Set global puzzle state
       solution = puzzleData.solution;
       puzzle = puzzleData.puzzle;
@@ -749,18 +654,16 @@ You can 100% use this code anyway you'd like under the following conditions:
       indicatorContainers.forEach(el => el.classList.remove('fade-out'));
       isPuzzleTransitioning = false; // fade-in finished
 
-      // NEW: Refill the background queue for all difficulties.
-      fillQueue();
-
       // NEW: Set label to loading text before grading.
       document.getElementById('diffLabel').textContent = "Loading difficulty...";
-      // Pass in a single puzzle string of 81 numbers (0 for empty)
       const puzzleStr = puzzle.map(cell => cell ? cell : '0').join('');
-      // Delegate full grading to sudokuGrader and extract grade property
       const gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle 
                           ? window.sudokuGrader.gradePuzzle(puzzleStr)
                           : { grade: 0 };
       document.getElementById('diffLabel').textContent = `Difficulty: ${gradeObj.grade.toFixed(2)}`;
+      
+      // NEW: Refill the background queue for all difficulties.
+      fillQueue();
     }
 
     function startTimer() {
@@ -1128,7 +1031,4 @@ You can 100% use this code anyway you'd like under the following conditions:
 
     // Start by generating an immediate puzzle for the selected difficulty.
     generate();
-    
-    // Initially fill queue for all difficulties.
-    fillQueue();
   })();
