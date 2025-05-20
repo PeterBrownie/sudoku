@@ -39,14 +39,23 @@ export async function getPuzzle(diff) {
 
     let pus = sol.slice();
     const indices = shuffle([...Array(81).keys()]);
+    let remainingClues = pus.filter(v => v !== null).length;
+    let attempt = 0;
     for (const i of indices) {
-        if (pus.filter(v => v !== null).length <= desiredClues) break;
-        const backup = pus[i];
+      if (remainingClues <= desiredClues) break;
+      attempt++;
+      const backup = pus[i];
+      if (backup !== null) {
         pus[i] = null;
         if (!hasUniqueSolution(pus.slice())) {
-            pus[i] = backup;
+          pus[i] = backup;
+        } else {
+          remainingClues--;
         }
+      }
+      if (attempt % 50 === 0) {
         await yieldIdle();
+      }
     }
     const clueFlags = pus.map(v => v !== null);
 
@@ -81,11 +90,30 @@ function yieldIdle() {
 function countSolutions(board) {
     let solutionCount = 0;
     function solve() {
-        const idx = board.findIndex(v => v === null);
-        if (idx === -1) {
-            solutionCount++;
-            return;
+        // pick the empty cell with the fewest valid numbers (MRV heuristic)
+        let minOptions = 10;
+        let idx = -1;
+        for (let j = 0; j < 81; j++) {
+          if (board[j] === null) {
+            const r = Math.floor(j / 9), c = j % 9;
+            let options = 0;
+            for (let num = 1; num <= 9; num++) {
+              if (isValid(board, r, c, num)) options++;
+            }
+            if (options < minOptions) {
+              minOptions = options;
+              idx = j;
+              if (options <= 1) break;
+            }
+          }
         }
+        // no empty cells means a full solution found
+        if (idx === -1) {
+          solutionCount++;
+          return;
+        }
+        // prune if this cell has no possible candidates
+        if (minOptions === 0) return;
         const row = Math.floor(idx / 9), col = idx % 9;
         for (let num = 1; num <= 9; num++) {
             if (isValid(board, row, col, num)) {

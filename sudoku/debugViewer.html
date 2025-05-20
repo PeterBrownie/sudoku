@@ -54,15 +54,6 @@
       }
       const pairCells = [];
       const snap = snapshots[idx];
-      if (snap.technique === 'Naked Pair' && prev) {
-        for (let i = 0; i < 81; i++) {
-          const prevC = prev.candidates[i];
-          const currC = snap.candidates[i];
-          if (prevC.length === 2 && arraysEqual(prevC, currC)) {
-            pairCells.push(i);
-          }
-        }
-      }
       infoEl.textContent = 
         `Step ${snap.step}, Iteration ${snap.iteration}, Technique: ${snap.technique}`;
       for (let i = 0; i < 81; i++) {
@@ -88,15 +79,28 @@
             cell.classList.add('changed-cand');
           }
         }
+        // NEW: If snapshot has highlight info for this cell, apply background and text color
+        if (snap.highlight && snap.highlight[i]) {
+          const hl = snap.highlight[i];
+          cell.style.backgroundColor = hl.bgColor;
+          // NEW: Also set cell text color
+          if (hl.textColor) {
+            cell.style.color = hl.textColor;
+          }
+        }
+        let valueEl = null;
         const val = snap.grid[i];
         if (val !== 0) {
-          // Replace direct text assignment with a value element for centering
-          const valueEl = document.createElement('div');
+          valueEl = document.createElement('div');
           valueEl.className = 'value';
           valueEl.textContent = val;
           // If newly added (no previous snapshot or previously 0), apply green highlight inline style
           if (!prev || prev.grid[i] === 0) {
             valueEl.style.backgroundColor = "rgba(0,255,0,0.2)";
+          }
+          // NEW: Apply text color if specified in highlight mapping.
+          if (snap.highlight && snap.highlight[i] && snap.highlight[i].textColor) {
+            valueEl.style.color = snap.highlight[i].textColor;
           }
           cell.appendChild(valueEl);
         } else {

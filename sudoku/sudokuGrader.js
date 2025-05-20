@@ -210,6 +210,7 @@ function pointingPairStrategy(grid, candidates) {
   const newGrid = grid.slice();
   const newCands = candidates.map(arr => arr.slice());
   let progressed = false;
+  let highlight = {}; // new mapping for highlighting pointing pair candidate cells
   for (let br = 0; br < 3; br++) {
     for (let bc = 0; bc < 3; bc++) {
       const boxIdxs = [];
@@ -223,6 +224,10 @@ function pointingPairStrategy(grid, candidates) {
         const pos = boxIdxs.filter(i => newCands[i].includes(d));
         const rows = new Set(pos.map(i => Math.floor(i / 9)));
         if (pos.length >= 2 && rows.size === 1) {
+          // Highlight the pair cells used as support
+          pos.forEach(i => {
+            highlight[i] = { bgColor: 'lightblue', textColor: 'black' };
+          });
           const r = [...rows][0];
           for (let j = r * 9; j < r * 9 + 9; j++) {
             if (!boxIdxs.includes(j) && newGrid[j] === 0 && newCands[j].includes(d)) {
@@ -233,6 +238,10 @@ function pointingPairStrategy(grid, candidates) {
         }
         const cols = new Set(pos.map(i => i % 9));
         if (pos.length >= 2 && cols.size === 1) {
+          // Highlight the pair cells used as support
+          pos.forEach(i => {
+            highlight[i] = { bgColor: 'lightblue', textColor: 'black' };
+          });
           const c = [...cols][0];
           for (let j = c; j < 81; j += 9) {
             if (!boxIdxs.includes(j) && newGrid[j] === 0 && newCands[j].includes(d)) {
@@ -244,7 +253,7 @@ function pointingPairStrategy(grid, candidates) {
       }
     }
   }
-  return { newGrid, newCands, progressed };
+  return { newGrid, newCands, progressed, highlight };
 }
 
 /**
@@ -307,52 +316,66 @@ function boxLineReductionStrategy(grid, candidates) {
  * the same two candidates, remove those candidates from the rest.
  */
 function nakedPairStrategy(grid, candidates) {
-  const newGrid = grid.slice();
-  const newCands = candidates.map(arr => arr.slice());
-  let progressed = false;
-  const units = [];
-  // Rows
-  for (let r = 0; r < 9; r++) {
-    units.push(Array.from({ length: 9 }, (_, k) => r * 9 + k));
-  }
-  // Columns
-  for (let c = 0; c < 9; c++) {
-    units.push(Array.from({ length: 9 }, (_, k) => c + 9 * k));
-  }
-  // Boxes
-  for (let br = 0; br < 3; br++) {
-    for (let bc = 0; bc < 3; bc++) {
-      const box = [];
-      for (let dr = 0; dr < 3; dr++) {
-        for (let dc = 0; dc < 3; dc++) {
-          box.push((3 * br + dr) * 9 + (3 * bc + dc));
-        }
-      }
-      units.push(box);
-    }
-  }
-  units.forEach(unit => {
-    const pairCells = unit.filter(i => newGrid[i] === 0 && newCands[i].length === 2);
-    const seen = {};
-    pairCells.forEach(i => {
-      const key = newCands[i].slice().sort().join(',');
-      seen[key] = seen[key] || [];
-      seen[key].push(i);
-    });
-    for (const key in seen) {
-      if (seen[key].length === 2) {
-        const nums = key.split(',').map(Number);
-        unit.forEach(i => {
-          if (!seen[key].includes(i) && newGrid[i] === 0) {
-            const before = newCands[i].length;
-            newCands[i] = newCands[i].filter(x => !nums.includes(x));
-            if (newCands[i].length < before) progressed = true;
-          }
-        });
-      }
-    }
-  });
-  return { newGrid, newCands, progressed };
+	const newGrid = grid.slice();
+	const newCands = candidates.map(arr => arr.slice());
+	let progressed = false;
+	let highlight = {}; // mapping for highlighting naked pair cells
+	const units = [];
+	// Rows
+	for (let r = 0; r < 9; r++) {
+		units.push(Array.from({ length: 9 }, (_, k) => r * 9 + k));
+	}
+	// Columns
+	for (let c = 0; c < 9; c++) {
+		units.push(Array.from({ length: 9 }, (_, k) => c + 9 * k));
+	}
+	// Boxes
+	for (let br = 0; br < 3; br++) {
+		for (let bc = 0; bc < 3; bc++) {
+			const box = [];
+			for (let dr = 0; dr < 3; dr++) {
+				for (let dc = 0; dc < 3; dc++) {
+					box.push((3 * br + dr) * 9 + (3 * bc + dc));
+				}
+			}
+			units.push(box);
+		}
+	}
+	// Process each unit until one naked pair is applied
+	outer:
+	for (const unit of units) {
+		const pairCells = unit.filter(i => newGrid[i] === 0 && newCands[i].length === 2);
+		const seen = {};
+		for (const i of pairCells) {
+			const key = newCands[i].slice().sort().join(',');
+			seen[key] = seen[key] || [];
+			seen[key].push(i);
+		}
+		for (const key in seen) {
+			if (seen[key].length === 2) {
+				const nums = key.split(',').map(Number);
+				let unitProgress = false;
+				for (const i of unit) {
+					if (!seen[key].includes(i) && newGrid[i] === 0) {
+						const before = newCands[i].length;
+						newCands[i] = newCands[i].filter(x => !nums.includes(x));
+						if (newCands[i].length < before) {
+							unitProgress = true;
+						}
+					}
+				}
+				if (unitProgress) {
+					// Only highlight the naked pair used for elimination in this unit
+					for (const i of seen[key]) {
+						highlight[i] = { bgColor: 'yellow', textColor: 'black' };
+					}
+					progressed = true;
+					break outer;
+				}
+			}
+		}
+	}
+	return { newGrid, newCands, progressed, highlight };
 }
 
 /**
@@ -492,6 +515,7 @@ function simpleColorRule2Strategy(grid, candidates) {
   const newGrid = grid.slice();
   const newCands = candidates.map(arr => arr.slice());
   let progressed = false;
+  let highlight = {}; // map to mark each color group with a distinct color
   function sharesUnit(i, j) {
     if (Math.floor(i / 9) === Math.floor(j / 9)) return true;
     if (i % 9 === j % 9) return true;
@@ -556,7 +580,10 @@ function simpleColorRule2Strategy(grid, candidates) {
           }
         }
       }
-      // Rule 2: If two of the same color share a unit, eliminate all of that color for d
+      // Color the two groups distinctly
+      compA.forEach(i => { highlight[i] = { bgColor: 'lightgreen', textColor: 'black' }; });
+      compB.forEach(i => { highlight[i] = { bgColor: 'lightpink', textColor: 'black' }; });
+      // Rule 2 elimination as in existing code...
       for (const group of [compA, compB]) {
         let eliminated = false;
         for (let i = 0; i < group.length - 1 && !eliminated; i++) {
@@ -576,7 +603,7 @@ function simpleColorRule2Strategy(grid, candidates) {
       }
     }
   }
-  return { newGrid, newCands, progressed };
+  return { newGrid, newCands, progressed, highlight };
 }
 
 /**
@@ -586,6 +613,7 @@ function simpleColorRule4Strategy(grid, candidates) {
   const newGrid = grid.slice();
   const newCands = candidates.map(arr => arr.slice());
   let progressed = false;
+  let highlight = {}; // new mapping for simple coloring rule 4
   function sharesUnit(i, j) {
     if (Math.floor(i / 9) === Math.floor(j / 9)) return true;
     if (i % 9 === j % 9) return true;
@@ -650,7 +678,10 @@ function simpleColorRule4Strategy(grid, candidates) {
           }
         }
       }
-      // Rule 4: If a cell not in compA or compB sees at least one in compA and one in compB, eliminate d from that cell
+      // Highlight groups with different colors (blue and orange)
+      compA.forEach(i => { highlight[i] = { bgColor: 'lightblue', textColor: 'black' }; });
+      compB.forEach(i => { highlight[i] = { bgColor: 'orange', textColor: 'black' }; });
+      // Rule 4 elimination as in existing code...
       for (let idx = 0; idx < 81; idx++) {
         if (newGrid[idx] !== 0) continue;
         if (!newCands[idx].includes(d)) continue;
@@ -669,35 +700,141 @@ function simpleColorRule4Strategy(grid, candidates) {
       }
     }
   }
+  return { newGrid, newCands, progressed, highlight };
+}
+
+/**
+ * Chute Remote Pairs strategy: find two bi-value cells with the same pair
+ * in the same chute (three-box row or column), remote (not in same unit),
+ * then use the unused box in that chute to eliminate a candidate from
+ * cells seen by both.
+ */
+function chuteRemotePairsStrategy(grid, candidates) {
+  const newGrid = grid.slice();
+  const newCands = candidates.map(arr => arr.slice());
+  let progressed = false;
+
+  // generate chutes with box coordinates
+  const chutes = [];
+  // horizontal chutes (boxRow 0,1,2)
+  for (let boxRow = 0; boxRow < 3; boxRow++) {
+    const cells = [];
+    for (let r = boxRow * 3; r < boxRow * 3 + 3; r++) {
+      for (let c = 0; c < 9; c++) {
+        cells.push(r * 9 + c);
+      }
+    }
+    chutes.push({ cells, boxRow, boxCol: null });
+  }
+  // vertical chutes (boxCol 0,1,2)
+  for (let boxCol = 0; boxCol < 3; boxCol++) {
+    const cells = [];
+    for (let r = 0; r < 9; r++) {
+      for (let c = boxCol * 3; c < boxCol * 3 + 3; c++) {
+        cells.push(r * 9 + c);
+      }
+    }
+    chutes.push({ cells, boxRow: null, boxCol });
+  }
+
+  // helper to check if two indices share a unit
+  function sharesUnit(i, j) {
+    if (Math.floor(i / 9) === Math.floor(j / 9)) return true;
+    if (i % 9 === j % 9) return true;
+    const br1 = Math.floor(i / 27), bc1 = Math.floor((i % 9) / 3);
+    const br2 = Math.floor(j / 27), bc2 = Math.floor((j % 9) / 3);
+    return br1 === br2 && bc1 === bc2;
+  }
+
+  for (const { cells, boxRow, boxCol } of chutes) {
+    // find all bi-value cells in this chute
+    const bivals = cells.filter(i => newGrid[i] === 0 && newCands[i].length === 2);
+    for (let a = 0; a < bivals.length - 1; a++) {
+      for (let b = a + 1; b < bivals.length; b++) {
+        const i = bivals[a], j = bivals[b];
+        const pair1 = newCands[i].slice().sort();
+        const pair2 = newCands[j].slice().sort();
+        // same remote pair?
+        if (pair1[0] !== pair2[0] || pair1[1] !== pair2[1]) continue;
+        // ensure remote (not same row, col, or box)
+        if (sharesUnit(i, j)) continue;
+        const [d1, d2] = pair1;
+        // determine the unused box in this chute
+        const boxes = [];
+        if (boxRow !== null) {
+          // horizontal chute: boxes in this band
+          for (let bc = 0; bc < 3; bc++) boxes.push({ br: boxRow, bc });
+        } else {
+          // vertical chute: boxes in this stack
+          for (let br = 0; br < 3; br++) boxes.push({ br, bc: boxCol });
+        }
+        // find boxes containing i and j
+        const boxOf = idx => ({ br: Math.floor(idx / 27), bc: Math.floor((idx % 9) / 3) });
+        const usedCoords = [boxOf(i), boxOf(j)].map(o => `${o.br},${o.bc}`);
+        const unused = boxes.find(({ br, bc }) => !usedCoords.includes(`${br},${bc}`));
+        // gather yellow cells in the unused box
+        const yellow = [];
+        for (let dr = 0; dr < 3; dr++) {
+          for (let dc = 0; dc < 3; dc++) {
+            yellow.push((unused.br * 3 + dr) * 9 + (unused.bc * 3 + dc));
+          }
+        }
+        // check presence of each candidate in yellow cells (including solved/clue cells)
+        const present = [];
+        if (yellow.some(idx => newGrid[idx] === d1 || computeCandidates(newGrid, idx).includes(d1))) present.push(d1);
+        if (yellow.some(idx => newGrid[idx] === d2 || computeCandidates(newGrid, idx).includes(d2))) present.push(d2);
+        // if exactly one candidate is present, eliminate it from all cells seen by both i and j
+        if (present.length === 1) {
+          const elim = present[0];
+          for (let idx = 0; idx < 81; idx++) {
+            if (newGrid[idx] === 0 &&
+                newCands[idx].includes(elim) &&
+                sharesUnit(idx, i) &&
+                sharesUnit(idx, j)) {
+              newCands[idx] = newCands[idx].filter(x => x !== elim);
+              progressed = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
   return { newGrid, newCands, progressed };
 }
 
 // -------------------- Strategy Registry --------------------
 const strategies = [
-  { name: 'Naked Single', weight: 0.1, fn: nakedSingleStrategy },
-  { name: 'Hidden Single', weight: 1, fn: hiddenSingleStrategy },
-  { name: 'Pointing Pair', weight: 1, fn: pointingPairStrategy },
-  { name: 'Locked Candidate', weight: 1, fn: lockedCandidateStrategy },
+  { name: 'Solved Cell', weight: 0.1, fn: nakedSingleStrategy },
   { name: 'Naked Pair', weight: 2, fn: nakedPairStrategy },
   { name: 'Naked Triple', weight: 3, fn: nakedTripleStrategy },
+  { name: 'Hidden Single', weight: 1, fn: hiddenSingleStrategy },
+  // TODO: Naked/Hidden Quad
+  { name: 'Locked Candidate', weight: 1, fn: lockedCandidateStrategy },
+  { name: 'Pointing Pair', weight: 1, fn: pointingPairStrategy },
   { name: 'Box/Line Reduction', weight: 2, fn: boxLineReductionStrategy },
+
   { name: 'X-Wing', weight: 5, fn: xWingStrategy },
-  { name: 'Unique Rectangle', weight: 3, fn: uniqueRectangleStrategy },
+  { name: 'Chute Remote Pairs', weight: 4, fn: chuteRemotePairsStrategy },
   { name: 'Simple Coloring Rule 2', weight: 4, fn: simpleColorRule2Strategy },
-  { name: 'Simple Coloring Rule 4', weight: 4, fn: simpleColorRule4Strategy }
+  { name: 'Simple Coloring Rule 4', weight: 4, fn: simpleColorRule4Strategy },
+  // TODO: Y-Wing
+  { name: 'Unique Rectangle', weight: 3, fn: uniqueRectangleStrategy }
 ];
 
-// NEW: Global snapshot tracking
+// Updated: Global snapshot tracking
 let snapshots = [];
 let snapshotCounter = 1;
 window.snapshots = snapshots;
 
-function pushSnapshot(technique, grid, candidates) {
+function pushSnapshot(technique, grid, candidates, highlight = {}) {
+  const snapshotHighlight = JSON.parse(JSON.stringify(highlight)); // deep clone
   snapshots.push({
     step: snapshotCounter++,
     technique, 
     grid: grid.slice(), 
-    candidates: candidates.map(arr => arr.slice())
+    candidates: candidates.map(arr => arr.slice()),
+    highlight: snapshotHighlight
   });
 }
 
@@ -721,10 +858,10 @@ export function gradePuzzle(puzzleString) {
 
   while (idx < strategies.length && !isSolved(grid)) {
     const strat = strategies[idx];
-    const { newGrid, newCands, progressed } = strat.fn(grid, candidates);
+    const result = strat.fn(grid, candidates);
+    const { newGrid, newCands, progressed, highlight = {} } = result; // new highlight field
     if (progressed) {
-      // NEW: Push a snapshot on every progress step
-      pushSnapshot(strat.name, newGrid, newCands);
+      pushSnapshot(strat.name, newGrid, newCands, highlight); // pass highlight mapping
       if (currentStrat === strat.name) {
         currentCount++;
       } else {
@@ -753,8 +890,7 @@ export function gradePuzzle(puzzleString) {
     const { newGrid, depth, nodes, solved } = backtrackingStrategy(grid);
     if (solved) {
       grid = newGrid;
-      // You can also push a snapshot after backtracking if desired:
-      pushSnapshot("Backtracking", grid, candidates);
+      pushSnapshot("Backtracking", grid, candidates, {}); // pass an empty highlight mapping
       const backtrackingCost = 100 * depth + Math.log(nodes);
       console.log("Backtracking solved the puzzle; cost:", backtrackingCost);
       grade += backtrackingCost;
