@@ -1,3 +1,19 @@
+/*
+
+"Vibe-coded" by Peter Brown in May 2025.
+
+This is the main JavaScript file for the Sudoku game.
+
+AI wrote all of this code, so I will not try to claim it as my own.
+
+You can 100% use this code anyway you'd like under the following conditions:
+1. You cannot claim it as your own.
+2. You cannot prevent others from using it through any legal means or otherwise.
+
+*/ 
+
+
+
 (() => {
   const boardEl = document.getElementById('board');
   const padEl = document.getElementById('pad');
@@ -66,6 +82,23 @@
     }
     const clueFlags = pus.map(v => v !== null);
     console.log("Background generated puzzle for diff " + diff + " with " + pus.filter(v => v !== null).length + " clues.");
+    
+    // NEW: For level 5 puzzles, only accept if grade is -1 or > 400.
+    if (diff === 5) {
+      const puzzleStr = pus.map(cell => cell ? cell : '0').join('');
+      let gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle 
+                       ? window.sudokuGrader.gradePuzzle(puzzleStr) 
+                       : { grade: 0 };
+      // Ensure gradeObj is an object with a grade property.
+      if (typeof gradeObj !== 'object' || gradeObj === null) {
+          gradeObj = { grade: gradeObj };
+      }
+      if (gradeObj.grade !== -1 && gradeObj.grade <= 400) {
+        console.log("Level 5 puzzle rejected (grade: " + gradeObj.grade + "). Regenerating...");
+        return generatePuzzleData(diff);
+      }
+    }
+    
     return { puzzle: pus, solution: sol, clues: clueFlags };
   }
 
@@ -88,35 +121,52 @@
     }
   }
 
-  // NEW: Background queue fill function ensuring 2 puzzles per difficulty
+  // Updated fillQueue: generate current difficulty puzzle first, then others.
   function fillQueue() {
     const currentDiff = Number(diffEl.value);
-    // Fill queue for the currently selected difficulty first
-    if (puzzleQueue[currentDiff].length < 2) {  // changed from < 4
-      idleCallback(() => {
-        generatePuzzleData(currentDiff).then(result => {
-          puzzleQueue[currentDiff].push(result);
-        });
+    if (puzzleQueue[currentDiff].length < 2) {
+      generatePuzzleData(currentDiff).then(result => {
+        puzzleQueue[currentDiff].push(result);
+        // Now fill for higher difficulties
+        for (let d = currentDiff + 1; d <= 5; d++) {
+          if (puzzleQueue[d].length < 2) {
+            idleCallback(() => {
+              generatePuzzleData(d).then(result => {
+                puzzleQueue[d].push(result);
+              });
+            });
+          }
+        }
+        // And lower difficulties
+        for (let d = 1; d < currentDiff; d++) {
+          if (puzzleQueue[d].length < 2) {
+            idleCallback(() => {
+              generatePuzzleData(d).then(result => {
+                puzzleQueue[d].push(result);
+              });
+            });
+          }
+        }
       });
-    }
-    // Then fill for higher difficulties
-    for (let d = currentDiff + 1; d <= 5; d++) {
-      if (puzzleQueue[d].length < 2) {  // changed from < 4
-        idleCallback(() => {
-          generatePuzzleData(d).then(result => {
-            puzzleQueue[d].push(result);
+    } else {
+      // If current difficulty already filled, fill others as before.
+      for (let d = currentDiff + 1; d <= 5; d++) {
+        if (puzzleQueue[d].length < 2) {
+          idleCallback(() => {
+            generatePuzzleData(d).then(result => {
+              puzzleQueue[d].push(result);
+            });
           });
-        });
+        }
       }
-    }
-    // Finally, fill for lower difficulties
-    for (let d = 1; d < currentDiff; d++) {
-      if (puzzleQueue[d].length < 2) {  // changed from < 4
-        idleCallback(() => {
-          generatePuzzleData(d).then(result => {
-            puzzleQueue[d].push(result);
+      for (let d = 1; d < currentDiff; d++) {
+        if (puzzleQueue[d].length < 2) {
+          idleCallback(() => {
+            generatePuzzleData(d).then(result => {
+              puzzleQueue[d].push(result);
+            });
           });
-        });
+        }
       }
     }
   }
@@ -160,6 +210,16 @@
 
     // NEW: Refill the background queue for all difficulties.
     fillQueue();
+
+    // NEW: Set label to loading text before grading.
+    document.getElementById('diffLabel').textContent = "Loading difficulty...";
+    // Pass in a single puzzle string of 81 numbers (0 for empty)
+    const puzzleStr = puzzle.map(cell => cell ? cell : '0').join('');
+    // Delegate full grading to sudokuGrader and extract grade property
+    const gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle 
+                        ? window.sudokuGrader.gradePuzzle(puzzleStr)
+                        : { grade: 0 };
+    document.getElementById('diffLabel').textContent = `Difficulty: ${gradeObj.grade.toFixed(2)}`;
   }
 
   function buildBoard() {
@@ -538,7 +598,7 @@
     }
 
     function checkMistakes() {
-      if(puzzleImported) return; // NEW: Skip mistake highlighting for imported puzzles
+      if (!solution || solution.length !== 81) return; // ensure final solution is available
       for (let i = 0; i < 81; i++) {
         const v = puzzle[i];
         if (v && v !== solution[i]) {
@@ -691,6 +751,16 @@
 
       // NEW: Refill the background queue for all difficulties.
       fillQueue();
+
+      // NEW: Set label to loading text before grading.
+      document.getElementById('diffLabel').textContent = "Loading difficulty...";
+      // Pass in a single puzzle string of 81 numbers (0 for empty)
+      const puzzleStr = puzzle.map(cell => cell ? cell : '0').join('');
+      // Delegate full grading to sudokuGrader and extract grade property
+      const gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle 
+                          ? window.sudokuGrader.gradePuzzle(puzzleStr)
+                          : { grade: 0 };
+      document.getElementById('diffLabel').textContent = `Difficulty: ${gradeObj.grade.toFixed(2)}`;
     }
 
     function startTimer() {
@@ -783,33 +853,81 @@
     // New: open puzzle functionality.
     const openPuzzleBtn = document.getElementById('openPuzzle');
     openPuzzleBtn.addEventListener('click', () => {
-      // Build puzzle string using '0' for empty cells
-      const puzzleText = puzzle.map(cell => cell ? cell : '0').join('');
-      const url = "https://www.sudokuwiki.org/sudoku.htm?bd=" + puzzleText;
+      // Use the packing function to include candidate data.
+      // Here, "X9B" (for example) is used as the prefix to signal candidate data.
+      const packed = makePackedStringVB('S9B', true);
+      const url = "https://www.sudokuwiki.org/sudoku.htm?bd=" + packed;
       window.open(url, '_blank');
     });
 
     // NEW: Import board functionality
-    document.getElementById('boardImport').addEventListener('input', function() {
-      const value = this.value;
-      document.getElementById('importButton').disabled = !(value.length === 81 && /^[0-9]+$/.test(value));
-    });
-    
     document.getElementById('importButton').addEventListener('click', () => {
       const importStr = document.getElementById('boardImport').value;
-      if (importStr.length === 81 && /^[0-9]+$/.test(importStr)) {
-        const imported = importStr.split('').map(ch => Number(ch) === 0 ? null : Number(ch));
+      if (importStr.length === 81 && /^[0-9.]+$/.test(importStr)) {
+        const imported = importStr.split('').map(ch => (ch === '0' || ch === '.') ? null : Number(ch));
         puzzle = imported;
         clues = imported.map(v => v !== null);
-        puzzleImported = true; // mark as imported so mistakes are not highlighted
-        showMistakesEl.checked = false; // uncheck mistakes checkbox
-        showMistakesEl.disabled = true; // disable mistakes checkbox for imported puzzles
-        showMistakesEl.title = "Can't show mistakes on imported puzzles"; // add tooltip
-        // Grey-out label text:
-        showMistakesEl.parentElement.style.color = "#888";
+        
+        const gradeInput = importStr.replace(/\./g, '0');
+        let result = window.sudokuGrader.gradePuzzle(gradeInput);
+        if (typeof result !== 'object' || result === null) { 
+          result = { grade: result };
+        }
+        document.getElementById('diffLabel').textContent = `Difficulty: ${result.grade.toFixed(2)}`;
+        
+        if (result.solvedGrid) {
+          solution = result.solvedGrid.slice();
+          if (hasUniqueSolution(imported)) {
+            showMistakesEl.disabled = false;
+            showMistakesEl.title = "";
+            showMistakesEl.parentElement.style.color = "";
+          }
+        }
+        if (!hasUniqueSolution(imported)) {
+          showMistakesEl.checked = false;
+          showMistakesEl.disabled = true;
+          showMistakesEl.title = "Imported puzzle is ambiguous; mistakes not highlighted";
+          showMistakesEl.parentElement.style.color = "#888";
+        } else {
+          showMistakesEl.disabled = false;
+          showMistakesEl.title = "";
+          showMistakesEl.parentElement.style.color = "";
+        }
+        // NEW: Mark the board as imported globally.
+        window.puzzleImported = true;
+        puzzleImported = true;
         render();
       }
     });
+
+    // NEW: Updated function to pack board and candidate data
+    function makePackedStringVB(prefix, withCandidates) {
+        let s = prefix;
+        for (let i = 0; i < 81; i++) {
+            let n;
+            if (puzzle[i] != null) {
+                // Use the cell's value; add 0 if it is a given clue, 9 if not.
+                n = puzzle[i] + (clues[i] ? 0 : 9);
+            } else {
+                let mask;
+                // If candidate set is empty, assign full mask.
+                if (candidates[i].size === 0) {
+                    mask = (1 << 9) - 1; // full mask (511)
+                } else {
+                    mask = 0;
+                    candidates[i].forEach(num => { mask |= (1 << (num - 1)); });
+                    if (mask === 0) {
+                        mask = (1 << 9) - 1;
+                    }
+                }
+                n = mask + 18;
+            }
+            let h = n.toString(36);
+            if (h.length < 2) h = '0' + h;
+            s += h;
+        }
+        return s;
+    }
 
     // NEW: Add function to update Undo/Redo button states (faded grey when disabled)
     function updateUndoRedoButtons() {
@@ -833,6 +951,26 @@
 
     // Immediately update the buttons after initializing history arrays:
     updateUndoRedoButtons();
+
+    document.getElementById('boardImport').addEventListener('input', function() {
+      const importButton = document.getElementById('importButton');
+      const importReason = document.getElementById('importReason');
+      const value = this.value;
+      const isValid = (value.length === 81 && /^[0-9.]+$/.test(value));
+      importButton.disabled = !isValid;
+      if (!isValid) {
+          if (value.length !== 81) {
+              importReason.textContent = "Board must be 81 characters long.";
+          } else if (!/^[0-9.]+$/.test(value)) {
+              importReason.textContent = "Board can only contain digits and periods.";
+          } else {
+              importReason.textContent = "";
+          }
+          importReason.style.display = "inline";
+      } else {
+          importReason.style.display = "none";
+      }
+    });
 
     function shuffle(a) {
       for (let i = a.length - 1; i > 0; i--) {

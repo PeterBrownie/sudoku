@@ -1,3 +1,18 @@
+<!-- 
+
+"Vibe-coded" by Peter Brown in May 2025.
+
+This is the HTML file for the Sudoku game.
+It is part of the "Dark Mode Sudoku" project, which is a simple Sudoku game with a dark mode theme.
+
+AI wrote all of this code, so I will not try to claim it as my own.
+
+You can 100% use this code anyway you'd like under the following conditions:
+1. You cannot claim it as your own.
+2. You cannot prevent others from using it through any legal means or otherwise. 
+
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,6 +49,7 @@
         <div class="import-section" style="margin-top: 10px; border-top: 1px solid #5a4d7f; padding-top: 10px;">
           <input type="text" id="boardImport" placeholder="Enter 81-digit board" maxlength="81">
           <button id="importButton" disabled>Import</button>
+          <span id="importReason" style="display: none; color: red; margin-left: 8px; font-size: 11px;"></span>
         </div>
       </div>
     </div>
@@ -72,6 +88,8 @@
       <div class="timer" id="timer">00:00</div>
       <button id="pauseGame">Pause</button>
     </div>
+    <!-- NEW: Difficulty label -->
+    <div id="diffLabel">Loading difficulty...</div>
     <!-- Group copy and open buttons in a flex container for inline layout -->
     <div style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-start; align-items: flex-start; width: 100%;">
       <button id="copyPuzzle" title="Copy Puzzle">
@@ -134,6 +152,11 @@
     });
   </script>
   
+  <script type="module">
+    import * as sudokuGrader from './sudokuGrader.js';
+    window.sudokuGrader = sudokuGrader;
+    console.log("sudokuGrader imported and attached to window:", window.sudokuGrader);
+  </script>
   <script src="sudoku.js"></script>
   
   <!-- NEW: Credit text at the bottom left -->

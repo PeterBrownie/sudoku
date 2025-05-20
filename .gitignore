@@ -12,3 +12,5 @@ dist/
 
 # Ignore environment files
 .env
+
+debugViewer.html

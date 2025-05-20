@@ -647,3 +647,9 @@ button#undo:hover, button#redo:hover {
 .info-col:not(.left) {
     align-items: flex-start;
 }
+#diffLabel {
+    font-size: 0.8em;
+    color: grey;
+    margin: 4px 0;
+    text-align: center;
+}
