@@ -748,7 +748,7 @@ You can 100% use this code anyway you'd like under the following conditions:
     // New: copy puzzle functionality without text changes.
     const copyPuzzleBtn = document.getElementById('copyPuzzle');
     copyPuzzleBtn.addEventListener('click', () => {
-      const puzzleText = puzzle.map(cell => cell ? cell : '.').join('');
+      const puzzleText = puzzle.map(cell => cell ? cell : '0').join('');
       navigator.clipboard.writeText(puzzleText)
         .catch(err => console.error('Failed to copy puzzle: ', err));
     });

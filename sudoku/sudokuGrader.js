@@ -31,7 +31,8 @@ function parsePuzzle(puzzleString) {
 }
 
 /**
- * Compute possible candidates for a cell
+ * Compute possible candidates for a cell.
+ * Simple, tested, no problems.
  */
 function computeCandidates(grid, idx) {
   if (grid[idx] !== 0) return [];
@@ -57,6 +58,7 @@ function computeCandidates(grid, idx) {
 
 /**
  * Initialize candidate lists for all cells
+ * Basically the previous function.
  */
 function initCandidates(grid) {
   return grid.map((v, i) => (v === 0 ? computeCandidates(grid, i) : []));
@@ -64,6 +66,7 @@ function initCandidates(grid) {
 
 /**
  * Check if the grid is completely solved
+ * Checked, good.
  */
 function isSolved(grid) {
   return grid.every(v => v >= 1 && v <= 9);
@@ -71,6 +74,7 @@ function isSolved(grid) {
 
 /**
  * Check if inserting `num` at `idx` is valid under Sudoku rules
+ * Checked, good.
  */
 function isValidCell(grid, idx, num) {
   const r = Math.floor(idx / 9), c = idx % 9;
@@ -87,7 +91,8 @@ function isValidCell(grid, idx, num) {
 }
 
 /**
- * Remove a value from peers of a filled cell
+ * Remove a value from peers of a filled cell.
+ * Checked, good.
  */
 function updatePeers(grid, candidates, idx, value) {
   const r = Math.floor(idx / 9), c = idx % 9;
@@ -111,6 +116,7 @@ function updatePeers(grid, candidates, idx, value) {
 
 /**
  * Naked Single strategy: fill any cell with exactly one candidate.
+ * Checked, good.
  */
 function nakedSingleStrategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -130,7 +136,8 @@ function nakedSingleStrategy(grid, candidates) {
 
 /**
  * Hidden Single strategy: fill a cell when a candidate appears exactly once in a unit.
- */
+ * Checked, good.
+*/
 function hiddenSingleStrategy(grid, candidates) {
   const newGrid = grid.slice();
   const newCands = candidates.map(arr => arr.slice());
@@ -174,6 +181,8 @@ function hiddenSingleStrategy(grid, candidates) {
 /**
  * Locked Candidate strategy: eliminate candidate d from peers 
  * based on box confinement.
+ * 
+ * Not fully tested, but should work.
  */
 function lockedCandidateStrategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -222,6 +231,13 @@ function lockedCandidateStrategy(grid, candidates) {
 /**
  * Pointing Pair strategy: if candidates in a box are confined to one row/column,
  * eliminate them from the rest of that row/column.
+ * 
+ * I'm pretty sure this will run for every pointing pair, 
+ * instead of just the first one it finds. So the number of occurrences
+ * will be inaccurate.
+ * 
+ * Works, but I hate the way highlighting works (incorrectly).
+ * 
  */
 function pointingPairStrategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -276,6 +292,9 @@ function pointingPairStrategy(grid, candidates) {
 /**
  * Box/Line Reduction strategy: eliminate candidate d from a box if
  * d is confined to one row/column within that box.
+ * 
+ * This should work. Debug Highlighting probably doesn't work.
+ * 
  */
 function boxLineReductionStrategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -331,6 +350,9 @@ function boxLineReductionStrategy(grid, candidates) {
 /**
  * Naked Pair strategy: in a unit if exactly two cells share 
  * the same two candidates, remove those candidates from the rest.
+ * 
+ * Checked, good.
+ * 
  */
 function nakedPairStrategy(grid, candidates) {
 	const newGrid = grid.slice();
@@ -395,9 +417,12 @@ function nakedPairStrategy(grid, candidates) {
 	return { newGrid, newCands, progressed, highlight };
 }
 
-/**
+/*
  * Naked Triple strategy: in a unit, if three cells collectively
  * have exactly three candidates, remove those from other cells.
+ * 
+ * Checked, but highlighting is added for debugging.
+ * 
  */
 function nakedTripleStrategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -447,10 +472,15 @@ function nakedTripleStrategy(grid, candidates) {
   return { newGrid, newCands, progressed };
 }
 
+/*
+ * To do: Naked Quads.
+ */
+
 /**
  * X-Wing strategy: find matching candidate pairs in two rows and eliminate 
  * the candidate from other rows in the same columns.
  * 
+ * This might work. Testing needed.
  * 
  */
 // Global seenXWings set for X-Wing tracking
@@ -531,7 +561,9 @@ function xWingStrategy(grid, candidates) {
 
 /**
  * Unique Rectangle strategy: detect a nearly bi-value rectangle and eliminate extra candidates.
+ * 
  * Pretty sure this is broken btw. havent verified. 
+ * 
 */
 function uniqueRectangleStrategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -564,6 +596,9 @@ function uniqueRectangleStrategy(grid, candidates) {
 
 /**
  * Simple Coloring Rule 2 strategy: eliminate all candidates in a color group if two same-colored nodes share a unit.
+ * 
+ * Surprisingly this works. The highlighting kinda sucks though.
+ * 
  */
 function simpleColorRule2Strategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -662,6 +697,9 @@ function simpleColorRule2Strategy(grid, candidates) {
 
 /**
  * Simple Coloring Rule 4 strategy: For each candidate d, if a cell not in either color group sees both colors, eliminate d from that cell.
+ * 
+ * Surprisingly this works. The highlighting kinda sucks though.
+ * 
  */
 function simpleColorRule4Strategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -763,7 +801,7 @@ function simpleColorRule4Strategy(grid, candidates) {
  * then use the unused box in that chute to eliminate a candidate from
  * cells seen by both.
  * 
- * Pretty sure this is broken tbh
+ * This is most likely broken.
  * 
  * 
  */
@@ -864,6 +902,9 @@ function chuteRemotePairsStrategy(grid, candidates) {
 /**
  * Y-Wing strategy: find a wing of alternating strong/weak links starting from bi-value cells
  * and eliminate candidates by contradiction inference.
+ * 
+ *  Not yet tested. Results unclear.
+ * 
  */
 function yWingStrategy(grid, candidates) {
   const newGrid = grid.slice();
@@ -962,6 +1003,109 @@ function yWingStrategy(grid, candidates) {
   return { newGrid, newCands, progressed, highlight };
 }
 
+/**
+ * Rectangle Elimination strategy: if assuming a candidate in one cell
+ * forces both ends of a strong link to turn on and eliminates all candidates
+ * of that digit in the fourth corner box, we can remove that candidate.
+ * 
+ * This does not currently work. It doesn't seem to ever detect any occurrences.
+ * 
+ */
+function rectangleEliminationStrategy(grid, candidates) {
+  const newGrid = grid.slice();
+  const newCands = candidates.map(arr => arr.slice());
+  let progressed = false;
+
+  function boxCoord(idx) {
+    return {
+      br: Math.floor(Math.floor(idx / 9) / 3),
+      bc: Math.floor((idx % 9) / 3)
+    };
+  }
+
+  for (let d = 1; d <= 9; d++) {
+    // Row-based strong links
+    for (let r = 0; r < 9; r++) {
+      const rowCells = Array.from({ length: 9 }, (_, k) => r * 9 + k)
+        .filter(i => newGrid[i] === 0 && newCands[i].includes(d));
+      if (rowCells.length === 2) {
+        const [p, q] = rowCells;
+        for (const hinge of [p, q]) {
+          const other = hinge === p ? q : p;
+          const col = hinge % 9;
+          const candidatesX = Array.from({ length: 9 }, (_, k) => k * 9 + col)
+            .filter(i => i !== hinge && !rowCells.includes(i)
+                         && newGrid[i] === 0 && newCands[i].includes(d));
+          for (const x of candidatesX) {
+            const simGrid = newGrid.slice();
+            const simCands = newCands.map(arr => arr.slice());
+            simGrid[x] = d; simCands[x] = []; updatePeers(simGrid, simCands, x, d);
+            simGrid[other] = d; simCands[other] = []; updatePeers(simGrid, simCands, other, d);
+
+            const used = [hinge, other, x].map(boxCoord).map(o => `${o.br},${o.bc}`);
+            const allBoxes = [];
+            for (let br = 0; br < 3; br++) for (let bc = 0; bc < 3; bc++) allBoxes.push(`${br},${bc}`);
+            const unused = allBoxes.find(b => !used.includes(b));
+            if (unused) {
+              const [ubr, ubc] = unused.split(',').map(Number);
+              const boxCells = [];
+              for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++)
+                boxCells.push((ubr * 3 + dr) * 9 + (ubc * 3 + dc));
+              const hasCandidate = boxCells.some(i =>
+                (simGrid[i] === 0 && simCands[i].includes(d)) || simGrid[i] === d
+              );
+              if (!hasCandidate) {
+                newCands[x] = newCands[x].filter(v => v !== d);
+                progressed = true;
+              }
+            }
+          }
+        }
+      }
+    }
+    // Column-based strong links
+    for (let c = 0; c < 9; c++) {
+      const colCells = Array.from({ length: 9 }, (_, k) => k * 9 + c)
+        .filter(i => newGrid[i] === 0 && newCands[i].includes(d));
+      if (colCells.length === 2) {
+        const [p, q] = colCells;
+        for (const hinge of [p, q]) {
+          const other = hinge === p ? q : p;
+          const row = Math.floor(hinge / 9);
+          const candidatesX = Array.from({ length: 9 }, (_, k) => row * 9 + k)
+            .filter(i => i !== hinge && !colCells.includes(i)
+                         && newGrid[i] === 0 && newCands[i].includes(d));
+          for (const x of candidatesX) {
+            const simGrid = newGrid.slice();
+            const simCands = newCands.map(arr => arr.slice());
+            simGrid[x] = d; simCands[x] = []; updatePeers(simGrid, simCands, x, d);
+            simGrid[other] = d; simCands[other] = []; updatePeers(simGrid, simCands, other, d);
+
+            const used = [hinge, other, x].map(boxCoord).map(o => `${o.br},${o.bc}`);
+            const allBoxes = [];
+            for (let br = 0; br < 3; br++) for (let bc = 0; bc < 3; bc++) allBoxes.push(`${br},${bc}`);
+            const unused = allBoxes.find(b => !used.includes(b));
+            if (unused) {
+              const [ubr, ubc] = unused.split(',').map(Number);
+              const boxCells = [];
+              for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++)
+                boxCells.push((ubr * 3 + dr) * 9 + (ubc * 3 + dc));
+              const hasCandidate = boxCells.some(i =>
+                (simGrid[i] === 0 && simCands[i].includes(d)) || simGrid[i] === d
+              );
+              if (!hasCandidate) {
+                newCands[x] = newCands[x].filter(v => v !== d);
+                progressed = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return { newGrid, newCands, progressed };
+}
+
 // -------------------- Strategy Registry --------------------
 const strategies = [
   { name: 'Solved Cell', weight: 0.1, fn: nakedSingleStrategy },
@@ -973,13 +1117,13 @@ const strategies = [
   { name: 'Locked Candidate', weight: 1, fn: lockedCandidateStrategy },
   { name: 'Box/Line Reduction', weight: 2, fn: boxLineReductionStrategy },
 
-  { name: 'Y-Wing', weight: 6, fn: yWingStrategy },
   { name: 'X-Wing', weight: 5, fn: xWingStrategy },
   { name: 'Chute Remote Pairs', weight: 4, fn: chuteRemotePairsStrategy },
   { name: 'Simple Coloring Rule 2', weight: 4, fn: simpleColorRule2Strategy },
   { name: 'Simple Coloring Rule 4', weight: 4, fn: simpleColorRule4Strategy },
-  
-  // TODO: Y-Wing
+  { name: 'Y-Wing', weight: 6, fn: yWingStrategy },
+  { name: 'Rectangle Elimination', weight: 4, fn: rectangleEliminationStrategy },
+
   { name: 'Unique Rectangle', weight: 3, fn: uniqueRectangleStrategy }
 ];
 
