@@ -478,7 +478,8 @@ function xWingStrategy(grid, candidates) {
 
 /**
  * Unique Rectangle strategy: detect a nearly bi-value rectangle and eliminate extra candidates.
- */
+ * Pretty sure this is broken btw. havent verified. 
+*/
 function uniqueRectangleStrategy(grid, candidates) {
   const newGrid = grid.slice();
   const newCands = candidates.map(arr => arr.slice());
@@ -708,6 +709,10 @@ function simpleColorRule4Strategy(grid, candidates) {
  * in the same chute (three-box row or column), remote (not in same unit),
  * then use the unused box in that chute to eliminate a candidate from
  * cells seen by both.
+ * 
+ * Pretty sure this is broken tbh
+ * 
+ * 
  */
 function chuteRemotePairsStrategy(grid, candidates) {
   const newGrid = grid.slice();
