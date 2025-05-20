@@ -1,6 +1,23 @@
-// sudokuGrader.js
-// Rebuilt to use modular strategy functions and a central solving engine
+/*
 
+"Vibe-coded" by Peter Brown in May 2025.
+
+This is the sudoku board solver and scorer.
+
+AI wrote all of this code, so I will not try to claim it as my own.
+
+You can 100% use this code anyway you'd like under the following conditions:
+1. You cannot claim it as your own.
+2. You cannot prevent others from using it through any legal means or otherwise.
+
+Notes:
+This is broken is many places including:
+- the pointing pairs debug highlighting
+- likely the chute remote pairs
+- likely the unique rectangles
+
+
+*/ 
 // -------------------- Helpers --------------------
 
 /**
@@ -222,13 +239,13 @@ function pointingPairStrategy(grid, candidates) {
       }
       for (let d = 1; d <= 9; d++) {
         const pos = boxIdxs.filter(i => newCands[i].includes(d));
-        const rows = new Set(pos.map(i => Math.floor(i / 9)));
-        if (pos.length >= 2 && rows.size === 1) {
-          // Highlight the pair cells used as support
+        const rowSet = new Set(pos.map(i => Math.floor(i / 9)));
+        if (pos.length === 2 && rowSet.size === 1) {
+          // Highlight only the two pointing pair cells
           pos.forEach(i => {
             highlight[i] = { bgColor: 'lightblue', textColor: 'black' };
           });
-          const r = [...rows][0];
+          const r = [...rowSet][0];
           for (let j = r * 9; j < r * 9 + 9; j++) {
             if (!boxIdxs.includes(j) && newGrid[j] === 0 && newCands[j].includes(d)) {
               newCands[j] = newCands[j].filter(x => x !== d);
@@ -236,13 +253,13 @@ function pointingPairStrategy(grid, candidates) {
             }
           }
         }
-        const cols = new Set(pos.map(i => i % 9));
-        if (pos.length >= 2 && cols.size === 1) {
-          // Highlight the pair cells used as support
+        const colSet = new Set(pos.map(i => i % 9));
+        if (pos.length === 2 && colSet.size === 1) {
+          // Highlight only the two pointing pair cells
           pos.forEach(i => {
             highlight[i] = { bgColor: 'lightblue', textColor: 'black' };
           });
-          const c = [...cols][0];
+          const c = [...colSet][0];
           for (let j = c; j < 81; j += 9) {
             if (!boxIdxs.includes(j) && newGrid[j] === 0 && newCands[j].includes(d)) {
               newCands[j] = newCands[j].filter(x => x !== d);
@@ -433,12 +450,15 @@ function nakedTripleStrategy(grid, candidates) {
 /**
  * X-Wing strategy: find matching candidate pairs in two rows and eliminate 
  * the candidate from other rows in the same columns.
+ * 
+ * 
  */
+// Global seenXWings set for X-Wing tracking
+const seenXWings = new Set();
 function xWingStrategy(grid, candidates) {
   const newGrid = grid.slice();
   const newCands = candidates.map(arr => arr.slice());
   let progressed = false;
-  const seenXWings = new Set();
   for (let d = 1; d <= 9; d++) {
     const rowPositions = Array.from({ length: 9 }, () => []);
     for (let r = 0; r < 9; r++) {
@@ -463,6 +483,39 @@ function xWingStrategy(grid, candidates) {
             if (r3 === r1 || r3 === r2) continue;
             [c1, c2].forEach(c => {
               const idx = r3 * 9 + c;
+              if (newGrid[idx] === 0 && newCands[idx].includes(d)) {
+                newCands[idx] = newCands[idx].filter(x => x !== d);
+                progressed = true;
+              }
+            });
+          }
+        }
+      }
+    }
+    // Column-based X-Wing detection
+    const colPositions = Array.from({ length: 9 }, () => []);
+    for (let c = 0; c < 9; c++) {
+      for (let r = 0; r < 9; r++) {
+        const idx = r * 9 + c;
+        if (newGrid[idx] === 0 && newCands[idx].includes(d)) {
+          colPositions[c].push(r);
+        }
+      }
+    }
+    for (let c1 = 0; c1 < 8; c1++) {
+      if (colPositions[c1].length !== 2) continue;
+      for (let c2 = c1 + 1; c2 < 9; c2++) {
+        if (colPositions[c2].length === 2 &&
+            colPositions[c1][0] === colPositions[c2][0] &&
+            colPositions[c1][1] === colPositions[c2][1]) {
+          const [r1, r2] = colPositions[c1];
+          const key = `${d}-col-${c1}-${c2}-${r1}-${r2}`;
+          if (seenXWings.has(key)) continue;
+          seenXWings.add(key);
+          for (let c3 = 0; c3 < 9; c3++) {
+            if (c3 === c1 || c3 === c2) continue;
+            [r1, r2].forEach(r => {
+              const idx = r * 9 + c3;
               if (newGrid[idx] === 0 && newCands[idx].includes(d)) {
                 newCands[idx] = newCands[idx].filter(x => x !== d);
                 progressed = true;
@@ -808,21 +861,124 @@ function chuteRemotePairsStrategy(grid, candidates) {
   return { newGrid, newCands, progressed };
 }
 
+/**
+ * Y-Wing strategy: find a wing of alternating strong/weak links starting from bi-value cells
+ * and eliminate candidates by contradiction inference.
+ */
+function yWingStrategy(grid, candidates) {
+  const newGrid = grid.slice();
+  const newCands = candidates.map(arr => arr.slice());
+  let progressed = false;
+  let highlight = {};
+
+  // 1. Collect all bi-value cells and index by their two candidates
+  const bivals = [];
+  for (let i = 0; i < 81; i++) {
+    if (grid[i] === 0 && newCands[i].length === 2) {
+      bivals.push(i);
+    }
+  }
+  // 2. Build strong links: pairs of bi-value cells in same unit sharing both candidates
+  const strongLinks = [];
+  for (let a = 0; a < bivals.length - 1; a++) {
+    for (let b = a + 1; b < bivals.length; b++) {
+      const i = bivals[a], j = bivals[b];
+      const candsA = newCands[i].slice().sort().join(',');
+      const candsB = newCands[j].slice().sort().join(',');
+      if (candsA === candsB) {
+        // ensure same row, col, or box
+        const r1 = Math.floor(i/9), c1 = i%9, r2 = Math.floor(j/9), c2 = j%9;
+        const sameRow = r1 === r2, sameCol = c1 === c2;
+        const br1 = Math.floor(r1/3), bc1 = Math.floor(c1/3);
+        const br2 = Math.floor(r2/3), bc2 = Math.floor(c2/3);
+        const sameBox = br1 === br2 && bc1 === bc2;
+        if (sameRow || sameCol || sameBox) {
+          strongLinks.push([i, j]);
+        }
+      }
+    }
+  }
+
+  // 3. Trace Y-Wings: for each strong link, follow weak links by alternation
+  function sharesUnit(i, j) {
+    if (Math.floor(i / 9) === Math.floor(j / 9)) return true;
+    if (i % 9 === j % 9) return true;
+    const br1 = Math.floor(i / 27), bc1 = Math.floor((i % 9) / 3);
+    const br2 = Math.floor(j / 27), bc2 = Math.floor((j % 9) / 3);
+    return br1 === br2 && bc1 === bc2;
+  }
+
+  // helper to find weak links of a cell: cells sharing one candidate but not both
+  function findWeak(i) {
+    const result = [];
+    const [d1, d2] = newCands[i];
+    for (let j of bivals) {
+      if (j === i) continue;
+      const c = newCands[j];
+      const common = c.filter(x => x === d1 || x === d2);
+      if (common.length === 1) {
+        // ensure not in same strong link cell already
+        result.push(j);
+      }
+    }
+    return result;
+  }
+
+  // search each strong link start
+  for (const [start, next] of strongLinks) {
+    const chain = [start, next];
+    let curr = next, prev = start, depth = 0;
+    while (depth < 8) { // limit chain length
+      const weak = findWeak(curr).filter(j => j !== prev);
+      if (weak.length === 0) break;
+      const w = weak[0];
+      chain.push(w);
+      prev = curr;
+      curr = w;
+      depth++;
+    }
+    // Check elimination: last chain cell's alternate digit
+    const lastCands = newCands[curr];
+    // If the chain length is odd, last link is so that the first candidate implies elimination
+    if (chain.length >= 3 && chain.length % 2 === 1) {
+      const elimDigit = lastCands[1];
+      // eliminate elimDigit from cells seeing both start and curr
+      for (let idx = 0; idx < 81; idx++) {
+        if (grid[idx] === 0 && newCands[idx].includes(elimDigit) &&
+            sharesUnit(idx, start) && sharesUnit(idx, curr)) {
+          newCands[idx] = newCands[idx].filter(x => x !== elimDigit);
+          highlight[idx] = { bgColor: 'lightcoral', textColor: 'black' };
+          progressed = true;
+        }
+      }
+      if (progressed) {
+        // highlight chain cells
+        chain.forEach(i => { highlight[i] = { bgColor: 'lightyellow', textColor: 'black' }; });
+        break;
+      }
+    }
+  }
+
+  return { newGrid, newCands, progressed, highlight };
+}
+
 // -------------------- Strategy Registry --------------------
 const strategies = [
   { name: 'Solved Cell', weight: 0.1, fn: nakedSingleStrategy },
+  { name: 'Hidden Single', weight: 1, fn: hiddenSingleStrategy },
   { name: 'Naked Pair', weight: 2, fn: nakedPairStrategy },
   { name: 'Naked Triple', weight: 3, fn: nakedTripleStrategy },
-  { name: 'Hidden Single', weight: 1, fn: hiddenSingleStrategy },
   // TODO: Naked/Hidden Quad
-  { name: 'Locked Candidate', weight: 1, fn: lockedCandidateStrategy },
   { name: 'Pointing Pair', weight: 1, fn: pointingPairStrategy },
+  { name: 'Locked Candidate', weight: 1, fn: lockedCandidateStrategy },
   { name: 'Box/Line Reduction', weight: 2, fn: boxLineReductionStrategy },
 
+  { name: 'Y-Wing', weight: 6, fn: yWingStrategy },
   { name: 'X-Wing', weight: 5, fn: xWingStrategy },
   { name: 'Chute Remote Pairs', weight: 4, fn: chuteRemotePairsStrategy },
   { name: 'Simple Coloring Rule 2', weight: 4, fn: simpleColorRule2Strategy },
   { name: 'Simple Coloring Rule 4', weight: 4, fn: simpleColorRule4Strategy },
+  
   // TODO: Y-Wing
   { name: 'Unique Rectangle', weight: 3, fn: uniqueRectangleStrategy }
 ];
