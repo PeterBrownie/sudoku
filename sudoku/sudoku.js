@@ -15,6 +15,73 @@ You can 100% use this code anyway you'd like under the following conditions:
 
 
 (() => {
+  const HISTORY_KEY = 'sudokuGameHistory';
+  let gameHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  let currentGameId = null;
+
+  function saveHistory() {
+    // Ensure all puzzles in history use 0 for blanks before saving
+    gameHistory.forEach(game => {
+      if (Array.isArray(game.originalPuzzle)) {
+        game.originalPuzzle = game.originalPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+      }
+      if (Array.isArray(game.currentPuzzle)) {
+        game.currentPuzzle = game.currentPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+      }
+      if (Array.isArray(game.solvedPuzzle)) {
+        game.solvedPuzzle = game.solvedPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+      }
+    });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(gameHistory));
+    renderHistoryGallery();
+  }
+
+  function startNewGameHistory(originalPuzzle, solvedPuzzle, difficulty) {
+    // Compute actual difficulty using sudokuGrader
+    const puzzleStr = originalPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+    let gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle
+      ? window.sudokuGrader.gradePuzzle(puzzleStr)
+      : { grade: difficulty };
+    // If gradeObj is not an object, fallback
+    if (typeof gradeObj !== 'object' || gradeObj === null) {
+      gradeObj = { grade: difficulty };
+    }
+    const actualDifficulty = gradeObj.grade;
+    const id = Date.now().toString();
+    currentGameId = id;
+    const game = {
+      id,
+      originalPuzzle: originalPuzzle.map(v => v === null ? '0' : v.toString()).join(''),
+      currentPuzzle: originalPuzzle.map(v => v === null ? '0' : v.toString()).join(''),
+      currentCandidates: candidates.map(set => Array.from(set)),
+      solvedPuzzle: solvedPuzzle.map(v => v === null ? '0' : v.toString()).join(''),
+      difficulty: actualDifficulty,
+      actions: [],
+      completionState: false,
+      lastMoveDate: new Date().toISOString()
+    };
+    gameHistory.push(game);
+    saveHistory();
+  }
+
+  function updateCurrentGameHistory(action) {
+    const game = gameHistory.find(g => g.id === currentGameId);
+    if (!game) return;
+    game.actions.push(action);
+    // Ensure 0 for blanks
+    game.currentPuzzle = puzzle.map(v => v === null ? '0' : v.toString()).join('');
+    game.currentCandidates = candidates.map(set => Array.from(set));
+    game.lastMoveDate = new Date().toISOString();
+    saveHistory();
+  }
+
+  function markGameCompleted() {
+    const game = gameHistory.find(g => g.id === currentGameId);
+    if (!game) return;
+    game.completionState = true;
+    game.lastMoveDate = new Date().toISOString();
+    saveHistory();
+  }
   const boardEl = document.getElementById('board');
   const padEl = document.getElementById('pad');
   const newGameBtn = document.getElementById('newGame');
@@ -109,6 +176,7 @@ You can 100% use this code anyway you'd like under the following conditions:
     solution = puzzleData.solution;
     puzzle = puzzleData.puzzle;
     clues = puzzleData.clues;
+    startNewGameHistory(puzzle, solution, diff);
     timerStarted = false;
 
     render();
@@ -237,6 +305,7 @@ You can 100% use this code anyway you'd like under the following conditions:
   function recordAction(action) {
     action.actionID = ++actionCounter;
     undoStack.push(action);
+    updateCurrentGameHistory(action);
     redoStack = [];
     updateUndoRedoButtons();
   }
@@ -499,6 +568,7 @@ You can 100% use this code anyway you'd like under the following conditions:
       if (puzzle.length === 81 && puzzle.some(cell => cell !== null) && isSolved() && hasGameStarted && !gameCompleted) {
         clearInterval(timerInterval); // Pause the timer after game is completed
         gameCompleted = true;
+        markGameCompleted();
         newGameBtn.classList.add("glow");
         startConfetti();
       } else if (!isSolved()) {
@@ -644,6 +714,7 @@ You can 100% use this code anyway you'd like under the following conditions:
       solution = puzzleData.solution;
       puzzle = puzzleData.puzzle;
       clues = puzzleData.clues;
+      startNewGameHistory(puzzle, solution, diff);
       // Instead of marking game as started, reset timer control:
       timerStarted = false; // reset timer; it hasn't started yet for the new puzzle
       
@@ -1029,6 +1100,134 @@ You can 100% use this code anyway you'd like under the following conditions:
     document.getElementById('undo').addEventListener('click', doUndo);
     document.getElementById('redo').addEventListener('click', doRedo);
 
+    // --- GAME HISTORY GALLERY LOGIC ---
+    const gallery = document.getElementById('historyGallery');
+    const galleryContent = gallery ? gallery.querySelector('.history-gallery-content') : null;
+
+    // NEW: Clear History button logic
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all game history?')) {
+          localStorage.removeItem(HISTORY_KEY);
+          gameHistory = [];
+          renderHistoryGallery();
+        }
+      });
+    }
+
+    function renderHistoryGallery() {
+      if (!galleryContent) return;
+      galleryContent.innerHTML = '';
+      // Show most recent first
+      const sorted = [...gameHistory].sort((a, b) => new Date(b.lastMoveDate) - new Date(a.lastMoveDate));
+      let lastDate = null;
+      sorted.forEach(game => {
+        const dateObj = new Date(game.lastMoveDate);
+        const dateStr = dateObj.toLocaleDateString();
+        if (dateStr !== lastDate) {
+          // Insert a heading for this date
+          const heading = document.createElement('div');
+          heading.className = 'history-date-heading';
+          heading.textContent = dateStr;
+          galleryContent.appendChild(heading);
+          lastDate = dateStr;
+        }
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        if (game.id === currentGameId) {
+          item.classList.add('selected');
+        }
+        // Show time, difficulty (to 2 decimals), and completion state with seconds
+        const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'});
+        const diffStr = typeof game.difficulty === 'number'
+          ? game.difficulty.toFixed(2)
+          : game.difficulty;
+        item.textContent = `${timeStr} | Diff: ${diffStr}${game.completionState ? ' ✔' : ''}`;
+        item.title = `Started: ${dateStr} ${timeStr}\nDifficulty: ${diffStr}\n${game.completionState ? 'Completed' : 'In Progress'}`;
+        item.addEventListener('click', () => {
+          loadGameFromHistory(game.id);
+        });
+        galleryContent.appendChild(item);
+      });
+    }
+
+    function loadGameFromHistory(gameId) {
+      const game = gameHistory.find(g => g.id === gameId);
+      if (!game) return;
+      // Restore puzzle, solution, clues, candidates
+      puzzle = game.currentPuzzle.split('').map(ch => ch === '0' ? null : Number(ch));
+      clues = game.originalPuzzle.split('').map(ch => ch !== '0');
+      candidates = game.currentCandidates.map(arr => new Set(arr));
+      // Try to restore solution if available
+      solution = game.solvedPuzzle ? game.solvedPuzzle.split('').map(ch => ch === '0' ? null : Number(ch)) : [];
+      currentGameId = game.id;
+      // Load previous game actions into undoStack so undo/redo keep working
+      undoStack = game.actions ? game.actions.slice() : [];
+      redoStack = [];
+      updateUndoRedoButtons();
+      // Reset timer and completion state
+      resetTimer();
+      gameCompleted = !!game.completionState;
+      hasGameStarted = true;
+      newGameBtn.classList.remove("glow");
+      // Update difficulty label
+      document.getElementById('diffLabel').textContent = `Difficulty: ${game.difficulty}`;
+      render();
+      renderHistoryGallery(); // ensure highlight updates
+    }
+
+    // Patch saveHistory and startNewGameHistory to update gallery
+    function saveHistory() {
+      // Ensure all puzzles in history use 0 for blanks before saving
+      gameHistory.forEach(game => {
+        if (Array.isArray(game.originalPuzzle)) {
+          game.originalPuzzle = game.originalPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+        }
+        if (Array.isArray(game.currentPuzzle)) {
+          game.currentPuzzle = game.currentPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+        }
+        if (Array.isArray(game.solvedPuzzle)) {
+          game.solvedPuzzle = game.solvedPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+        }
+      });
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(gameHistory));
+      renderHistoryGallery();
+    }
+    function startNewGameHistory(originalPuzzle, solvedPuzzle, difficulty) {
+      // Compute actual difficulty using sudokuGrader
+      const puzzleStr = originalPuzzle.map(v => v === null ? '0' : v.toString()).join('');
+      let gradeObj = window.sudokuGrader && window.sudokuGrader.gradePuzzle
+        ? window.sudokuGrader.gradePuzzle(puzzleStr)
+        : { grade: difficulty };
+      // If gradeObj is not an object, fallback
+      if (typeof gradeObj !== 'object' || gradeObj === null) {
+        gradeObj = { grade: difficulty };
+      }
+      const actualDifficulty = gradeObj.grade;
+      const id = Date.now().toString();
+      currentGameId = id;
+      const game = {
+        id,
+        originalPuzzle: originalPuzzle.map(v => v === null ? '0' : v.toString()).join(''),
+        currentPuzzle: originalPuzzle.map(v => v === null ? '0' : v.toString()).join(''),
+        currentCandidates: candidates.map(set => Array.from(set)),
+        solvedPuzzle: solvedPuzzle.map(v => v === null ? '0' : v.toString()).join(''),
+        difficulty: actualDifficulty,
+        actions: [],
+        completionState: false,
+        lastMoveDate: new Date().toISOString()
+      };
+      gameHistory.push(game);
+      saveHistory();
+    }
+
+    // After all event listeners and setup, render the gallery initially
+    renderHistoryGallery();
+
     // Start by generating an immediate puzzle for the selected difficulty.
     generate();
+
+    // --- Align sidebar and undo/redo with puzzle board ---
+    // Remove alignSidebarToBoard and related event listeners
   })();

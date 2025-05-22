@@ -284,6 +284,11 @@ button#newGame.glow {
   position: relative;
   display: inline-block;
 }
+.puzzle-area {
+    position: relative;
+    display: inline-block;
+    /* You may adjust margin/padding as needed */
+}
 .info-col {
   position: absolute;
   top: 120px;  /* adjusted to align with the top of the puzzle container */
@@ -296,8 +301,24 @@ button#newGame.glow {
   
 /* NEW: Style for left side info-col (Undo/Redo) */
 .info-col.left {
-  left: calc(50% - 245px);
-  /* Optional: adjust gap, alignment, or size as needed */
+  position: fixed;
+  /* Place to the right of the sidebar */
+  left: 44px;
+  /* Align top with puzzle board */
+  top: 0;
+  z-index: 2100;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-left: 0;
+  margin-top: 0;
+  gap: 8px;
+  pointer-events: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.info-col.left > * {
+  pointer-events: auto;
 }
 .timer {
   position: static;
@@ -652,4 +673,150 @@ button#undo:hover, button#redo:hover {
     color: grey;
     margin: 4px 0;
     text-align: center;
+}
+
+/* Undo/Redo vertical stack fixed on the far left, similar to info-col */
+.undo-redo-stack {
+  position: absolute;
+  left: -40px;
+  top: 20px; /* moved down to align with top row of puzzle */
+  z-index: 3100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: transparent; /* removed solid background for subtle appearance */
+  border-radius: 12px 0 0 12px;
+  /* box-shadow: 2px 0 12px #000a; */
+  padding: 16px 6px 16px 4px;
+  width: 44px;
+  min-height: 100px;
+}
+
+/* Sidebar gallery styles */
+.history-gallery {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 300px; /* Always fixed width */
+  background: #1e1e2e;
+  border-right: 2px solid #5a4d7f;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  transition: background 0.3s, box-shadow 0.3s, top 0.3s;
+  overflow: hidden;
+  opacity: 1;
+  margin-bottom: 0;
+  min-height: 50px;
+  max-height: none;
+}
+.history-gallery.collapsed {
+    background: transparent; /* fully transparent background */
+    box-shadow: none;
+    opacity: 1;
+    max-height: 15px;        /* collapse so that only header is visible */
+    border: none;
+}
+.history-gallery.collapsed .history-gallery-header {
+    color: grey;             /* header text and triangle in grey */
+}
+/* Ensure gallery items have a minimum height */
+.history-item {
+    min-height: 12px;
+}
+.history-gallery.expanded {
+  background: #23233a;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.22);
+}
+.history-gallery-header {
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  font-weight: bold;
+  user-select: none;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 22px;
+  min-height: 22px;
+  border: none;
+  background: none;
+  transition: color 0.2s, padding 0.2s;
+  padding-left: 16px;
+  gap: 8px;
+}
+.history-gallery-header .arrow {
+  font-size: 22px;
+  transition: transform 0.3s;
+  display: inline-block;
+}
+.history-gallery.expanded .history-gallery-header {
+  color: #fff;
+  border-bottom: 1px solid #5a4d7f;
+}
+.history-gallery.expanded .history-gallery-header .arrow {
+  transform: rotate(90deg);
+}
+.history-gallery:not(.expanded) .history-gallery-header .arrow {
+  transform: rotate(0deg);
+}
+.history-gallery-header .header-text {
+  font-size: 11px;
+  display: inline;
+}
+.history-gallery-content {
+  flex: 1 1 auto;
+  padding: 0 8px 10px 16px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  height: auto;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
+}
+.history-gallery.expanded .history-gallery-content {
+  max-height: 340px; /* Animate height */
+  opacity: 1;
+  pointer-events: auto;
+  padding-top: 10px;
+}
+.history-item {
+  background: #2a2a3a;
+  border-radius: 5px;
+  padding: 6px 8px;
+  color: #e0e0e0;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.2s, border 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-item:hover {
+  background: #3b3b5e;
+  border: 1px solid #5a4d7f;
+}
+.history-item.selected {
+  background: #5a4d7f;
+  color: #fff;
+  border: 1px solid #fff;
+}
+/* New: Date heading style for grouped history */
+.history-date-heading {
+  font-size: 13px;
+  color: #ffb366;
+  font-weight: bold;
+  margin: 10px 0 2px 0;
+  padding-left: 2px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px #000a;
 }
