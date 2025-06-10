@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Mode KenKen</title>
+  <style>
+    /* NEW: Prevent scrollbars and enforce box-sizing */
+    html, body {
+      overflow: hidden;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    :root {
+      --bg: #1e1e2e;
+      --cell-bg: #2a2a3e;
+      --text: #e0e0e0;
+      --border: #444;
+      --highlight: #3a3a5e;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+    }
+    header {
+      width: 100%;
+      padding: 1rem;
+      display: flex;
+      gap: 1rem;
+      background: var(--highlight);
+    }
+    header select, header button {
+      padding: 0.5rem;
+      border: none;
+      border-radius: 4px;
+      background: var(--cell-bg);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    /* New: spacing for placeholder icons */
+    header .icon {
+      margin-right: 0.5rem;
+    }
+    #board {
+      display: grid;
+      margin-top: 1rem;
+      background: var(--bg);
+      position: relative;
+    }
+    .cell {
+      position: relative;
+      /* Removed static border */
+      background: var(--cell-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: transparent;
+      color: #000; /* changed from var(--text) to dark color */
+      font-size: 1.2rem;
+      text-align: center;
+    }
+    /* Remove up/down spinner arrows for number inputs */
+    ::-webkit-outer-spin-button,
+    ::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    .cage-label {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: darkblue
+      
+    }
+    button.action {
+      margin: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      background: var(--cell-bg);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .candidates {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 0.7rem;
+      color: #000;
+    }
+    .cell.selected {
+      outline: 2px dashed #ff0; /* visual indicator for selection in notes mode */
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <label for="size">Size:</label>
+    <select id="size">
+      <option value="4">4×4</option>
+      <option value="5">5×5</option>
+      <option value="6" selected>6×6</option>
+      <option value="7">7×7</option>
+      <option value="8">8×8</option>
+    </select>
+    <!-- Removed placeholder letters -->
+    <button id="newGame">New Game</button>
+    <button class="action" id="reset">Reset</button>
+    <button class="action" id="check">Check</button>
+    <button id="toggleNotes">Notes Mode: Off</button>
+    <button id="randomizeColors">Randomize Colors</button>
+  </header>
+  <div id="board"></div>
+
+  <script>
+    let notesMode = false;
+    
+    // Generate a Latin square of size n
+    function generateLatinSquare(n) {
+      const base = Array.from({length: n}, (_, i) => i + 1);
+      const grid = [];
+      for (let r = 0; r < n; r++) {
+        grid.push(base.map((_, c) => ((r + c) % n) + 1));
+      }
+      // Shuffle rows
+      for (let i = n - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [grid[i], grid[j]] = [grid[j], grid[i]];
+      }
+      // Shuffle columns
+      for (let i = n - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        for (let r = 0; r < n; r++) {
+          [grid[r][i], grid[r][j]] = [grid[r][j], grid[r][i]];
+        }
+      }
+      return grid;
+    }
+
+    // Generate cages for the solution grid
+    function generateCages(grid) {
+      const n = grid.length;
+      const used = Array.from({length: n}, () => Array(n).fill(false));
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      const cages = [];
+
+      function neighbors(r, c) {
+        return dirs.map(([dr, dc]) => [r + dr, c + dc])
+          .filter(([rr, cc]) => rr >= 0 && rr < n && cc >= 0 && cc < n && !used[rr][cc]);
+      }
+
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (used[r][c]) continue;
+          const cage = [[r, c]];
+          used[r][c] = true;
+          // Modified: Prefer larger cages (size 2 or 3) 80% of the time, else single cell.
+          let targetSize = Math.random() < 0.8 ? (2 + Math.floor(Math.random() * 2)) : 1;
+          while (cage.length < targetSize) {
+            const avail = cage.flatMap(([rr, cc]) => neighbors(rr, cc));
+            if (!avail.length) break;
+            const [nr, nc] = avail[Math.floor(Math.random() * avail.length)];
+            used[nr][nc] = true;
+            cage.push([nr, nc]);
+          }
+
+          // Determine operation and target
+          const values = cage.map(([rr, cc]) => grid[rr][cc]);
+          let op, target;
+          if (cage.length === 1) {
+            op = '';
+            target = values[0];
+          } else {
+            const sum = values.reduce((a,b) => a+b, 0);
+            const prod = values.reduce((a,b) => a*b, 1);
+            const [a,b] = values;
+            const dif = Math.abs(a - b);
+            const div = Math.max(a,b) / Math.min(a,b);
+            const choices = [];
+            if (cage.length === 2) {
+              choices.push({op: '+', val: sum});
+              choices.push({op: '×', val: prod});
+              if (dif > 0) choices.push({op: '−', val: dif});
+              if (Number.isInteger(div)) choices.push({op: '÷', val: div});
+            } else {
+              choices.push({op: '+', val: sum});
+              choices.push({op: '×', val: prod});
+            }
+            const pick = choices[Math.floor(Math.random() * choices.length)];
+            op = pick.op;
+            target = pick.val;
+          }
+          cages.push({cells: cage, op, target});
+        }
+      }
+      return cages;
+    }
+
+    // Build puzzle object
+    function generatePuzzle(n) {
+      const solution = generateLatinSquare(n);
+      const cages = generateCages(solution);
+      return { size: n, solution, cages };
+    }
+
+    // Updated toggleNotes event listener: also clear any selected element
+    document.getElementById('toggleNotes').addEventListener('click', () => {
+      notesMode = !notesMode;
+      document.getElementById('toggleNotes').textContent = notesMode ? 'Notes Mode: On' : 'Notes Mode: Off';
+      // Clear selected cells when toggling notes mode
+      document.querySelectorAll('.cell.selected').forEach(cell => cell.classList.remove('selected'));
+    });
+
+    // Render the puzzle UI
+    function renderPuzzle(puzzle) {
+      const { size, cages } = puzzle;
+      const board = document.getElementById('board');
+      board.innerHTML = '';
+      board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+      board.style.width = `${size * 60}px`;
+      board.style.height = `${size * 60}px`;
+
+      // map to find cage for each cell
+      const map = Array.from({length: size}, () => Array(size).fill(null));
+      cages.forEach((c, i) => 
+        c.cells.forEach(([r, cx]) => map[r][cx] = i)
+      );
+
+      // Compute top-left cell for each cage
+      cages.forEach(cage => {
+        cage.minCell = cage.cells.reduce((min, cell) => {
+          if (!min) return cell;
+          const [r1, c1] = min;
+          const [r2, c2] = cell;
+          return (r2 < r1 || (r2 === r1 && c2 < c1)) ? cell : min;
+        }, null);
+      });
+
+      // Build adjacency graph: for each cage, collect neighboring cage indices
+      const adjacency = cages.map(() => new Set());
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const current = map[r][c];
+          const neighbors = [[r-1, c], [r+1, c], [r, c-1], [r, c+1]];
+          neighbors.forEach(([nr, nc]) => {
+            if(nr >= 0 && nr < size && nc >= 0 && nc < size) {
+              const neighborCage = map[nr][nc];
+              if(neighborCage !== current) {
+                adjacency[current].add(neighborCage);
+              }
+            }
+          });
+        }
+      }
+      // Define a palette of colors
+      const palette = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
+      // Order cages by descending degree (greedy color assignment)
+      const order = [...Array(cages.length).keys()].sort((a, b) => adjacency[b].size - adjacency[a].size);
+      
+      // NEW: Helper to generate random hex color
+      function generateRandomColor() {
+        return '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+      }
+      
+      // NEW: Use persistent palette (or default) and reassign colors ensuring no bordering conflicts
+      const defaultPalette = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
+      let persistentPalette = (window.lastColorScheme && window.lastColorScheme.length) ? window.lastColorScheme.slice() : defaultPalette.slice();
+      
+      order.forEach(i => {
+        const used = new Set();
+        adjacency[i].forEach(j => {
+          if(cages[j].cageColor) used.add(cages[j].cageColor);
+        });
+        let chosen = persistentPalette.find(color => !used.has(color));
+        if(!chosen) {
+          chosen = generateRandomColor();
+          persistentPalette.push(chosen);
+        }
+        cages[i].cageColor = chosen;
+      });
+      // Save updated persistent palette
+      window.lastColorScheme = persistentPalette;
+      
+      // Render each cell with updated dynamic borders, background, and assign dataset
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          const currentCage = map[r][c];
+          cell.dataset.cage = currentCage;  // NEW: store cage index for later updates
+          cell.style.background = cages[currentCage].cageColor;
+
+          // Set dynamic borders based on same-cage neighbors
+          const topWidth = (r === 0 || map[r - 1][c] !== currentCage) ? '2px' : '1px';
+          const leftWidth = (c === 0 || map[r][c - 1] !== currentCage) ? '2px' : '1px';
+          const bottomWidth = (r === size - 1 || map[r + 1][c] !== currentCage) ? '2px' : '1px';
+          const rightWidth = (c === size - 1 || map[r][c + 1] !== currentCage) ? '2px' : '1px';
+          cell.style.borderTop = `${topWidth} solid var(--border)`;
+          cell.style.borderLeft = `${leftWidth} solid var(--border)`;
+          cell.style.borderBottom = `${bottomWidth} solid var(--border)`;
+          cell.style.borderRight = `${rightWidth} solid var(--border)`;
+
+          // Only label the top-left most cell for the cage
+          const cage = cages[currentCage];
+          if (r === cage.minCell[0] && c === cage.minCell[1]) {
+            const label = document.createElement('div');
+            label.className = 'cage-label';
+            label.textContent = `${cage.target}${cage.op}`;
+            cell.appendChild(label);
+          }
+
+          // Create input and candidate elements
+          const input = document.createElement('input');
+          input.setAttribute('type', 'number');
+          input.setAttribute('min', '1');
+          input.setAttribute('max', size.toString());
+          // Updated keydown listener enforcing a single digit in normal mode
+          input.addEventListener('keydown', (e) => {
+            // Toggle notes mode with space bar
+            if (e.key === ' ') {
+              e.preventDefault();
+              notesMode = !notesMode;
+              document.getElementById('toggleNotes').textContent = notesMode ? 'Notes Mode: On' : 'Notes Mode: Off';
+              return;
+            }
+            // Allow standard control keys
+            const allowedKeys = ["Backspace", "ArrowLeft", "ArrowRight", "Delete", "Tab"];
+            if (allowedKeys.includes(e.key)) return;
+            if (notesMode) {
+              // Prevent adding notes to cells that already have a value
+              if (input.value.trim() !== "") {
+                e.preventDefault();
+                return;
+              }
+              // In notes mode, only allow digits 1 to size (disallow 0 and digits > size)
+              if (/^[1-9]$/.test(e.key) && parseInt(e.key, 10) <= size) {
+                e.preventDefault();
+                const candidatesDiv = cell.querySelector('.candidates');
+                let candidates = candidatesDiv.textContent.split(' ').filter(ch => ch.trim().length > 0);
+                if (candidates.includes(e.key)) {
+                  candidates = candidates.filter(ch => ch !== e.key);
+                } else {
+                  candidates.push(e.key);
+                  candidates.sort((a, b) => parseInt(a) - parseInt(b));
+                }
+                candidatesDiv.textContent = candidates.join(' ');
+              } else {
+                e.preventDefault();
+              }
+            } else {
+              // In normal mode, only allow digits 1 to size (disallow 0 and digits > size)
+              if (/^[1-9]$/.test(e.key) && parseInt(e.key, 10) <= size) {
+                e.preventDefault();
+                input.value = e.key;
+                // NEW: Clear candidates when a value is placed
+                cell.querySelector('.candidates').textContent = "";
+              } else {
+                e.preventDefault();
+              }
+            }
+          });
+          cell.appendChild(input);
+          // Create candidate container (always present)
+          const candidatesDiv = document.createElement('div');
+          candidatesDiv.className = 'candidates';
+          cell.appendChild(candidatesDiv);
+
+          // NEW: Toggle cell selection when clicked in notes mode.
+          cell.addEventListener('click', (e) => {
+            // Avoid toggling if clicking inside the input.
+            if(e.target.tagName.toLowerCase() === 'input') return;
+            if (notesMode) {
+              cell.classList.toggle('selected');
+            }
+          });
+          
+          board.appendChild(cell);
+        }
+      }
+    }
+
+    // Event hookups
+    document.getElementById('newGame').addEventListener('click', () => {
+      const n = parseInt(document.getElementById('size').value, 10);
+      window.currentPuzzle = generatePuzzle(n);
+      renderPuzzle(window.currentPuzzle);
+    });
+    document.getElementById('reset').addEventListener('click', () => renderPuzzle(window.currentPuzzle));
+    document.getElementById('check').addEventListener('click', () => {
+	const { size, solution } = window.currentPuzzle;
+	const inputs = Array.from(document.querySelectorAll('.cell input'));
+	let correct = 0, incorrect = 0, blank = 0;
+	for (let r = 0; r < size; r++) {
+		for (let c = 0; c < size; c++) {
+			const idx = r * size + c;
+			const value = inputs[idx].value.trim();
+			if (!value) {
+				blank++;
+			} else if (parseInt(value, 10) === solution[r][c]) {
+				correct++;
+			} else {
+				incorrect++;
+			}
+		}
+	}
+	let message = `Correct: ${correct}\nIncorrect: ${incorrect}\nBlank: ${blank}`;
+	if (correct === size * size) {
+		message += "\nSolved!";
+		alert(message);
+		// NEW: Trigger celebration confetti animation when solved
+		celebrate();
+	} else {
+		alert(message);
+	}
+});
+// NEW: Confetti celebration function
+function celebrate() {
+  const canvas = document.createElement("canvas");
+  canvas.id = "confettiCanvas";
+  canvas.style.position = "fixed";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.pointerEvents = "none";
+  canvas.style.zIndex = 9999;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  
+  let confettiPieces = [];
+  const colors = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb"];
+  for (let i = 0; i < 100; i++) {
+    confettiPieces.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      r: Math.random() * 6 + 2,
+      d: Math.random() * 10 + 5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.random() * 10 - 10,
+      tiltAngle: Math.random() * 0.07 + 0.05
+    });
+  }
+  
+  let angle = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    confettiPieces.forEach((p) => {
+      ctx.beginPath();
+      ctx.lineWidth = p.r;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt, p.y);
+      ctx.lineTo(p.x, p.y + p.tilt);
+      ctx.stroke();
+    });
+    update();
+    angle += 0.01;
+    requestAnimationFrame(draw);
+  }
+  
+  function update() {
+    for (let i = 0; i < confettiPieces.length; i++) {
+      let p = confettiPieces[i];
+      p.y += Math.cos(angle + p.d) + 1 + p.r / 2;
+      p.x += Math.sin(angle);
+      p.tiltAngle += 0.05;
+      p.tilt = Math.sin(p.tiltAngle) * 15;
+      if (p.y > canvas.height) {
+        p.y = -10;
+        p.x = Math.random() * canvas.width;
+      }
+    }
+  }
+  
+  draw();
+  setTimeout(() => {
+    canvas.remove();
+  }, 5000);
+}
+    // NEW: Randomize Colors button event handler:
+    document.getElementById('randomizeColors').addEventListener('click', () => {
+      // Define a palette of distinct base colors.
+      const palette = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
+      
+      // Helper functions to compare colors.
+      function hexToRgb(hex) {
+        hex = hex.replace("#", "");
+        return {
+          r: parseInt(hex.substring(0,2), 16),
+          g: parseInt(hex.substring(2,4), 16),
+          b: parseInt(hex.substring(4,6), 16)
+        };
+      }
+      function colorDistance(hex1, hex2) {
+        let c1 = hexToRgb(hex1), c2 = hexToRgb(hex2);
+        return Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
+      }
+      function isSimilar(color1, color2, threshold = 50) {
+        return colorDistance(color1, color2) < threshold;
+      }
+      // Shuffle function.
+      function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+      }
+      let shuffledPalette = palette.slice();
+      shuffle(shuffledPalette);
+      
+      // Rebuild cell-to-cage map and adjacency graph.
+      const cages = window.currentPuzzle.cages;
+      const size = window.currentPuzzle.size;
+      const cellMap = Array.from({length: size}, () => Array(size).fill(null));
+      cages.forEach((c, i) => c.cells.forEach(([r, cx]) => cellMap[r][cx] = i));
+      const adjacency = cages.map(() => new Set());
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const current = cellMap[r][c];
+          [[r-1, c], [r+1, c], [r, c-1], [r, c+1]].forEach(([nr, nc]) => {
+            if(nr >= 0 && nr < size && nc >= 0 && nc < size) {
+              const neighbor = cellMap[nr][nc];
+              if(neighbor !== current) {
+                adjacency[current].add(neighbor);
+              }
+            }
+          });
+        }
+      }
+      // Assign each cage a new color in greedy order, avoiding similar colors on adjacent cages.
+      const order = [...Array(cages.length).keys()].sort((a, b) => adjacency[b].size - adjacency[a].size);
+      order.forEach(i => {
+        let chosenColor = null;
+        for (let color of shuffledPalette) {
+          let conflict = false;
+          adjacency[i].forEach(adj => {
+            if(cages[adj].cageColor && isSimilar(cages[adj].cageColor, color)) {
+              conflict = true;
+            }
+          });
+          if(!conflict) {
+            chosenColor = color;
+            break;
+          }
+        }
+        if(!chosenColor) {  // fallback in case all colors are too similar
+          chosenColor = shuffledPalette[Math.floor(Math.random() * shuffledPalette.length)];
+        }
+        cages[i].cageColor = chosenColor;
+      });
+      
+      // Update each cell's background based on its cage's new color.
+      const board = document.getElementById('board');
+      Array.from(board.children).forEach(cell => {
+        const cageIndex = cell.dataset.cage;
+        if(cageIndex !== undefined) {
+          cell.style.background = window.currentPuzzle.cages[cageIndex].cageColor;
+        }
+      });
+      // NEW: Save the current color scheme to window.lastColorScheme
+      window.lastColorScheme = window.currentPuzzle.cages.map(c => c.cageColor);
+    });
+
+    // init
+    document.getElementById('newGame').click();
+  </script>
+</body>
+</html>
