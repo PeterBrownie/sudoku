@@ -207,12 +207,13 @@
       return grid;
     }
 
-    // Generate cages for the solution grid
+    // Generate cages for the solution grid (limit single-cell cages to max 3)
     function generateCages(grid) {
       const n = grid.length;
       const used = Array.from({length: n}, () => Array(n).fill(false));
       const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
       const cages = [];
+      let singletons = 0; // NEW: track single-cell cages
 
       function neighbors(r, c) {
         return dirs.map(([dr, dc]) => [r + dr, c + dc])
@@ -224,8 +225,12 @@
           if (used[r][c]) continue;
           const cage = [[r, c]];
           used[r][c] = true;
-          // Modified: Prefer larger cages (size 2 or 3) 80% of the time, else single cell.
+          // Prefer larger cages (size 2 or 3) 80% of the time, else single cell —
+          // but cap singletons at 3 total across the board.
           let targetSize = Math.random() < 0.8 ? (2 + Math.floor(Math.random() * 2)) : 1;
+          if (targetSize === 1 && singletons >= 3) {
+            targetSize = 2 + Math.floor(Math.random() * 2);
+          }
           while (cage.length < targetSize) {
             const avail = cage.flatMap(([rr, cc]) => neighbors(rr, cc));
             if (!avail.length) break;
@@ -240,6 +245,7 @@
           if (cage.length === 1) {
             op = '';
             target = values[0];
+            singletons++; // NEW
           } else {
             const sum = values.reduce((a,b) => a+b, 0);
             const prod = values.reduce((a,b) => a*b, 1);
@@ -273,12 +279,180 @@
       return { size: n, solution, cages };
     }
 
-    // Updated toggleNotes event listener: also clear any selected element
+    // ===================== UNIQUE-SOLUTION SOLVER =====================
+    function countSingletonCages(cages) {
+      return cages.reduce((acc, c) => acc + (c.cells.length === 1 ? 1 : 0), 0);
+    }
+
+    function buildCageIndex(puzzle) {
+      const { size, cages } = puzzle;
+      const cageOf = Array.from({length: size}, () => Array(size).fill(-1));
+      cages.forEach((cg, idx) => cg.cells.forEach(([r, c]) => { cageOf[r][c] = idx; }));
+      return { cageOf };
+    }
+
+    function cagePartialFeasible(cage, grid, size) {
+      const vals = [];
+      let unassigned = 0;
+      for (const [r, c] of cage.cells) {
+        const v = grid[r][c];
+        if (v == null) unassigned++; else vals.push(v);
+      }
+      const op = cage.op;
+      const target = cage.target;
+
+      // Helper min/max sums/products for remaining cells
+      const minSum = (k) => k * 1;
+      const maxSum = (k) => k * size;
+      const minProd = (k) => 1; // minimal positive product
+      const maxProd = (k) => Math.pow(size, k);
+
+      if (cage.cells.length === 1) {
+        // Single cell must equal target exactly when assigned
+        if (unassigned === 1) return true; // domain pruning handled elsewhere
+        return vals[0] === target;
+      }
+
+      if (op === '+') {
+        const s = vals.reduce((a,b)=>a+b,0);
+        if (s > target) return false;
+        if (s + maxSum(unassigned) < target) return false;
+        if (unassigned === 0) return s === target;
+        return true;
+      }
+      if (op === '×') {
+        const p = vals.reduce((a,b)=>a*b,1);
+        if (target % p !== 0) return false;
+        if (p > target) return false;
+        if (p * maxProd(unassigned) < target) return false;
+        if (unassigned === 0) return p === target;
+        return true;
+      }
+      if (op === '−') {
+        // exactly two cells
+        if (cage.cells.length !== 2) return false;
+        if (vals.length === 2) return Math.abs(vals[0]-vals[1]) === target;
+        if (vals.length === 1) {
+          const a = vals[0];
+          // exists b in [1..size] s.t. |a-b| == target
+          const b1 = a - target;
+          const b2 = a + target;
+          if ((b1 >= 1 && b1 <= size) || (b2 >= 1 && b2 <= size)) return true;
+          return false;
+        }
+        return true;
+      }
+      if (op === '÷') {
+        // exactly two cells
+        if (cage.cells.length !== 2) return false;
+        if (vals.length === 2) {
+          const a = Math.max(vals[0], vals[1]);
+          const b = Math.min(vals[0], vals[1]);
+          return b !== 0 && a % b === 0 && a / b === target;
+        }
+        if (vals.length === 1) {
+          const a = vals[0];
+          // exists b in [1..size] s.t. either a/b==target or b/a==target (integer)
+          for (let b = 1; b <= size; b++) {
+            if ((b !== 0 && a % b === 0 && a / b === target) || (a !== 0 && b % a === 0 && b / a === target)) {
+              return true;
+            }
+          }
+          return false;
+        }
+        return true;
+      }
+      return true;
+    }
+
+    function getDomainForCell(r, c, grid, puzzle, cageOf) {
+      const n = puzzle.size;
+      const dom = [];
+      const usedRow = new Set();
+      const usedCol = new Set();
+      for (let k = 0; k < n; k++) {
+        if (grid[r][k] != null) usedRow.add(grid[r][k]);
+        if (grid[k][c] != null) usedCol.add(grid[k][c]);
+      }
+      const cage = puzzle.cages[cageOf[r][c]];
+      for (let v = 1; v <= n; v++) {
+        if (usedRow.has(v) || usedCol.has(v)) continue;
+        grid[r][c] = v;
+        if (cagePartialFeasible(cage, grid, n)) dom.push(v);
+        grid[r][c] = null;
+      }
+      return dom;
+    }
+
+    function countSolutions(puzzle, limit=2) {
+      const n = puzzle.size;
+      const grid = Array.from({length: n}, () => Array(n).fill(null));
+      const { cageOf } = buildCageIndex(puzzle);
+
+      function selectMRV() {
+        let best = null;
+        let bestDom = null;
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            if (grid[r][c] == null) {
+              const dom = getDomainForCell(r, c, grid, puzzle, cageOf);
+              if (dom.length === 0) return { r, c, dom };
+              if (!best || dom.length < bestDom.length) {
+                best = { r, c };
+                bestDom = dom;
+                if (dom.length === 1) return { r, c, dom };
+              }
+            }
+          }
+        }
+        return best ? { ...best, dom: bestDom } : null;
+      }
+
+      let solutions = 0;
+      function backtrack() {
+        if (solutions >= limit) return; // early stop
+        const pick = selectMRV();
+        if (!pick) { solutions++; return; }
+        const { r, c, dom } = pick;
+        for (const v of dom) {
+          grid[r][c] = v;
+          backtrack();
+          if (solutions >= limit) return;
+          grid[r][c] = null;
+        }
+      }
+
+      backtrack();
+      return solutions;
+    }
+
+    function createUniquePuzzle(n) {
+      // Try multiple times to get a unique-solution puzzle with <=3 singletons
+      let attempts = 0;
+      while (attempts < 200) {
+        attempts++;
+        const candidate = generatePuzzle(n);
+        if (countSingletonCages(candidate.cages) > 3) continue; // safety if generator exceeded
+        const solCount = countSolutions(candidate, 2);
+        if (solCount === 1) return candidate;
+      }
+      // Fallback: return last generated puzzle even if not unique (should be rare)
+      return generatePuzzle(n);
+    }
+    // =================== END UNIQUE-SOLUTION SOLVER ====================
+
+    // Updated toggleNotes event listener to update glow state
     document.getElementById('toggleNotes').addEventListener('click', () => {
       notesMode = !notesMode;
       document.getElementById('toggleNotes').textContent = notesMode ? 'Notes Mode: On' : 'Notes Mode: Off';
-      // Clear selected cells when toggling notes mode
-      document.querySelectorAll('.cell.selected').forEach(cell => cell.classList.remove('selected'));
+      if (notesMode) {
+        document.querySelectorAll('.cell').forEach(cell => cell.style.boxShadow = '');
+        document.querySelectorAll('.cell.selected').forEach(cell => cell.classList.remove('selected'));
+      } else {
+        document.querySelectorAll('.cell.selected').forEach(cell => {
+          cell.style.boxShadow = "0 0 10px 4px yellow";
+        });
+      }
     });
 
     // Render the puzzle UI
@@ -360,7 +534,7 @@
           cell.dataset.row = r;
           cell.dataset.col = c;
           const currentCage = map[r][c];
-          cell.dataset.cage = currentCage;  // NEW: store cage index for later updates
+          cell.dataset.cage = currentCage  // NEW: store cage index for later updates
           cell.style.background = cages[currentCage].cageColor;
 
           // Set dynamic borders based on same-cage neighbors
@@ -450,10 +624,17 @@
           // NEW: Toggle cell selection when clicked
           cell.addEventListener('click', (e) => {
             const board = document.getElementById('board');
-            // Always clear previous selections even in notes mode
-            board.querySelectorAll('.cell.selected').forEach(c => c.classList.remove('selected'));
+            // Clear previous selections and remove glow
+            board.querySelectorAll('.cell.selected').forEach(c => {
+              c.classList.remove('selected');
+              c.style.boxShadow = '';
+            });
             cell.classList.add('selected');
-            // New: Focus the input element so key events are registered
+            // Apply glow if notes mode is NOT enabled
+            if (!notesMode) {
+              cell.style.boxShadow = "0 0 10px 4px yellow";
+            }
+            // Focus the input element so key events are registered
             const inputEl = cell.querySelector('input');
             if (inputEl) inputEl.focus();
           });
@@ -468,7 +649,7 @@
     // Event hookups
     document.getElementById('newGame').addEventListener('click', () => {
       const n = parseInt(document.getElementById('size').value, 10);
-      window.currentPuzzle = generatePuzzle(n);
+      window.currentPuzzle = createUniquePuzzle(n);
       renderPuzzle(window.currentPuzzle);
     });
     document.getElementById('reset').addEventListener('click', () => renderPuzzle(window.currentPuzzle));
@@ -653,7 +834,11 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     notesMode = !notesMode;
     document.getElementById('toggleNotes').textContent = notesMode ? 'Notes Mode: On' : 'Notes Mode: Off';
-    // Removed: clearing of selected cells
+    document.querySelectorAll('.cell.selected').forEach(cell => {
+      cell.style.boxShadow = notesMode ? "" : "0 0 10px 4px yellow";
+    });
+    // Ensure the mouse cursor remains visible
+    document.body.style.cursor = 'default';
   }
 });
 
