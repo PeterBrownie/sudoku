@@ -452,6 +452,28 @@
         .bookmark-btn:hover { background: rgba(0,0,0,0.8); color: #f5c542; border-color: rgba(255,255,255,0.4); }
         .bookmark-btn.bookmarked { opacity: 1; color: #f5c542; }
 
+        .reroll-btn {
+            position: absolute;
+            top: 6px;
+            left: 34px;
+            width: 22px;
+            height: 22px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.5);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.15s, background 0.15s, color 0.15s;
+            z-index: 10;
+        }
+        .cell:hover .reroll-btn { opacity: 1; }
+        .reroll-btn:hover { background: rgba(0,0,0,0.8); color: #7ee8a2; border-color: rgba(255,255,255,0.4); }
+
         #expand-overlay {
             display: none;
             position: fixed;
@@ -1440,6 +1462,14 @@ function buildGrid() {
         bookmarkBtn.addEventListener('click', e => { e.stopPropagation(); addBookmark(i); });
         cell.appendChild(bookmarkBtn);
 
+        const rerollBtn = document.createElement('button');
+        rerollBtn.className = 'reroll-btn';
+        rerollBtn.title = 'Reroll colors';
+        rerollBtn.innerHTML = '⚄';
+        rerollBtn.addEventListener('mousedown', e => e.stopPropagation());
+        rerollBtn.addEventListener('click', e => { e.stopPropagation(); rerollColors(i); });
+        cell.appendChild(rerollBtn);
+
         const expandBtn = document.createElement('button');
         expandBtn.className = 'expand-btn';
         expandBtn.title = 'Expand';
@@ -1610,6 +1640,14 @@ function restoreBookmarks() {
         bookmarkIdSeq = seq;
         if (bookmarks.length) renderBookmarksPanel();
     } catch {}
+}
+
+// ── Reroll colors ────────────────────────────────────────────────────────
+function rerollColors(cellIdx) {
+    const g = genomes[cellIdx];
+    if (!g) return;
+    g.palette = g.palette.map(() => randomColor());
+    renderCell(cellIdx);
 }
 
 // ── Core bookmark actions ─────────────────────────────────────────────────
