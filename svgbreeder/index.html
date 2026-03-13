@@ -660,6 +660,7 @@
         <div id="expand-svg-wrapper"></div>
     </div>
     <div id="expand-controls">
+        <button id="expand-save" title="Save as PNG">↓</button>
         <button id="expand-reset" title="Reset zoom (double-click)">⊡</button>
         <button id="expand-close" title="Close (Esc)">✕</button>
     </div>
@@ -1799,7 +1800,10 @@ function fitExpandView() {
     applyExpandTransform();
 }
 
+let expandIdx = -1;
+
 function openExpand(idx) {
+    expandIdx = idx;
     const wrapper = document.getElementById('expand-svg-wrapper');
     const svg = genomeToSVG(genomes[idx], EX_W, EX_H, `ex`)
         .replace('xMidYMid slice', 'xMidYMid meet');
@@ -1808,6 +1812,40 @@ function openExpand(idx) {
     if (svgEl) { svgEl.style.width = EX_W + 'px'; svgEl.style.height = EX_H + 'px'; }
     document.getElementById('expand-overlay').classList.add('visible');
     fitExpandView();
+}
+
+async function saveExpandAsPng() {
+    if (expandIdx < 0) return;
+    const btn = document.getElementById('expand-save');
+    btn.textContent = '…';
+    btn.disabled = true;
+
+    const PNG_W = 3840, PNG_H = 2160;
+    // Render SVG at expand resolution so feTurbulence matches what's on screen,
+    // then upscale to PNG dimensions on the canvas.
+    const svgStr = genomeToSVG(genomes[expandIdx], EX_W, EX_H, 'save');
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = PNG_W;
+        canvas.height = PNG_H;
+        canvas.getContext('2d').drawImage(img, 0, 0, PNG_W, PNG_H);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(pngBlob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(pngBlob);
+            a.download = `svgbreeder_${Date.now()}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            btn.textContent = '↓';
+            btn.disabled = false;
+        }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); btn.textContent = '↓'; btn.disabled = false; };
+    img.src = url;
 }
 
 function closeExpand() {
@@ -1868,6 +1906,7 @@ exViewport.addEventListener('wheel', e => {
 // Double-click to fit
 exViewport.addEventListener('dblclick', fitExpandView);
 
+document.getElementById('expand-save').addEventListener('click', saveExpandAsPng);
 document.getElementById('expand-reset').addEventListener('click', fitExpandView);
 document.getElementById('expand-close').addEventListener('click', closeExpand);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeExpand(); });
