@@ -1128,7 +1128,7 @@ function getInstances(layer, cx, cy, W, H) {
         case 'scatter': {
             const count = Math.round(p.count) || 5;
             const result = [];
-            const seed = (cx * 1000 + cy * 997) | 0;
+            const seed = ((cx / W) * 1000 + (cy / H) * 997) | 0;
             for (let i = 0; i < count; i++) {
                 result.push([
                     pseudoRand(seed + i * 3) * W,
