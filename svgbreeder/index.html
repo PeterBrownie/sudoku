@@ -1,0 +1,1922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Breeder</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #111;
+            overflow: hidden;
+            display: flex;
+        }
+
+        #sidebar-wrapper {
+            display: flex;
+            height: 100%;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        #sidebar {
+            width: 280px;
+            height: 100%;
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #ccc;
+            font-family: sans-serif;
+            font-size: 14px;
+        }
+
+        #sidebar.collapsed {
+            width: 0 !important;
+            padding: 0;
+            border: none;
+            overflow: hidden;
+        }
+
+        #sidebar-resizer {
+            width: 12px;
+            height: 100%;
+            background: #2a2a2a;
+            cursor: col-resize;
+            user-select: none;
+            z-index: 100;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 12px;
+            transition: background 0.2s;
+        }
+        #sidebar-resizer:hover, body.resizing-sidebar #sidebar-resizer {
+            background: #222;
+        }
+
+        #toggleSidebar {
+            width: 20px;
+            height: 40px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 3px;
+            color: #888;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            flex-shrink: 0;
+            z-index: 101;
+            transition: background 0.15s, color 0.15s;
+        }
+        #toggleSidebar:hover { background: #444; color: #fff; border-color: #666; }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .nav-link {
+            color: #4a9eff;
+            text-decoration: none;
+            font-size: 12px;
+            padding: 3px 6px;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+        .nav-link:hover { background: #222; border-color: #555; }
+
+        .controls-content {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        #bookmarks-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-top: 1px solid #2a2a2a;
+            padding-top: 12px;
+            margin-top: 4px;
+        }
+
+        .bookmarks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .bookmarks-header span.count { color: #4a9eff; }
+
+        #bookmark-folder-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 0 2px;
+        }
+        #bookmark-folder-name {
+            flex: 1;
+            font-size: 10px;
+            color: #555;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: default;
+        }
+        #bookmark-folder-btn {
+            flex-shrink: 0;
+            background: transparent;
+            border: 1px solid #333;
+            color: #555;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 1px 5px;
+            line-height: 1.4;
+        }
+        #bookmark-folder-btn:hover { border-color: #666; color: #aaa; }
+        #bookmark-folder-btn { display: none; } /* hidden in Firefox */
+        .fs-supported #bookmark-folder-btn { display: block; }
+
+        #bookmarks-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+        }
+
+        .bookmarks-empty {
+            grid-column: 1 / -1;
+            color: #3a3a3a;
+            font-size: 11px;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .bookmark-thumb {
+            position: relative;
+            cursor: pointer;
+            border: 2px solid #333;
+            border-radius: 3px;
+            overflow: hidden;
+            aspect-ratio: 16 / 9;
+        }
+        .bookmark-thumb:hover { border-color: #666; }
+        .bookmark-thumb.selected { border-color: #4a9eff; }
+        .bookmark-thumb svg { width: 100%; height: 100%; display: block; }
+
+        .bookmark-del {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            width: 16px;
+            height: 16px;
+            background: rgba(0,0,0,0.75);
+            border: none;
+            color: #888;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 9px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            padding: 0;
+        }
+        .bookmark-thumb:hover .bookmark-del { display: flex; }
+        .bookmark-del:hover { color: #fff; background: rgba(200,50,50,0.8); }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #222;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+
+        .control-group-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        label .label-text {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted #555;
+        }
+
+        label .label-text::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 0;
+            top: calc(100% + 6px);
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #ccc;
+            font-size: 11px;
+            font-weight: normal;
+            line-height: 1.45;
+            padding: 6px 9px;
+            border-radius: 5px;
+            width: 190px;
+            white-space: normal;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 200;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        label .label-text:hover::after {
+            opacity: 1;
+        }
+
+        label.checkbox-label {
+            justify-content: flex-start;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        label.checkbox-label input[type="checkbox"] {
+            accent-color: #4a9eff;
+            width: 13px;
+            height: 13px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            background: transparent;
+            accent-color: #4a9eff;
+        }
+
+        input[type="number"] {
+            background: #333;
+            border: 1px solid #444;
+            color: white;
+            padding: 4px;
+            border-radius: 4px;
+            width: 60px;
+        }
+
+        .value-display {
+            color: #4a9eff;
+            font-size: 12px;
+            min-width: 32px;
+            text-align: right;
+        }
+
+        button.action-btn {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 9px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            width: 100%;
+        }
+        button.action-btn:hover { background: #3b82d6; }
+        button.action-btn:active { background: #2563eb; }
+
+        button.action-btn.secondary {
+            background: #2a2a2a;
+            border: 1px solid #444;
+        }
+        button.action-btn.secondary:hover { background: #333; border-color: #666; }
+
+        button.action-btn:disabled {
+            background: #222;
+            border: 1px solid #333;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .help-text {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* Grid */
+        #grid-container {
+            flex-grow: 1;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 90%;
+            height: 90%;
+            gap: 4px;
+        }
+
+        .cell {
+            position: relative;
+            cursor: grab;
+            overflow: hidden;
+            background: #111;
+            box-sizing: content-box;
+        }
+
+        .cell::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid #333;
+            pointer-events: none;
+            z-index: 1;
+            transition: border-color 0.15s;
+        }
+
+        .cell:hover::before { border-color: #666; }
+
+        .cell.selected::before {
+            border-color: #4a9eff;
+            border-width: 4px;
+        }
+
+        .cell svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        body.panning .cell { cursor: grabbing; }
+
+        .expand-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 22px;
+            height: 22px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.65);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.15s, background 0.15s;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .cell:hover .expand-btn { opacity: 1; }
+        .expand-btn:hover { background: rgba(0,0,0,0.8); color: #fff; border-color: rgba(255,255,255,0.4); }
+
+        .bookmark-btn {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 22px;
+            height: 22px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.5);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.15s, background 0.15s, color 0.15s;
+            z-index: 10;
+        }
+        .cell:hover .bookmark-btn { opacity: 1; }
+        .bookmark-btn:hover { background: rgba(0,0,0,0.8); color: #f5c542; border-color: rgba(255,255,255,0.4); }
+        .bookmark-btn.bookmarked { opacity: 1; color: #f5c542; }
+
+        #expand-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #060606;
+            z-index: 2000;
+        }
+        #expand-overlay.visible { display: block; }
+
+        #expand-viewport {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            cursor: grab;
+        }
+        body.expand-panning #expand-viewport { cursor: grabbing; }
+
+        #expand-svg-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+        #expand-svg-wrapper svg { display: block; }
+
+        #expand-controls {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            display: flex;
+            gap: 6px;
+            z-index: 2001;
+            pointer-events: none;
+        }
+        #expand-controls button {
+            pointer-events: auto;
+            width: 32px;
+            height: 32px;
+            background: rgba(30,30,30,0.85);
+            border: 1px solid #444;
+            color: #bbb;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        #expand-controls button:hover { background: rgba(60,60,60,0.95); color: #fff; border-color: #777; }
+
+        #expand-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: rgba(255,255,255,0.2);
+            pointer-events: none;
+            z-index: 2001;
+            white-space: nowrap;
+        }
+
+        .cell-label {
+            position: absolute;
+            bottom: 4px;
+            right: 6px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .cell.selected .cell-label {
+            color: #4a9eff;
+        }
+    </style>
+</head>
+<body>
+
+<div id="sidebar-wrapper">
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2>SVG Breeder</h2>
+            <!-- <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="picbreeder.html" class="nav-link">Picbreeder</a>
+                <a href="biomorphs.html" class="nav-link">Biomorphs</a>
+            </div> -->
+        </div>
+
+        <div class="controls-content">
+
+            <div class="control-group">
+                <div class="control-group-title">Evolution</div>
+                <label>
+                    <span class="label-text" data-tooltip="How many independent mutations are applied to each child. Higher = more varied offspring per generation.">Mutations</span>
+                    <span class="value-display" id="mutationsVal">5</span>
+                </label>
+                <input type="range" id="mutations" min="1" max="20" value="5">
+
+                <label>
+                    <span class="label-text" data-tooltip="How far numeric parameters (size, position, color, opacity) can shift per mutation. Low = subtle drift. High = wild leaps.">Param Range</span>
+                    <span class="value-display" id="paramRangeVal">0.5</span>
+                </label>
+                <input type="range" id="paramRange" min="0.05" max="2.0" step="0.05" value="0.5">
+
+                <label>
+                    <span class="label-text" data-tooltip="Chance of structural changes: swapping layer types, blend modes, arrangements, or adding/removing palette colors.">Structure Rate</span>
+                    <span class="value-display" id="structureRateVal">0.3</span>
+                </label>
+                <input type="range" id="structureRate" min="0.0" max="1.0" step="0.05" value="0.3">
+
+                <label>
+                    <span class="label-text" data-tooltip="Maximum number of layers a pattern can have. More layers = richer compositions, but slower to render.">Max Layers</span>
+                    <span class="value-display" id="maxLayersVal">8</span>
+                </label>
+                <input type="range" id="maxLayers" min="2" max="20" value="8">
+            </div>
+
+            <button class="action-btn" id="restartBtn">Restart (New Random)</button>
+
+            <div class="control-group">
+                <div class="control-group-title">Export Selected</div>
+                <button class="action-btn secondary" id="copyBtn" disabled>Copy SVG Code</button>
+                <button class="action-btn secondary" id="downloadBtn" disabled>Download SVG</button>
+                <div class="help-text" id="exportHelp">Click a cell to select it, then click again to evolve.</div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-group-title">Advanced Effects</div>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="feat-turbulence" checked>
+                    <span class="label-text" data-tooltip="Warps layers with fractal noise, creating organic flowing distortion on any pattern or shape.">Displacement</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="feat-dash" checked>
+                    <span class="label-text" data-tooltip="Adds dash/gap patterns to strokes — turns wave lines, zigzags, and hexgrids into dotted or dashed textures.">Dashes</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="feat-blur" checked>
+                    <span class="label-text" data-tooltip="Blurs a layer before compositing, creating soft glows and atmospheric depth.">Blur</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="feat-colormatrix" checked>
+                    <span class="label-text" data-tooltip="Rotates hue and shifts saturation on a layer independently from the palette.">Color Shift</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="feat-mask" checked>
+                    <span class="label-text" data-tooltip="Applies a gradient mask to a layer, fading it radially or linearly — creates vignettes and directional reveals.">Mask</span>
+                </label>
+            </div>
+
+            <div class="help-text" style="color:#555; font-size:11px;">
+                Click once to select &bull; Click selected to evolve &bull; Center cell = parent
+            </div>
+
+            <div id="bookmarks-section">
+                <div class="bookmarks-header">
+                    <span>Bookmarks</span>
+                    <span class="count" id="bookmark-count"></span>
+                </div>
+                <div id="bookmark-folder-row">
+                    <span id="bookmark-folder-name">📥 Saving to Downloads</span>
+                    <button id="bookmark-folder-btn" title="Change save folder">⋯</button>
+                </div>
+                <div id="bookmarks-grid">
+                    <div class="bookmarks-empty">Star a pattern to save it here.</div>
+                </div>
+                <button class="action-btn secondary" id="breedFromBtn" disabled>Breed From Selected</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="sidebar-resizer">
+        <button id="toggleSidebar" title="Toggle sidebar">«</button>
+    </div>
+</div>
+
+<div id="expand-overlay">
+    <div id="expand-viewport">
+        <div id="expand-svg-wrapper"></div>
+    </div>
+    <div id="expand-controls">
+        <button id="expand-reset" title="Reset zoom (double-click)">⊡</button>
+        <button id="expand-close" title="Close (Esc)">✕</button>
+    </div>
+    <div id="expand-hint">Scroll to zoom &bull; Drag to pan &bull; Double-click to fit &bull; Esc to close</div>
+</div>
+
+<div id="grid-container">
+    <div id="grid"></div>
+</div>
+
+<script>
+// ─── Genome utilities ──────────────────────────────────────────────────────
+
+function rand(min, max) { return min + Math.random() * (max - min); }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function gauss() {
+    // Box-Muller
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+const TYPES = ['circle', 'ellipse', 'rect', 'polygon', 'path',
+               'dots_grid', 'stripes', 'crosshatch', 'checkerboard', 'waves', 'zigzag', 'hexgrid'];
+const TILING_TYPES = new Set(['dots_grid', 'stripes', 'crosshatch', 'checkerboard', 'waves', 'zigzag', 'hexgrid']);
+const ARRANGEMENTS = ['single', 'grid', 'radial', 'scatter'];
+const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'color-dodge', 'difference', 'hard-light'];
+
+function randomColor() {
+    return { h: rand(0, 360), s: rand(30, 100), l: rand(20, 80) };
+}
+
+function colorString(c, alpha = 1) {
+    return `hsla(${c.h.toFixed(1)},${c.s.toFixed(1)}%,${c.l.toFixed(1)}%,${alpha.toFixed(3)})`;
+}
+
+function randomFill(paletteLen) {
+    return {
+        type: pick(['solid', 'linear', 'radial']),
+        paletteIdx: randInt(0, paletteLen - 1),
+        paletteIdx2: randInt(0, paletteLen - 1),
+        alpha: rand(0.3, 1.0),
+        angle: rand(0, 360)
+    };
+}
+
+function randomStroke(paletteLen) {
+    return {
+        paletteIdx: randInt(0, paletteLen - 1),
+        width: rand(0, 0.015),
+        alpha: rand(0.0, 0.8)
+    };
+}
+
+function randomArrangementParams(arrangement) {
+    switch (arrangement) {
+        case 'single': return {};
+        case 'grid': return { nx: randInt(2, 5), ny: randInt(2, 5) };
+        case 'radial': return { count: randInt(3, 12) };
+        case 'scatter': return { count: randInt(3, 12) };
+        default: return {};
+    }
+}
+
+function randomLayer(paletteLen) {
+    const type = pick(TYPES);
+    const arrangement = pick(ARRANGEMENTS);
+    const layer = {
+        type,
+        cx: rand(0, 1),
+        cy: rand(0, 1),
+        params: randomParams(type),
+        fill: randomFill(paletteLen),
+        stroke: randomStroke(paletteLen),
+        opacity: rand(0.4, 1.0),
+        blendMode: pick(BLEND_MODES),
+        transform: { rotate: rand(0, 360), scaleX: rand(0.3, 2.0), scaleY: rand(0.3, 2.0) },
+        arrangement,
+        arrangementParams: randomArrangementParams(arrangement)
+    };
+    return layer;
+}
+
+function randomParams(type) {
+    switch (type) {
+        case 'circle':      return { r: rand(0.04, 0.35) };
+        case 'ellipse':     return { rx: rand(0.04, 0.4), ry: rand(0.04, 0.4) };
+        case 'rect':        return { w: rand(0.05, 0.5), h: rand(0.05, 0.5), rx: rand(0, 0.1) };
+        case 'polygon':     return { sides: randInt(3, 8), r: rand(0.04, 0.35) };
+        case 'path':        return { pts: Array.from({length: randInt(3,5)}, () => [rand(0,1), rand(0,1)]) };
+        // ── tiling types (pixel-space params, relative to width) ──
+        case 'dots_grid':   return { spacing: rand(3, 70), r: rand(0.5, 18), jitter: rand(0, 0.4) };
+        case 'stripes':     return { spacing: rand(2, 60), lineWidth: rand(0.3, 28), angle: rand(0, 180) };
+        case 'crosshatch':  return { spacing: rand(2, 55), lineWidth: rand(0.2, 9), angle: rand(0, 85) };
+        case 'checkerboard':return { size: rand(3, 65) };
+        case 'waves':       return { spacing: rand(2, 120), amplitude: rand(1, 28), frequency: rand(0.5, 5), lineWidth: rand(0.3, 9) };
+        case 'zigzag':      return { spacing: rand(2, 65), amplitude: rand(2, 32), lineWidth: rand(0.3, 9), angle: rand(0, 60) };
+        case 'hexgrid':     return { size: rand(3, 65), lineWidth: rand(0.2, 7), filled: Math.random() < 0.4 };
+        default:            return {};
+    }
+}
+
+function randomGenome(numLayers = null) {
+    const paletteSize = randInt(3, 5);
+    const palette = Array.from({length: paletteSize}, randomColor);
+    const layers = numLayers ?? randInt(2, 6);
+    const bgType = pick(['solid', 'linear', 'radial']);
+    return {
+        palette,
+        background: {
+            type: bgType,
+            paletteIdx: 0,
+            paletteIdx2: 1,
+            angle: rand(0, 360)
+        },
+        layers: Array.from({length: layers}, () => randomLayer(paletteSize))
+    };
+}
+
+// ─── SVG Generation ───────────────────────────────────────────────────────
+
+function genomeToSVG(genome, W = 640, H = 360, prefix = 'x', loose = false) {
+    let localCounter = 0;
+    const makeGradientId = () => `${prefix}g${++localCounter}`;
+    const defs = [];
+    const bodyParts = [];
+
+    bodyParts.push(renderBackground(genome, W, H, defs, makeGradientId));
+    for (const layer of genome.layers) {
+        bodyParts.push(renderLayer(layer, genome.palette, W, H, defs, makeGradientId));
+    }
+
+    const defsBlock = defs.length ? `<defs>${defs.join('')}</defs>` : '';
+    const overflowAttr = loose ? ' overflow="visible"' : '';
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"${overflowAttr}>${defsBlock}${bodyParts.join('')}</svg>`;
+}
+
+function getFeatureFlags() {
+    return {
+        turbulence:  document.getElementById('feat-turbulence').checked,
+        dash:        document.getElementById('feat-dash').checked,
+        blur:        document.getElementById('feat-blur').checked,
+        colorMatrix: document.getElementById('feat-colormatrix').checked,
+        mask:        document.getElementById('feat-mask').checked,
+    };
+}
+
+// Builds a single chained SVG filter for blur, displacement, and color-shift effects.
+// Returns the filter attribute string (empty if no effects).
+function buildLayerFilter(layer, defs, makeGradientId) {
+    const hasDisplace = layer.displace != null;
+    const hasBlur     = layer.blur != null;
+    const hasColor    = layer.colorShift != null;
+    if (!hasDisplace && !hasBlur && !hasColor) return '';
+
+    const fid = makeGradientId();
+    const steps = [];
+    let cur = 'SourceGraphic';
+
+    if (hasDisplace) {
+        const { scale, baseFreq, octaves } = layer.displace;
+        steps.push(`<feTurbulence type="fractalNoise" baseFrequency="${baseFreq.toFixed(4)}" numOctaves="${Math.round(octaves)}" result="noise"/>`);
+        steps.push(`<feDisplacementMap in="${cur}" in2="noise" scale="${scale.toFixed(1)}" xChannelSelector="R" yChannelSelector="G" result="disp"/>`);
+        cur = 'disp';
+    }
+    if (hasBlur) {
+        steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${layer.blur.toFixed(2)}" result="blr"/>`);
+        cur = 'blr';
+    }
+    if (hasColor) {
+        const { hueRotate, saturate } = layer.colorShift;
+        if (hueRotate != null) {
+            steps.push(`<feColorMatrix in="${cur}" type="hueRotate" values="${hueRotate.toFixed(1)}" result="hued"/>`);
+            cur = 'hued';
+        }
+        if (saturate != null) {
+            steps.push(`<feColorMatrix in="${cur}" type="saturate" values="${saturate.toFixed(2)}" result="sat"/>`);
+        }
+    }
+
+    defs.push(`<filter id="${fid}" x="-30%" y="-30%" width="160%" height="160%">${steps.join('')}</filter>`);
+    return `filter="url(#${fid})"`;
+}
+
+// Builds a luminance mask (radial or linear gradient) for a layer.
+// Returns the mask attribute string (empty if no mask).
+function buildLayerMask(layer, W, H, defs, makeGradientId) {
+    if (!layer.mask) return '';
+    const { type, cx, cy, r, angle } = layer.mask;
+    const gid = makeGradientId();
+    const mid = makeGradientId();
+
+    if (type === 'radial') {
+        const mcx = (cx ?? 0.5) * W, mcy = (cy ?? 0.5) * H;
+        const mr  = (r  ?? 0.5) * Math.max(W, H);
+        defs.push(`<radialGradient id="${gid}" cx="${mcx.toFixed(1)}" cy="${mcy.toFixed(1)}" r="${mr.toFixed(1)}" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="white"/><stop offset="100%" stop-color="black"/></radialGradient>`);
+    } else {
+        const rad = (angle ?? 0) * Math.PI / 180;
+        const dx = Math.cos(rad) * W / 2, dy = Math.sin(rad) * H / 2;
+        defs.push(`<linearGradient id="${gid}" x1="${(W/2-dx).toFixed(1)}" y1="${(H/2-dy).toFixed(1)}" x2="${(W/2+dx).toFixed(1)}" y2="${(H/2+dy).toFixed(1)}" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="white"/><stop offset="100%" stop-color="black"/></linearGradient>`);
+    }
+    defs.push(`<mask id="${mid}"><rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${gid})"/></mask>`);
+    return `mask="url(#${mid})"`;
+}
+
+function resolveGradient(palette, fill, S, defs, makeGradientId) {
+    const c1 = colorString(palette[fill.paletteIdx % palette.length], fill.alpha);
+    const c2 = colorString(palette[fill.paletteIdx2 % palette.length], fill.alpha);
+    const id = makeGradientId();
+    if (fill.type === 'linear') {
+        const rad = (fill.angle || 0) * Math.PI / 180;
+        const dx = Math.cos(rad) * 0.5, dy = Math.sin(rad) * 0.5;
+        defs.push(`<linearGradient id="${id}" x1="${(0.5-dx)*100}%" y1="${(0.5-dy)*100}%" x2="${(0.5+dx)*100}%" y2="${(0.5+dy)*100}%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient>`);
+    } else {
+        defs.push(`<radialGradient id="${id}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></radialGradient>`);
+    }
+    return `url(#${id})`;
+}
+
+function fillAttr(palette, fill, S, defs, makeGradientId) {
+    if (!fill) return 'none';
+    if (fill.type === 'solid') {
+        return colorString(palette[fill.paletteIdx % palette.length], fill.alpha);
+    }
+    return resolveGradient(palette, fill, S, defs, makeGradientId);
+}
+
+function renderBackground(genome, W, H, defs, makeGradientId) {
+    const bg = genome.background;
+    const palette = genome.palette;
+    if (bg.type === 'solid') {
+        const c = colorString(palette[bg.paletteIdx % palette.length]);
+        return `<rect width="${W}" height="${H}" fill="${c}"/>`;
+    }
+    const fill = { type: bg.type, paletteIdx: bg.paletteIdx, paletteIdx2: bg.paletteIdx2, alpha: 1, angle: bg.angle };
+    const f = fillAttr(palette, fill, W, defs, makeGradientId);
+    return `<rect width="${W}" height="${H}" fill="${f}"/>`;
+}
+
+function shapePathForType(type, params, W) {
+    switch (type) {
+        case 'circle': {
+            const r = params.r * W;
+            return `<circle cx="0" cy="0" r="${r.toFixed(2)}"/>`;
+        }
+        case 'ellipse': {
+            return `<ellipse cx="0" cy="0" rx="${(params.rx*W).toFixed(2)}" ry="${(params.ry*W).toFixed(2)}"/>`;
+        }
+        case 'rect': {
+            const w = params.w * W, h = params.h * W;
+            const rx = (params.rx || 0) * W;
+            return `<rect x="${(-w/2).toFixed(2)}" y="${(-h/2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${rx.toFixed(2)}"/>`;
+        }
+        case 'polygon': {
+            const sides = Math.round(params.sides) || 5;
+            const r = params.r * W;
+            const pts = [];
+            for (let i = 0; i < sides; i++) {
+                const a = (i / sides) * 2 * Math.PI - Math.PI / 2;
+                pts.push(`${(r*Math.cos(a)).toFixed(2)},${(r*Math.sin(a)).toFixed(2)}`);
+            }
+            return `<polygon points="${pts.join(' ')}"/>`;
+        }
+        case 'path': {
+            const pts = params.pts || [[0,0],[0.5,0],[1,0.5],[0.5,1]];
+            const scaled = pts.map(p => [p[0]*W - W/2, p[1]*W - W/2]);
+            if (scaled.length < 2) return '';
+            let d = `M ${scaled[0][0].toFixed(1)} ${scaled[0][1].toFixed(1)}`;
+            for (let i = 1; i < scaled.length; i++) {
+                d += ` L ${scaled[i][0].toFixed(1)} ${scaled[i][1].toFixed(1)}`;
+            }
+            d += ' Z';
+            return `<path d="${d}"/>`;
+        }
+        default: return '';
+    }
+}
+
+// ── Tiling layer renderer ─────────────────────────────────────────────────
+
+function renderTilingLayer(layer, palette, W, H, defs, makeGradientId) {
+    const color = fillAttr(palette, layer.fill, W, defs, makeGradientId);
+    const opacity = (layer.opacity ?? 1).toFixed(3);
+    const blend = layer.blendMode || 'normal';
+    const p = layer.params;
+    const pid = makeGradientId();
+    const dashAttr = layer.dash
+        ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"`
+        : '';
+
+    let result = '';
+    switch (layer.type) {
+
+        case 'dots_grid': {
+            const sp = Math.max(p.spacing, 2);
+            const r  = Math.min(p.r, sp * 0.49);
+            const jitter = (p.jitter || 0) * sp * 0.45;
+            const tileW = sp * 2, tileH = sp * 2;
+            const dots = [];
+            for (let row = 0; row < 2; row++) {
+                for (let col = 0; col < 2; col++) {
+                    const jx = pseudoRand(row * 7 + col * 13) * jitter * 2 - jitter;
+                    const jy = pseudoRand(row * 7 + col * 13 + 1) * jitter * 2 - jitter;
+                    dots.push(`<circle cx="${(col * sp + sp/2 + jx).toFixed(2)}" cy="${(row * sp + sp/2 + jy).toFixed(2)}" r="${r.toFixed(2)}" fill="${color}"/>`);
+                }
+            }
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${tileW}" height="${tileH}" patternUnits="userSpaceOnUse">${dots.join('')}</pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+
+        case 'stripes': {
+            const sp = Math.max(p.spacing, 1);
+            const lw = Math.min(p.lineWidth, sp * 0.98);
+            const angle = (p.angle || 0).toFixed(1);
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${sp}" height="${sp}" patternUnits="userSpaceOnUse" patternTransform="rotate(${angle})"><rect x="0" y="0" width="${lw.toFixed(2)}" height="${sp}" fill="${color}"/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+
+        case 'crosshatch': {
+            const sp = Math.max(p.spacing, 1);
+            const lw = (p.lineWidth || 1).toFixed(2);
+            const angle = (p.angle || 0).toFixed(1);
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${sp}" height="${sp}" patternUnits="userSpaceOnUse" patternTransform="rotate(${angle})"><line x1="0" y1="0" x2="0" y2="${sp}" stroke="${color}" stroke-width="${lw}"${dashAttr}/><line x1="0" y1="0" x2="${sp}" y2="0" stroke="${color}" stroke-width="${lw}"${dashAttr}/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+
+        case 'checkerboard': {
+            const sz = Math.max(p.size, 1);
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${sz*2}" height="${sz*2}" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="${sz}" height="${sz}" fill="${color}"/><rect x="${sz}" y="${sz}" width="${sz}" height="${sz}" fill="${color}"/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+
+        case 'waves': {
+            const sp = Math.max(p.spacing, 2);
+            const amp = p.amplitude || 8;
+            const freq = p.frequency || 1;
+            const lw = (p.lineWidth || 2).toFixed(2);
+            const tileW = W / Math.max(freq, 0.01);
+            const step = 3;
+            let d = `M 0 ${sp / 2}`;
+            for (let x = step; x <= tileW + step; x += step) {
+                const y = sp / 2 + amp * Math.sin((x / tileW) * Math.PI * 2);
+                d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+            }
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${tileW.toFixed(2)}" height="${sp}" patternUnits="userSpaceOnUse"><path d="${d}" fill="none" stroke="${color}" stroke-width="${lw}"${dashAttr}/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+
+        case 'zigzag': {
+            const sp = Math.max(p.spacing, 2);
+            const amp = p.amplitude || 12;
+            const lw  = (p.lineWidth || 2).toFixed(2);
+            const angle = p.angle || 0;
+            const period = amp * 2;
+            const midY = sp / 2;
+            const pts = `0,${midY} ${(period/4).toFixed(1)},${(midY - amp).toFixed(1)} ${(period*3/4).toFixed(1)},${(midY + amp).toFixed(1)} ${period.toFixed(1)},${midY}`;
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${period.toFixed(2)}" height="${sp}" patternUnits="userSpaceOnUse"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${lw}" stroke-linejoin="miter"${dashAttr}/></pattern>`);
+            const cx = W / 2, cy = H / 2;
+            result = `<g transform="rotate(${angle.toFixed(1)},${cx},${cy})"><rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/></g>`;
+            break;
+        }
+
+        case 'hexgrid': {
+            const size = Math.max(p.size, 2);
+            const lw   = (p.lineWidth || 1.5).toFixed(2);
+            const filled = p.filled;
+            const hexW = size * Math.sqrt(3);
+            const hexH = size * 2;
+            const rowH = hexH * 0.75;
+            const hexes = [];
+            for (let row = -Math.ceil(H / rowH) - 1; row * rowH < H * 2 + hexH; row++) {
+                for (let col = -Math.ceil(W / hexW) - 1; col * hexW < W * 2 + hexW; col++) {
+                    const cx = col * hexW + (row % 2 !== 0 ? hexW / 2 : 0);
+                    const cy = row * rowH;
+                    const pts = [];
+                    for (let i = 0; i < 6; i++) {
+                        const a = (Math.PI / 180) * (60 * i - 30);
+                        pts.push(`${(cx + size * Math.cos(a)).toFixed(2)},${(cy + size * Math.sin(a)).toFixed(2)}`);
+                    }
+                    const fillVal = filled ? color : 'none';
+                    hexes.push(`<polygon points="${pts.join(' ')}" fill="${fillVal}" stroke="${color}" stroke-width="${lw}"${dashAttr}/>`);
+                }
+            }
+            result = `<g>${hexes.join('')}</g>`;
+            break;
+        }
+
+        default: return '';
+    }
+
+    const filterAttr = buildLayerFilter(layer, defs, makeGradientId);
+    const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
+    return `<g opacity="${opacity}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${result}</g>`;
+}
+
+function renderLayer(layer, palette, W, H, defs, makeGradientId) {
+    if (TILING_TYPES.has(layer.type)) {
+        return renderTilingLayer(layer, palette, W, H, defs, makeGradientId);
+    }
+
+    const cx = layer.cx * W, cy = layer.cy * H;
+    const fillStr = fillAttr(palette, layer.fill, W, defs, makeGradientId);
+    const strokeColor = layer.stroke && layer.stroke.width > 0
+        ? colorString(palette[layer.stroke.paletteIdx % palette.length], layer.stroke.alpha)
+        : 'none';
+    const strokeWidth = layer.stroke ? (layer.stroke.width * W).toFixed(2) : '0';
+    const opacity = (layer.opacity ?? 1).toFixed(3);
+    const blend = layer.blendMode || 'normal';
+    const t = layer.transform || {};
+    const rotate = t.rotate || 0;
+    const scaleX = t.scaleX || 1, scaleY = t.scaleY || 1;
+
+    const dashAttr = layer.dash
+        ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"`
+        : '';
+    const attrs = `fill="${fillStr}" stroke="${strokeColor}" stroke-width="${strokeWidth}" opacity="${opacity}" style="mix-blend-mode:${blend}"${dashAttr}`;
+    const shapeEl = shapePathForType(layer.type, layer.params, W);
+    if (!shapeEl) return '';
+
+    const filterAttr = buildLayerFilter(layer, defs, makeGradientId);
+    const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
+
+    const instances = getInstances(layer, cx, cy, W, H);
+    const parts = instances.map(([ix, iy, iExtra]) => {
+        const transform = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${(rotate + (iExtra||0)).toFixed(2)}) scale(${scaleX.toFixed(3)},${scaleY.toFixed(3)})`;
+        return `<g transform="${transform}" ${attrs}>${shapeEl}</g>`;
+    });
+    const inner = parts.join('');
+    return (filterAttr || maskAttr)
+        ? `<g ${filterAttr} ${maskAttr}>${inner}</g>`
+        : inner;
+}
+
+function getInstances(layer, cx, cy, W, H) {
+    const arr = layer.arrangement || 'single';
+    const p = layer.arrangementParams || {};
+    switch (arr) {
+        case 'single': return [[cx, cy, 0]];
+        case 'grid': {
+            const nx = Math.round(p.nx) || 3, ny = Math.round(p.ny) || 3;
+            const result = [];
+            for (let iy = 0; iy < ny; iy++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    result.push([ (ix / (nx - 1 || 1)) * W, (iy / (ny - 1 || 1)) * H, 0 ]);
+                }
+            }
+            return result;
+        }
+        case 'radial': {
+            const count = Math.round(p.count) || 6;
+            const result = [];
+            for (let i = 0; i < count; i++) {
+                const a = (i / count) * 2 * Math.PI;
+                const dist = Math.min(cx, cy, W-cx, H-cy) * 0.5;
+                result.push([ cx + Math.cos(a) * dist, cy + Math.sin(a) * dist, (i / count) * 360 ]);
+            }
+            return result;
+        }
+        case 'scatter': {
+            const count = Math.round(p.count) || 5;
+            const result = [];
+            const seed = (cx * 1000 + cy * 997) | 0;
+            for (let i = 0; i < count; i++) {
+                result.push([
+                    pseudoRand(seed + i * 3) * W,
+                    pseudoRand(seed + i * 3 + 1) * H,
+                    pseudoRand(seed + i * 3 + 2) * 360
+                ]);
+            }
+            return result;
+        }
+        default: return [[cx, cy, 0]];
+    }
+}
+
+// Simple deterministic pseudo-random 0..1 (LCG, faster than sin-based)
+function pseudoRand(seed) {
+    const s = Math.imul(seed | 0, 1664525) + 1013904223 | 0;
+    return (s >>> 0) / 0xFFFFFFFF;
+}
+
+// ─── Mutation ─────────────────────────────────────────────────────────────
+
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+function nudge(v, range, lo = -Infinity, hi = Infinity) {
+    return clamp(v + gauss() * range, lo, hi);
+}
+
+function mutateColor(c, range) {
+    return {
+        h: (c.h + gauss() * range * 40 + 360) % 360,
+        s: clamp(c.s + gauss() * range * 20, 10, 100),
+        l: clamp(c.l + gauss() * range * 20, 5, 95)
+    };
+}
+
+function mutateParams(params, type, range) {
+    const p = params;
+    switch (type) {
+        case 'circle': p.r = clamp(nudge(p.r, range * 0.05), 0.01, 0.5); break;
+        case 'ellipse':
+            p.rx = clamp(nudge(p.rx, range * 0.05), 0.01, 0.5);
+            p.ry = clamp(nudge(p.ry, range * 0.05), 0.01, 0.5);
+            break;
+        case 'rect':
+            p.w = clamp(nudge(p.w, range * 0.05), 0.02, 0.7);
+            p.h = clamp(nudge(p.h, range * 0.05), 0.02, 0.7);
+            p.rx = clamp(nudge(p.rx || 0, range * 0.02), 0, 0.2);
+            break;
+        case 'polygon':
+            p.r = clamp(nudge(p.r, range * 0.05), 0.01, 0.5);
+            if (Math.random() < 0.05 * range) p.sides = clamp(Math.round(nudge(p.sides, 1)), 3, 8);
+            break;
+        case 'path':
+            p.pts = p.pts.map(pt => [clamp(nudge(pt[0], range * 0.1), 0, 1), clamp(nudge(pt[1], range * 0.1), 0, 1)]);
+            break;
+        case 'dots_grid':
+            p.spacing = clamp(nudge(p.spacing, range * 6), 2, 120);
+            p.r       = clamp(nudge(p.r, range * 2.5), 0.3, 40);
+            p.jitter  = clamp(nudge(p.jitter, range * 0.1), 0, 0.8);
+            break;
+        case 'stripes':
+            p.spacing   = clamp(nudge(p.spacing, range * 6), 1, 120);
+            p.lineWidth = clamp(nudge(p.lineWidth, range * 4), 0.2, 60);
+            p.angle     = (p.angle + gauss() * range * 15 + 360) % 360;
+            break;
+        case 'crosshatch':
+            p.spacing   = clamp(nudge(p.spacing, range * 6), 1, 120);
+            p.lineWidth = clamp(nudge(p.lineWidth, range * 1.5), 0.1, 20);
+            p.angle     = clamp(nudge(p.angle, range * 10), 0, 89);
+            break;
+        case 'checkerboard':
+            p.size = clamp(nudge(p.size, range * 6), 2, 120);
+            break;
+        case 'waves':
+            p.spacing   = clamp(nudge(p.spacing, range * 6), 2, 120);
+            p.amplitude = clamp(nudge(p.amplitude, range * 4), 0.5, 60);
+            p.frequency = clamp(nudge(p.frequency, range * 0.5), 0.2, 10);
+            p.lineWidth = clamp(nudge(p.lineWidth, range * 1.5), 0.2, 20);
+            break;
+        case 'zigzag':
+            p.spacing   = clamp(nudge(p.spacing, range * 6), 2, 120);
+            p.amplitude = clamp(nudge(p.amplitude, range * 4), 1, 70);
+            p.lineWidth = clamp(nudge(p.lineWidth, range * 1.5), 0.2, 20);
+            p.angle     = clamp(nudge(p.angle, range * 10), 0, 80);
+            break;
+        case 'hexgrid':
+            p.size      = clamp(nudge(p.size, range * 6), 2, 120);
+            p.lineWidth = clamp(nudge(p.lineWidth, range * 1.5), 0.1, 15);
+            if (Math.random() < range * 0.05) p.filled = !p.filled;
+            break;
+    }
+    return p;
+}
+
+function mutateLayer(layer, palette, range, structRate, maxLayers, flags = {}) {
+    const l = layer;
+
+    // Position
+    l.cx = clamp(nudge(l.cx, range * 0.1), 0, 1);
+    l.cy = clamp(nudge(l.cy, range * 0.1), 0, 1);
+
+    // Params
+    l.params = mutateParams(l.params, l.type, range);
+
+    // Fill
+    l.fill.alpha = clamp(nudge(l.fill.alpha, range * 0.1), 0.05, 1);
+    if (l.fill.type !== 'solid') l.fill.angle = (l.fill.angle + gauss() * range * 30 + 360) % 360;
+
+    // Stroke
+    l.stroke.width = clamp(nudge(l.stroke.width, range * 0.005), 0, 0.03);
+    l.stroke.alpha = clamp(nudge(l.stroke.alpha, range * 0.1), 0, 1);
+
+    // Opacity
+    l.opacity = clamp(nudge(l.opacity, range * 0.1), 0.05, 1);
+
+    // Transform
+    l.transform.rotate = (l.transform.rotate + gauss() * range * 15 + 360) % 360;
+    l.transform.scaleX = clamp(nudge(l.transform.scaleX, range * 0.1), 0.1, 3);
+    l.transform.scaleY = clamp(nudge(l.transform.scaleY, range * 0.1), 0.1, 3);
+
+    // Structural
+    if (Math.random() < structRate * 0.15) l.blendMode = pick(BLEND_MODES);
+    if (Math.random() < structRate * 0.1) {
+        l.type = pick(TYPES);
+        l.params = randomParams(l.type);
+    }
+    if (Math.random() < structRate * 0.1) {
+        l.arrangement = pick(ARRANGEMENTS);
+        l.arrangementParams = randomArrangementParams(l.arrangement);
+    }
+    if (Math.random() < structRate * 0.1) {
+        l.fill.type = pick(['solid', 'linear', 'radial']);
+    }
+    // Shift palette references
+    if (Math.random() < range * 0.2) l.fill.paletteIdx = randInt(0, palette.length - 1);
+    if (Math.random() < range * 0.2) l.fill.paletteIdx2 = randInt(0, palette.length - 1);
+    if (Math.random() < range * 0.2) l.stroke.paletteIdx = randInt(0, palette.length - 1);
+
+    // ── Advanced effects ───────────────────────────────────────────────────
+
+    // Displacement (feTurbulence + feDisplacementMap)
+    if (l.displace != null) {
+        l.displace.scale    = clamp(nudge(l.displace.scale,    range * 15),   1, 200);
+        l.displace.baseFreq = clamp(nudge(l.displace.baseFreq, range * 0.01), 0.001, 0.12);
+        l.displace.octaves  = clamp(Math.round(nudge(l.displace.octaves, range * 0.5)), 1, 6);
+        if (Math.random() < structRate * 0.08) delete l.displace;
+    } else if (flags.turbulence && Math.random() < structRate * 0.15) {
+        l.displace = { scale: rand(10, 80), baseFreq: rand(0.003, 0.05), octaves: randInt(1, 4) };
+    }
+
+    // Dashes
+    if (l.dash != null) {
+        l.dash.len = clamp(nudge(l.dash.len, range * 5), 0.5, 60);
+        l.dash.gap = clamp(nudge(l.dash.gap, range * 3), 0.5, 40);
+        if (Math.random() < structRate * 0.08) delete l.dash;
+    } else if (flags.dash && Math.random() < structRate * 0.15) {
+        l.dash = { len: rand(2, 25), gap: rand(1, 15) };
+    }
+
+    // Blur (feGaussianBlur)
+    if (l.blur != null) {
+        l.blur = clamp(nudge(l.blur, range * 3), 0.1, 30);
+        if (Math.random() < structRate * 0.08) delete l.blur;
+    } else if (flags.blur && Math.random() < structRate * 0.15) {
+        l.blur = rand(0.5, 15);
+    }
+
+    // Color shift (feColorMatrix hueRotate + saturate)
+    if (l.colorShift != null) {
+        l.colorShift.hueRotate = ((l.colorShift.hueRotate || 0) + gauss() * range * 40 + 360) % 360;
+        l.colorShift.saturate  = clamp(nudge(l.colorShift.saturate ?? 1, range * 0.3), 0.05, 5);
+        if (Math.random() < structRate * 0.08) delete l.colorShift;
+    } else if (flags.colorMatrix && Math.random() < structRate * 0.15) {
+        l.colorShift = { hueRotate: rand(0, 360), saturate: rand(0.3, 3) };
+    }
+
+    // Mask (radial or linear gradient mask)
+    if (l.mask != null) {
+        if (l.mask.type === 'radial') {
+            l.mask.cx = clamp(nudge(l.mask.cx, range * 0.1), 0.05, 0.95);
+            l.mask.cy = clamp(nudge(l.mask.cy, range * 0.1), 0.05, 0.95);
+            l.mask.r  = clamp(nudge(l.mask.r,  range * 0.1), 0.1, 1.5);
+        } else {
+            l.mask.angle = (l.mask.angle + gauss() * range * 30 + 360) % 360;
+        }
+        if (Math.random() < structRate * 0.05) l.mask.type = pick(['radial', 'linear']);
+        if (Math.random() < structRate * 0.08) delete l.mask;
+    } else if (flags.mask && Math.random() < structRate * 0.15) {
+        l.mask = { type: pick(['radial', 'linear']), cx: rand(0.2, 0.8), cy: rand(0.2, 0.8), r: rand(0.3, 0.9), angle: rand(0, 360) };
+    }
+
+    return l;
+}
+
+function mutateGenome(genome, opts = {}) {
+    const range = opts.paramRange ?? 0.5;
+    const structRate = opts.structureRate ?? 0.3;
+    const maxLayers = opts.maxLayers ?? 8;
+    const mutations = opts.mutations ?? 5;
+
+    const g = deepClone(genome);
+
+    // Mutate palette
+    g.palette = g.palette.map(c => mutateColor(c, range));
+
+    // Background
+    if (Math.random() < range * 0.3) g.background.angle = (g.background.angle + gauss() * 30 + 360) % 360;
+    if (Math.random() < structRate * 0.1) g.background.type = pick(['solid', 'linear', 'radial']);
+
+    // Mutate layers
+    const flags = getFeatureFlags();
+    g.layers = g.layers.map(l => mutateLayer(l, g.palette, range, structRate, maxLayers, flags));
+
+    // Structural: add/remove layers
+    if (Math.random() < structRate * 0.3 && g.layers.length < maxLayers) {
+        g.layers.push(randomLayer(g.palette.length));
+    }
+    if (Math.random() < structRate * 0.2 && g.layers.length > 1) {
+        g.layers.splice(randInt(0, g.layers.length - 1), 1);
+    }
+
+    // Structural: add/remove palette color
+    if (Math.random() < structRate * 0.1 && g.palette.length < 6) {
+        g.palette.push(randomColor());
+    }
+    if (Math.random() < structRate * 0.1 && g.palette.length > 2) {
+        g.palette.splice(randInt(0, g.palette.length - 1), 1);
+    }
+
+    return g;
+}
+
+// ─── UI ──────────────────────────────────────────────────────────────────
+
+const genomes = new Array(9).fill(null);
+let selectedIdx = -1;
+let wrappers = [];
+
+// ─── Viewport (shared across all cells) ──────────────────────────────────
+let viewZoom = 1;
+let viewPanX = 0;
+let viewPanY = 0;
+
+function applyTransformToWrapper(wrapper) {
+    wrapper.style.transformOrigin = '0 0';
+    wrapper.style.transform = `translate(${viewPanX}px, ${viewPanY}px) scale(${viewZoom})`;
+}
+
+function applyViewTransform() {
+    wrappers.forEach(applyTransformToWrapper);
+}
+
+function getOpts() {
+    return {
+        mutations: +document.getElementById('mutations').value,
+        paramRange: +document.getElementById('paramRange').value,
+        structureRate: +document.getElementById('structureRate').value,
+        maxLayers: +document.getElementById('maxLayers').value
+    };
+}
+
+function renderCell(idx) {
+    const cell = document.getElementById(`cell-${idx}`);
+    const svg = genomeToSVG(genomes[idx], 640, 360, `c${idx}`, true);
+    const svgWrapper = cell.querySelector('.svg-wrapper');
+    svgWrapper.innerHTML = svg;
+    applyTransformToWrapper(svgWrapper);
+}
+
+function setSelected(idx) {
+    // Deselect previous
+    if (selectedIdx >= 0) {
+        document.getElementById(`cell-${selectedIdx}`).classList.remove('selected');
+    }
+    selectedIdx = idx;
+    if (idx >= 0) {
+        document.getElementById(`cell-${idx}`).classList.add('selected');
+        document.getElementById('copyBtn').disabled = false;
+        document.getElementById('downloadBtn').disabled = false;
+        document.getElementById('exportHelp').textContent = 'Click selected cell again to evolve.';
+    } else {
+        document.getElementById('copyBtn').disabled = true;
+        document.getElementById('downloadBtn').disabled = true;
+        document.getElementById('exportHelp').textContent = 'Click a cell to select it, then click again to evolve.';
+    }
+}
+
+function evolveFrom(parentIdx) {
+    const parent = genomes[parentIdx];
+    const opts = getOpts();
+    const newGenomes = new Array(9);
+    newGenomes[4] = deepClone(parent); // center = parent
+    for (let i = 0; i < 9; i++) {
+        if (i === 4) continue;
+        newGenomes[i] = mutateGenome(parent, opts);
+    }
+    for (let i = 0; i < 9; i++) genomes[i] = newGenomes[i];
+
+    // Re-render all
+    for (let i = 0; i < 9; i++) renderCell(i);
+    setSelected(4); // select parent in center
+}
+
+function handleCellClick(idx) {
+    if (selectedIdx === idx) {
+        // Already selected — evolve
+        evolveFrom(idx);
+    } else {
+        setSelected(idx);
+    }
+}
+
+function buildGrid() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    wrappers = [];
+    for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.id = `cell-${i}`;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'svg-wrapper';
+        wrapper.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;will-change:transform;';
+        wrappers.push(wrapper);
+        cell.appendChild(wrapper);
+        const bookmarkBtn = document.createElement('button');
+        bookmarkBtn.className = 'bookmark-btn';
+        bookmarkBtn.title = 'Bookmark';
+        bookmarkBtn.innerHTML = '★';
+        bookmarkBtn.addEventListener('mousedown', e => e.stopPropagation());
+        bookmarkBtn.addEventListener('click', e => { e.stopPropagation(); addBookmark(i); });
+        cell.appendChild(bookmarkBtn);
+
+        const expandBtn = document.createElement('button');
+        expandBtn.className = 'expand-btn';
+        expandBtn.title = 'Expand';
+        expandBtn.innerHTML = '⛶';
+        expandBtn.addEventListener('mousedown', e => e.stopPropagation());
+        expandBtn.addEventListener('click', e => { e.stopPropagation(); openExpand(i); });
+        cell.appendChild(expandBtn);
+
+        const label = document.createElement('div');
+        label.className = 'cell-label';
+        label.textContent = i === 4 ? '◆' : '';
+        cell.appendChild(label);
+        // clicks handled via global mousedown/mouseup drag detection
+        grid.appendChild(cell);
+    }
+}
+
+function restart() {
+    setSelected(-1);
+    for (let i = 0; i < 9; i++) {
+        genomes[i] = randomGenome();
+    }
+    for (let i = 0; i < 9; i++) renderCell(i);
+}
+
+// Export
+document.getElementById('copyBtn').addEventListener('click', () => {
+    if (selectedIdx < 0) return;
+    const svg = genomeToSVG(genomes[selectedIdx], 640, 360, 'ex');
+    navigator.clipboard.writeText(svg).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+    });
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+    if (selectedIdx < 0) return;
+    const svg = genomeToSVG(genomes[selectedIdx], 1920, 1080, 'ex');
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'pattern.svg';
+    a.click();
+    URL.revokeObjectURL(a.href);
+});
+
+// ─── Bookmarks ────────────────────────────────────────────────────────────
+const bookmarks = [];
+let bookmarkIdSeq = 0;
+let selectedBookmarkId = null;
+
+// ── File system (Chrome/Edge: directory picker; Firefox: auto-download) ──
+const FS_SUPPORTED = typeof window.showDirectoryPicker === 'function';
+let bookmarkDirHandle = null; // FileSystemDirectoryHandle (Chrome/Edge only)
+
+// IndexedDB helpers for persisting the directory handle across sessions
+function openHandleDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('svgbreeder_fs', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = reject;
+    });
+}
+async function saveDirHandle(handle) {
+    try {
+        const db = await openHandleDB();
+        await new Promise((res, rej) => {
+            const tx = db.transaction('handles', 'readwrite');
+            tx.objectStore('handles').put(handle, 'bookmarkDir');
+            tx.oncomplete = res; tx.onerror = rej;
+        });
+    } catch {}
+}
+async function loadDirHandle() {
+    try {
+        const db = await openHandleDB();
+        return await new Promise((res) => {
+            const tx = db.transaction('handles', 'readonly');
+            const req = tx.objectStore('handles').get('bookmarkDir');
+            req.onsuccess = e => res(e.target.result ?? null);
+            req.onerror = () => res(null);
+        });
+    } catch { return null; }
+}
+
+async function getBookmarkDir(forcePickNew = false) {
+    if (!FS_SUPPORTED) return null;
+    if (!forcePickNew && bookmarkDirHandle) {
+        const perm = await bookmarkDirHandle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') return bookmarkDirHandle;
+        const req = await bookmarkDirHandle.requestPermission({ mode: 'readwrite' });
+        if (req === 'granted') return bookmarkDirHandle;
+    }
+    if (!forcePickNew) {
+        const stored = await loadDirHandle();
+        if (stored) {
+            const perm = await stored.requestPermission({ mode: 'readwrite' });
+            if (perm === 'granted') { bookmarkDirHandle = stored; updateFolderUI(); return bookmarkDirHandle; }
+        }
+    }
+    try {
+        bookmarkDirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'svgbreeder', startIn: 'pictures' });
+        await saveDirHandle(bookmarkDirHandle);
+        updateFolderUI();
+        return bookmarkDirHandle;
+    } catch { return null; }
+}
+
+async function writeBookmarkFile(bm) {
+    const svg = genomeToSVG(bm.genome, 1920, 1080, `bm${bm.id}`);
+    const filename = `bookmark_${String(bm.id).padStart(4, '0')}.svg`;
+    const dir = await getBookmarkDir();
+    if (dir) {
+        try {
+            const fh = await dir.getFileHandle(filename, { create: true });
+            const w = await fh.createWritable();
+            await w.write(svg); await w.close();
+            return;
+        } catch (e) { console.warn('FS write failed, falling back to download', e); }
+    }
+    // Fallback: download
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+async function deleteBookmarkFile(bm) {
+    if (!bookmarkDirHandle) return;
+    const filename = `bookmark_${String(bm.id).padStart(4, '0')}.svg`;
+    try { await bookmarkDirHandle.removeEntry(filename); } catch {}
+}
+
+function updateFolderUI() {
+    const el = document.getElementById('bookmark-folder-name');
+    if (!el) return;
+    if (bookmarkDirHandle) {
+        el.textContent = '📁 ' + bookmarkDirHandle.name;
+        el.title = bookmarkDirHandle.name;
+    } else if (FS_SUPPORTED) {
+        el.textContent = '📁 Click to set folder';
+    } else {
+        el.textContent = '📥 Saving to Downloads';
+    }
+}
+
+// ── localStorage persistence ──────────────────────────────────────────────
+function persistBookmarks() {
+    try {
+        localStorage.setItem('svgbreeder_bookmarks', JSON.stringify(bookmarks));
+        localStorage.setItem('svgbreeder_bm_seq', bookmarkIdSeq);
+    } catch {}
+}
+
+function restoreBookmarks() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('svgbreeder_bookmarks') || '[]');
+        const seq = parseInt(localStorage.getItem('svgbreeder_bm_seq') || '0');
+        for (const bm of saved) {
+            if (!bm.thumbSvg) bm.thumbSvg = genomeToSVG(bm.genome, 160, 90, `bm${bm.id}`);
+        }
+        bookmarks.push(...saved);
+        bookmarkIdSeq = seq;
+        if (bookmarks.length) renderBookmarksPanel();
+    } catch {}
+}
+
+// ── Core bookmark actions ─────────────────────────────────────────────────
+function addBookmark(cellIdx) {
+    const id = ++bookmarkIdSeq;
+    const bm = { id, genome: deepClone(genomes[cellIdx]) };
+    bm.thumbSvg = genomeToSVG(bm.genome, 160, 90, `bm${id}`);
+    bookmarks.push(bm);
+    renderBookmarksPanel();
+    persistBookmarks();
+    writeBookmarkFile(bm); // async: saves to folder or downloads
+    const btn = document.querySelector(`#cell-${cellIdx} .bookmark-btn`);
+    if (btn) { btn.classList.add('bookmarked'); setTimeout(() => btn.classList.remove('bookmarked'), 1200); }
+}
+
+function removeBookmark(id) {
+    const i = bookmarks.findIndex(b => b.id === id);
+    if (i < 0) return;
+    const [bm] = bookmarks.splice(i, 1);
+    deleteBookmarkFile(bm);
+    if (selectedBookmarkId === id) {
+        selectedBookmarkId = null;
+        document.getElementById('breedFromBtn').disabled = true;
+    }
+    renderBookmarksPanel();
+    persistBookmarks();
+}
+
+function selectBookmark(id) {
+    selectedBookmarkId = selectedBookmarkId === id ? null : id;
+    document.querySelectorAll('.bookmark-thumb').forEach(el => {
+        el.classList.toggle('selected', +el.dataset.id === selectedBookmarkId);
+    });
+    document.getElementById('breedFromBtn').disabled = selectedBookmarkId === null;
+}
+
+function renderBookmarksPanel() {
+    const grid = document.getElementById('bookmarks-grid');
+    const countEl = document.getElementById('bookmark-count');
+    countEl.textContent = bookmarks.length > 0 ? bookmarks.length : '';
+
+    if (bookmarks.length === 0) {
+        grid.innerHTML = '<div class="bookmarks-empty">Star a pattern to save it here.</div>';
+        return;
+    }
+
+    grid.innerHTML = '';
+    for (const bm of bookmarks) {
+        const thumb = document.createElement('div');
+        thumb.className = 'bookmark-thumb';
+        thumb.dataset.id = bm.id;
+        if (bm.id === selectedBookmarkId) thumb.classList.add('selected');
+
+        thumb.innerHTML = bm.thumbSvg;
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'bookmark-del';
+        delBtn.title = 'Remove bookmark';
+        delBtn.textContent = '✕';
+        delBtn.addEventListener('mousedown', e => e.stopPropagation());
+        delBtn.addEventListener('click', e => { e.stopPropagation(); removeBookmark(bm.id); });
+        thumb.appendChild(delBtn);
+
+        thumb.addEventListener('click', () => selectBookmark(bm.id));
+        grid.appendChild(thumb);
+    }
+}
+
+function breedFromGenome(sourceGenome) {
+    const opts = getOpts();
+    // Clone source into center; all 8 others are mutations — source is never touched
+    for (let i = 0; i < 9; i++) {
+        genomes[i] = i === 4 ? deepClone(sourceGenome) : mutateGenome(sourceGenome, opts);
+    }
+    for (let i = 0; i < 9; i++) renderCell(i);
+    setSelected(4);
+}
+
+document.getElementById('breedFromBtn').addEventListener('click', () => {
+    const bm = bookmarks.find(b => b.id === selectedBookmarkId);
+    if (bm) breedFromGenome(bm.genome);
+});
+
+// ─── Expand overlay ──────────────────────────────────────────────────────
+const EX_W = 1280, EX_H = 720;
+let exZoom = 1, exPanX = 0, exPanY = 0;
+let exDragging = false, exDidPan = false;
+let exDragStartX = 0, exDragStartY = 0, exDragStartPanX = 0, exDragStartPanY = 0;
+
+function applyExpandTransform() {
+    document.getElementById('expand-svg-wrapper').style.transform =
+        `translate(${exPanX}px,${exPanY}px) scale(${exZoom})`;
+}
+
+function fitExpandView() {
+    const vp = document.getElementById('expand-viewport');
+    const vw = vp.clientWidth, vh = vp.clientHeight;
+    exZoom = Math.min(vw / EX_W, vh / EX_H) * 0.95;
+    exPanX = (vw - EX_W * exZoom) / 2;
+    exPanY = (vh - EX_H * exZoom) / 2;
+    applyExpandTransform();
+}
+
+function openExpand(idx) {
+    const wrapper = document.getElementById('expand-svg-wrapper');
+    const svg = genomeToSVG(genomes[idx], EX_W, EX_H, `ex`)
+        .replace('xMidYMid slice', 'xMidYMid meet');
+    wrapper.innerHTML = svg;
+    const svgEl = wrapper.querySelector('svg');
+    if (svgEl) { svgEl.style.width = EX_W + 'px'; svgEl.style.height = EX_H + 'px'; }
+    document.getElementById('expand-overlay').classList.add('visible');
+    fitExpandView();
+}
+
+function closeExpand() {
+    document.getElementById('expand-overlay').classList.remove('visible');
+    document.getElementById('expand-svg-wrapper').innerHTML = '';
+    document.body.classList.remove('expand-panning');
+}
+
+// Viewport drag
+const exViewport = document.getElementById('expand-viewport');
+exViewport.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    exDragging = true;
+    exDidPan = false;
+    exDragStartX = e.clientX;
+    exDragStartY = e.clientY;
+    exDragStartPanX = exPanX;
+    exDragStartPanY = exPanY;
+    e.preventDefault();
+});
+
+document.addEventListener('mousemove', e => {
+    if (!exDragging) return;
+    const dx = e.clientX - exDragStartX;
+    const dy = e.clientY - exDragStartY;
+    if (!exDidPan && Math.hypot(dx, dy) > 4) {
+        exDidPan = true;
+        document.body.classList.add('expand-panning');
+    }
+    if (exDidPan) {
+        exPanX = exDragStartPanX + dx;
+        exPanY = exDragStartPanY + dy;
+        applyExpandTransform();
+    }
+});
+
+document.addEventListener('mouseup', e => {
+    if (!exDragging) return;
+    exDragging = false;
+    document.body.classList.remove('expand-panning');
+});
+
+// Scroll zoom
+exViewport.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = exViewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 600 : e.deltaY;
+    const factor = Math.pow(1.001, -dy);
+    const newZoom = Math.max(0.05, Math.min(40, exZoom * factor));
+    exPanX = mx - (mx - exPanX) * (newZoom / exZoom);
+    exPanY = my - (my - exPanY) * (newZoom / exZoom);
+    exZoom = newZoom;
+    applyExpandTransform();
+}, { passive: false });
+
+// Double-click to fit
+exViewport.addEventListener('dblclick', fitExpandView);
+
+document.getElementById('expand-reset').addEventListener('click', fitExpandView);
+document.getElementById('expand-close').addEventListener('click', closeExpand);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeExpand(); });
+
+document.getElementById('restartBtn').addEventListener('click', restart);
+
+// ─── Pan & Zoom ──────────────────────────────────────────────────────────
+const gridContainer = document.getElementById('grid-container');
+const PAN_THRESHOLD = 4;
+let isPanning = false;
+let panStartX = 0, panStartY = 0;
+let panStartViewX = 0, panStartViewY = 0;
+let didPan = false;
+let pointerDownCell = -1;
+
+gridContainer.addEventListener('mousedown', e => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    isPanning = true;
+    didPan = false;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panStartViewX = viewPanX;
+    panStartViewY = viewPanY;
+    pointerDownCell = parseInt(cell.id.split('-')[1]);
+    e.preventDefault();
+});
+
+document.addEventListener('mousemove', e => {
+    if (!isPanning) return;
+    const dx = e.clientX - panStartX;
+    const dy = e.clientY - panStartY;
+    if (!didPan && Math.hypot(dx, dy) > PAN_THRESHOLD) {
+        didPan = true;
+        document.body.classList.add('panning');
+    }
+    if (didPan) {
+        viewPanX = panStartViewX + dx;
+        viewPanY = panStartViewY + dy;
+        applyViewTransform();
+    }
+});
+
+document.addEventListener('mouseup', () => {
+    if (!isPanning) return;
+    isPanning = false;
+    document.body.classList.remove('panning');
+    if (!didPan && pointerDownCell >= 0) {
+        handleCellClick(pointerDownCell);
+    }
+    pointerDownCell = -1;
+});
+
+gridContainer.addEventListener('wheel', e => {
+    e.preventDefault();
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    const cellRect = cell.getBoundingClientRect();
+    const mx = e.clientX - cellRect.left;
+    const my = e.clientY - cellRect.top;
+    const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 600 : e.deltaY;
+    const factor = Math.pow(1.001, -dy);
+    const newZoom = clamp(viewZoom * factor, 0.1, 20);
+    // Keep the point under the cursor fixed
+    viewPanX = mx - (mx - viewPanX) * (newZoom / viewZoom);
+    viewPanY = my - (my - viewPanY) * (newZoom / viewZoom);
+    viewZoom = newZoom;
+    applyViewTransform();
+}, { passive: false });
+
+// Sidebar toggle
+document.getElementById('toggleSidebar').addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    const btn = document.getElementById('toggleSidebar');
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+    btn.textContent = isCollapsed ? '»' : '«';
+    if (!isCollapsed && !sidebar.style.width) {
+        sidebar.style.width = '280px';
+    }
+});
+
+// Sidebar resizer
+(function() {
+    const resizer = document.getElementById('sidebar-resizer');
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('toggleSidebar');
+    let startX, startW;
+    resizer.addEventListener('mousedown', e => {
+        if (e.target === toggleBtn) return; // let button handle its own click
+        startX = e.clientX;
+        startW = sidebar.offsetWidth;
+        document.body.classList.add('resizing-sidebar');
+        const onMove = e => { sidebar.style.width = Math.max(180, startW + e.clientX - startX) + 'px'; };
+        const onUp = () => {
+            document.body.classList.remove('resizing-sidebar');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+})();
+
+// ─── Slider persistence ───────────────────────────────────────────────────
+const SLIDER_CONFIG = [
+    { id: 'mutations',     display: 'mutationsVal',     fmt: v => v },
+    { id: 'paramRange',    display: 'paramRangeVal',    fmt: v => (+v).toFixed(2) },
+    { id: 'structureRate', display: 'structureRateVal', fmt: v => (+v).toFixed(2) },
+    { id: 'maxLayers',     display: 'maxLayersVal',     fmt: v => v },
+];
+
+function saveSliders() {
+    const vals = {};
+    SLIDER_CONFIG.forEach(({ id }) => { vals[id] = document.getElementById(id).value; });
+    localStorage.setItem('svgbreeder_sliders', JSON.stringify(vals));
+}
+
+function loadSliders() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('svgbreeder_sliders') || '{}'); } catch {}
+    SLIDER_CONFIG.forEach(({ id, display, fmt }) => {
+        const el = document.getElementById(id);
+        if (saved[id] !== undefined) el.value = saved[id];
+        document.getElementById(display).textContent = fmt(el.value);
+        el.addEventListener('input', () => {
+            document.getElementById(display).textContent = fmt(el.value);
+            saveSliders();
+        });
+    });
+}
+
+document.getElementById('bookmark-folder-btn').addEventListener('click', () => getBookmarkDir(true));
+
+// Init
+loadSliders();
+restoreBookmarks();
+if (FS_SUPPORTED) {
+    document.body.classList.add('fs-supported');
+    // Try to silently re-connect to the previously picked folder
+    loadDirHandle().then(async handle => {
+        if (!handle) { updateFolderUI(); return; }
+        try {
+            const perm = await handle.queryPermission({ mode: 'readwrite' });
+            if (perm === 'granted') { bookmarkDirHandle = handle; updateFolderUI(); }
+            else updateFolderUI();
+        } catch { updateFolderUI(); }
+    });
+} else {
+    updateFolderUI();
+}
+buildGrid();
+restart();
+</script>
+</body>
+</html>
