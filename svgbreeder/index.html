@@ -474,6 +474,7 @@
         .cell:hover .reroll-btn { opacity: 1; }
         .reroll-btn:hover { background: rgba(0,0,0,0.8); color: #7ee8a2; border-color: rgba(255,255,255,0.4); }
 
+
         #expand-overlay {
             display: none;
             position: fixed;
@@ -946,7 +947,16 @@ function renderTilingLayer(layer, palette, W, H, defs, makeGradientId) {
     const color = fillAttr(palette, layer.fill, W, defs, makeGradientId);
     const opacity = (layer.opacity ?? 1).toFixed(3);
     const blend = layer.blendMode || 'normal';
-    const p = layer.params;
+    // Scale pixel-space params proportionally so patterns look identical at any render resolution.
+    const s = W / 640;
+    const p = {
+        ...layer.params,
+        spacing:   layer.params.spacing   != null ? layer.params.spacing   * s : undefined,
+        size:      layer.params.size      != null ? layer.params.size      * s : undefined,
+        r:         layer.params.r         != null ? layer.params.r         * s : undefined,
+        lineWidth: layer.params.lineWidth != null ? layer.params.lineWidth * s : undefined,
+        amplitude: layer.params.amplitude != null ? layer.params.amplitude * s : undefined,
+    };
     const pid = makeGradientId();
     const dashAttr = layer.dash
         ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"`
@@ -1366,6 +1376,10 @@ function mutateGenome(genome, opts = {}) {
 const genomes = new Array(9).fill(null);
 let selectedIdx = -1;
 let wrappers = [];
+let canvases = [];
+const rasterizeGen = new Array(9).fill(0);
+const MAX_RASTER_W = 3840;
+const MAX_RASTER_H = 2160;
 
 // ─── Viewport (shared across all cells) ──────────────────────────────────
 let viewZoom = 1;
@@ -1391,11 +1405,40 @@ function getOpts() {
 }
 
 function renderCell(idx) {
+    applyTransformToWrapper(wrappers[idx]);
+    rasterizeCell(idx);
+}
+
+async function rasterizeCell(idx) {
+    if (!genomes[idx]) return;
+    const gen = ++rasterizeGen[idx];
     const cell = document.getElementById(`cell-${idx}`);
-    const svg = genomeToSVG(genomes[idx], 640, 360, `c${idx}`, true);
-    const svgWrapper = cell.querySelector('.svg-wrapper');
-    svgWrapper.innerHTML = svg;
-    applyTransformToWrapper(svgWrapper);
+    const canvas = canvases[idx];
+
+    const cellRect = cellRects.get(cell) ?? cell.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const zoomFactor = Math.min(Math.max(viewZoom, 1), 4);
+    const targetW = Math.min(Math.round(cellRect.width * zoomFactor * dpr), MAX_RASTER_W);
+    const targetH = Math.min(Math.round(cellRect.height * zoomFactor * dpr), MAX_RASTER_H);
+
+    const svgStr = genomeToSVG(genomes[idx], targetW, targetH, `c${idx}`);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            if (rasterizeGen[idx] !== gen) { URL.revokeObjectURL(url); resolve(); return; }
+            canvas.width = targetW;
+            canvas.height = targetH;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img.src = url;
+    });
+
 }
 
 function setSelected(idx) {
@@ -1445,6 +1488,7 @@ function buildGrid() {
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
     wrappers = [];
+    canvases = [];
     for (let i = 0; i < 9; i++) {
         const cell = document.createElement('div');
         cell.className = 'cell';
@@ -1453,6 +1497,10 @@ function buildGrid() {
         wrapper.className = 'svg-wrapper';
         wrapper.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;will-change:transform;';
         wrappers.push(wrapper);
+        const canvas = document.createElement('canvas');
+        canvas.style.cssText = 'width:100%;height:100%;display:block;position:absolute;top:0;left:0;';
+        canvases.push(canvas);
+        wrapper.appendChild(canvas);
         cell.appendChild(wrapper);
         const bookmarkBtn = document.createElement('button');
         bookmarkBtn.className = 'bookmark-btn';
@@ -1829,6 +1877,19 @@ document.getElementById('restartBtn').addEventListener('click', restart);
 // ─── Pan & Zoom ──────────────────────────────────────────────────────────
 const gridContainer = document.getElementById('grid-container');
 const PAN_THRESHOLD = 4;
+
+// Cache cell rects to avoid forced reflows on every wheel event.
+const cellRects = new Map();
+function refreshCellRects() {
+    document.querySelectorAll('.cell').forEach(cell => {
+        cellRects.set(cell, cell.getBoundingClientRect());
+    });
+}
+refreshCellRects();
+new ResizeObserver(() => {
+    refreshCellRects();
+    for (let i = 0; i < 9; i++) { if (genomes[i]) renderCell(i); }
+}).observe(gridContainer);
 let isPanning = false;
 let panStartX = 0, panStartY = 0;
 let panStartViewX = 0, panStartViewY = 0;
@@ -1873,11 +1934,13 @@ document.addEventListener('mouseup', () => {
     pointerDownCell = -1;
 });
 
+let zoomSettleTimer = null;
+
 gridContainer.addEventListener('wheel', e => {
     e.preventDefault();
     const cell = e.target.closest('.cell');
     if (!cell) return;
-    const cellRect = cell.getBoundingClientRect();
+    const cellRect = cellRects.get(cell) ?? cell.getBoundingClientRect();
     const mx = e.clientX - cellRect.left;
     const my = e.clientY - cellRect.top;
     const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 600 : e.deltaY;
@@ -1888,6 +1951,12 @@ gridContainer.addEventListener('wheel', e => {
     viewPanY = my - (my - viewPanY) * (newZoom / viewZoom);
     viewZoom = newZoom;
     applyViewTransform();
+
+    // Mark all cells pending and re-rasterize at the new zoom once scrolling settles
+    clearTimeout(zoomSettleTimer);
+    zoomSettleTimer = setTimeout(() => {
+        for (let i = 0; i < 9; i++) { if (genomes[i]) rasterizeCell(i); }
+    }, 250);
 }, { passive: false });
 
 // Sidebar toggle
