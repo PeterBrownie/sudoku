@@ -1838,9 +1838,9 @@ function getExTierDims(tierIdx) {
 let exZoom = 1, exPanX = 0, exPanY = 0;
 let exDragging = false, exDidPan = false;
 let exDragStartX = 0, exDragStartY = 0, exDragStartPanX = 0, exDragStartPanY = 0;
-let exCanvas = null, exRasterGen = 0, exZoomSettleTimer = null, exRafPending = false;
+let exCanvas = null, exZoomSettleTimer = null, exRafPending = false;
 let exTierCache = {}; // tierIdx → offscreen canvas
-let exRenderingTier = -1, exDisplayedTier = -1;
+let exRenderingTier = -1, exDisplayedTier = -1, exPendingTier = -1;
 const exWrapper = document.getElementById('expand-svg-wrapper');
 
 function updateLodIndicator() {
@@ -1877,62 +1877,105 @@ function openExpand(idx) {
     expandIdx = idx;
     exTierCache = {};
     exDisplayedTier = -1;
+    exRenderingTier = -1;
+    exPendingTier = -1;
     exWrapper.innerHTML = '';
     exCanvas = document.createElement('canvas');
     exCanvas.style.cssText = `width:${EX_W}px;height:${EX_H}px;display:block;`;
     exWrapper.appendChild(exCanvas);
     document.getElementById('expand-overlay').classList.add('visible');
     fitExpandView();
-    rasterizeExpand();
+    scheduleRender(getExTierIdx());
 }
 
-async function rasterizeExpand() {
-    if (expandIdx < 0 || !exCanvas) return;
-    const tierIdx = getExTierIdx();
-
-    // Serve from cache if this tier has already been rendered
-    if (exTierCache[tierIdx]) {
-        const cached = exTierCache[tierIdx];
-        exCanvas.width = cached.width;
-        exCanvas.height = cached.height;
-        exCanvas.getContext('2d').drawImage(cached, 0, 0);
-        exDisplayedTier = tierIdx;
-        updateLodIndicator();
-        return;
+// Display the highest cached tier that is ≤ the current zoom tier.
+// Never shows a tier above the current zoom level; never downgrades what's shown.
+function displayBestTier() {
+    if (!exCanvas) return;
+    const currentTier = getExTierIdx();
+    for (let i = currentTier; i >= 0; i--) {
+        if (exTierCache[i]) {
+            if (i === exDisplayedTier) return;
+            const cached = exTierCache[i];
+            exCanvas.width = cached.width;
+            exCanvas.height = cached.height;
+            exCanvas.getContext('2d').drawImage(cached, 0, 0);
+            exDisplayedTier = i;
+            updateLodIndicator();
+            return;
+        }
     }
+}
+
+// Start a render immediately if none is in flight, otherwise queue it.
+// Only one render runs at a time; the queue holds at most one pending tier.
+function scheduleRender(tierIdx) {
+    if (exTierCache[tierIdx]) { displayBestTier(); return; }
+    if (exRenderingTier === -1) {
+        rasterizeExpand(tierIdx);
+    } else {
+        exPendingTier = tierIdx;
+    }
+}
+
+function exLog(msg) {
+    const t = new Date();
+    const ts = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}:${t.getSeconds().toString().padStart(2,'0')}.${t.getMilliseconds().toString().padStart(3,'0')}`;
+    console.log(`[expand ${ts}] ${msg}`);
+}
+
+async function rasterizeExpand(tierIdx) {
+    if (expandIdx < 0 || !exCanvas) return;
+    const [targetW, targetH] = getExTierDims(tierIdx);
 
     exRenderingTier = tierIdx;
     updateLodIndicator();
-    const gen = ++exRasterGen;
-    const [targetW, targetH] = getExTierDims(tierIdx);
+
+    exLog(`tier ${tierIdx} — start (${targetW}×${targetH})`);
 
     // Always render SVG at EX_W×EX_H so feTurbulence coordinates stay consistent,
     // then upscale onto the canvas for quality (same strategy as saveExpandAsPng).
+    exLog(`tier ${tierIdx} — genomeToSVG start`);
     const svgStr = genomeToSVG(genomes[expandIdx], EX_W, EX_H, 'ex');
+    exLog(`tier ${tierIdx} — genomeToSVG done (${svgStr.length} chars)`);
+
     const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    exLog(`tier ${tierIdx} — blob created, createObjectURL start`);
     const url = URL.createObjectURL(blob);
+    exLog(`tier ${tierIdx} — url created, setting img.src`);
 
     await new Promise(resolve => {
         const img = new Image();
         img.onload = () => {
-            if (exRasterGen !== gen) { URL.revokeObjectURL(url); resolve(); return; }
+            exLog(`tier ${tierIdx} — img.onload fired`);
+            URL.revokeObjectURL(url);
+            if (!exCanvas) { resolve(); return; }
+            exLog(`tier ${tierIdx} — drawImage to offscreen (${targetW}×${targetH}) start`);
             const offscreen = document.createElement('canvas');
             offscreen.width = targetW;
             offscreen.height = targetH;
             offscreen.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+            exLog(`tier ${tierIdx} — drawImage done`);
             exTierCache[tierIdx] = offscreen;
-            exCanvas.width = targetW;
-            exCanvas.height = targetH;
-            exCanvas.getContext('2d').drawImage(offscreen, 0, 0);
-            URL.revokeObjectURL(url);
             exRenderingTier = -1;
-            exDisplayedTier = tierIdx;
+            exLog(`tier ${tierIdx} — displayBestTier start`);
+            displayBestTier();
+            exLog(`tier ${tierIdx} — displayBestTier done`);
             updateLodIndicator();
+            if (exPendingTier !== -1) {
+                const next = exPendingTier;
+                exPendingTier = -1;
+                scheduleRender(next);
+            }
             resolve();
         };
-        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img.onerror = () => {
+            exLog(`tier ${tierIdx} — img.onerror fired`);
+            URL.revokeObjectURL(url); exRenderingTier = -1; updateLodIndicator(); resolve();
+        };
         img.src = url;
     });
+    exLog(`tier ${tierIdx} — rasterizeExpand complete`);
 }
 
 async function saveExpandAsPng() {
@@ -1976,6 +2019,7 @@ function closeExpand() {
     exTierCache = {};
     exRenderingTier = -1;
     exDisplayedTier = -1;
+    exPendingTier = -1;
     clearTimeout(exZoomSettleTimer);
     document.body.classList.remove('expand-panning');
 }
@@ -2028,17 +2072,11 @@ exViewport.addEventListener('wheel', e => {
     exZoom = newZoom;
     applyExpandTransform();
     const newTierIdx = getExTierIdx();
+    displayBestTier(); // immediately show best available cached tier for new zoom level
     updateLodIndicator();
     clearTimeout(exZoomSettleTimer);
-    if (newTierIdx !== exDisplayedTier) {
-        if (exTierCache[newTierIdx]) {
-            rasterizeExpand(); // cached — switch immediately, no delay
-        } else {
-            exZoomSettleTimer = setTimeout(rasterizeExpand, 350);
-        }
-    } else if (!exTierCache[newTierIdx]) {
-        // Still in same uncached tier — keep debouncing while user zooms
-        exZoomSettleTimer = setTimeout(rasterizeExpand, 350);
+    if (!exTierCache[newTierIdx]) {
+        exZoomSettleTimer = setTimeout(() => scheduleRender(newTierIdx), 350);
     }
 }, { passive: false });
 
