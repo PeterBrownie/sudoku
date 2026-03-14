@@ -3,54 +3,125 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="icon" type="image/png" href="../peter.png">
+	<link rel="icon" type="image/png" href="peter.png">
 	<title>Peter Brown Space</title>
 	<style>
-		/* Smooth fade-in animation */
+		* {
+			box-sizing: border-box;
+		}
 		body {
-			animation: fadeIn 1s ease-in;
+			animation: fadeIn 0.8s ease-in;
 			background-color: #121212;
 			margin: 0;
-			height: 100vh;
+			min-height: 100vh;
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			flex-direction: column;
+			font-family: system-ui, -apple-system, sans-serif;
+			padding: 40px 20px;
 		}
 		@keyframes fadeIn {
-			from { opacity: 0; }
-			to { opacity: 1; }
+			from { opacity: 0; transform: translateY(8px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+		.header {
+			text-align: center;
+			margin-bottom: 48px;
 		}
 		h1 {
 			color: white;
-			font-size: 4rem;
-			margin: 0;
+			font-size: 3rem;
+			margin: 0 0 8px 0;
+			font-weight: 700;
+			letter-spacing: -0.5px;
 		}
 		h2 {
-			color: grey;
+			color: #666;
+			font-size: 1.1rem;
+			margin: 0;
+			font-weight: 400;
+			letter-spacing: 0.1em;
+			text-transform: uppercase;
+		}
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+			gap: 20px;
+			max-width: 780px;
+			width: 100%;
+		}
+		.card {
+			background: #1e1e2e;
+			border: 1px solid #2a2a3e;
+			border-radius: 12px;
+			padding: 28px 24px;
+			text-decoration: none;
+			color: white;
+			transition: border-color 0.2s, transform 0.2s, background 0.2s;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+		.card:hover {
+			border-color: #4a4a6e;
+			background: #22223a;
+			transform: translateY(-2px);
+		}
+		.card-icon {
 			font-size: 2rem;
+			line-height: 1;
+		}
+		.card-title {
+			font-size: 1.2rem;
+			font-weight: 600;
 			margin: 0;
 		}
-		.btn {
-			margin-top: 20px;
-			padding: 10px 20px;
-			border: none;
-			border-radius: 5px;
-			background-color: #1e88e5;
-			color: white;
-			font-size: 1rem;
-			cursor: pointer;
-			transition: background-color 0.3s ease;
-			text-decoration: none;
+		.card-desc {
+			font-size: 0.88rem;
+			color: #888;
+			margin: 0;
+			line-height: 1.5;
 		}
-		.btn:hover {
-			background-color: #1565c0;
+		.card-arrow {
+			margin-top: auto;
+			padding-top: 12px;
+			color: #555;
+			font-size: 0.85rem;
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			transition: color 0.2s;
+		}
+		.card:hover .card-arrow {
+			color: #aaa;
 		}
 	</style>
 </head>
 <body>
-	<h1>Peter Brown</h1>
-	<h2>Space</h2>
-	<a href="https://peterbrown.space/sudoku" class="btn">Go to Sudoku</a>
+	<div class="header">
+		<h1>Peter Brown</h1>
+		<h2>Space</h2>
+	</div>
+	<div class="grid">
+		<a href="https://peterbrown.space/sudoku" class="card">
+			<div class="card-icon">🔢</div>
+			<p class="card-title">Sudoku</p>
+			<p class="card-desc">Classic number puzzle with auto-candidate mode, difficulty grading, and puzzle history.</p>
+			<span class="card-arrow">Play →</span>
+		</a>
+		<a href="https://peterbrown.space/kenken" class="card">
+			<div class="card-icon">➕</div>
+			<p class="card-title">KenKen</p>
+			<p class="card-desc">Math-based cage puzzle. Choose grid size from 4×4 to 8×8 with uniquely solvable puzzles.</p>
+			<span class="card-arrow">Play →</span>
+		</a>
+		<a href="https://peterbrown.space/svgbreeder" class="card">
+			<div class="card-icon">🎨</div>
+			<p class="card-title">evolveSVG</p>
+			<p class="card-desc">Evolve generative SVG art through mutation and selection. Bookmark and export your favorites.</p>
+			<span class="card-arrow">Explore →</span>
+		</a>
+	</div>
 </body>
 </html>

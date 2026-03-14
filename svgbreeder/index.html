@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Peter's SVG Breeder</title>
+    <title>evolveSVG</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
@@ -657,7 +657,7 @@
 <div id="sidebar-wrapper">
     <div id="sidebar">
         <div class="sidebar-header">
-            <h2>Peter's SVG Breeder</h2>
+            <h2>evolveSVG</h2>
         </div>
 
         <div class="controls-content">
@@ -1771,12 +1771,12 @@ function restart() {
 // ─── SVG Genome Embedding ──────────────────────────────────────────────────
 function svgWithGenomeMeta(svgStr, genome) {
     const json = JSON.stringify(genome).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const meta = `<metadata><svgbreeder:genome xmlns:svgbreeder="https://svgbreeder">${json}</svgbreeder:genome></metadata>`;
+    const meta = `<metadata><evolvesvg:genome xmlns:evolvesvg="https://evolvesvg">${json}</evolvesvg:genome></metadata>`;
     return svgStr.replace('</svg>', meta + '</svg>');
 }
 
 function extractGenomeFromSVG(svgText) {
-    const match = svgText.match(/<svgbreeder:genome[^>]*>([\s\S]*?)<\/svgbreeder:genome>/);
+    const match = svgText.match(/<evolvesvg:genome[^>]*>([\s\S]*?)<\/evolvesvg:genome>/);
     if (!match) return null;
     try { return JSON.parse(match[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')); } catch { return null; }
 }
@@ -1844,7 +1844,7 @@ let bookmarkDirHandle = null; // FileSystemDirectoryHandle (Chrome/Edge only)
 // IndexedDB helpers for persisting the directory handle across sessions
 function openHandleDB() {
     return new Promise((resolve, reject) => {
-        const req = indexedDB.open('svgbreeder_fs', 1);
+        const req = indexedDB.open('evolvesvg_fs', 1);
         req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
         req.onsuccess = e => resolve(e.target.result);
         req.onerror = reject;
@@ -1888,7 +1888,7 @@ async function getBookmarkDir(forcePickNew = false) {
         }
     }
     try {
-        bookmarkDirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'svgbreeder', startIn: 'pictures' });
+        bookmarkDirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'evolvesvg', startIn: 'pictures' });
         await saveDirHandle(bookmarkDirHandle);
         updateFolderUI();
         return bookmarkDirHandle;
@@ -1938,15 +1938,15 @@ function updateFolderUI() {
 // ── localStorage persistence ──────────────────────────────────────────────
 function persistBookmarks() {
     try {
-        localStorage.setItem('svgbreeder_bookmarks', JSON.stringify(bookmarks));
-        localStorage.setItem('svgbreeder_bm_seq', bookmarkIdSeq);
+        localStorage.setItem('evolvesvg_bookmarks', JSON.stringify(bookmarks));
+        localStorage.setItem('evolvesvg_bm_seq', bookmarkIdSeq);
     } catch {}
 }
 
 function restoreBookmarks() {
     try {
-        const saved = JSON.parse(localStorage.getItem('svgbreeder_bookmarks') || '[]');
-        const seq = parseInt(localStorage.getItem('svgbreeder_bm_seq') || '0');
+        const saved = JSON.parse(localStorage.getItem('evolvesvg_bookmarks') || '[]');
+        const seq = parseInt(localStorage.getItem('evolvesvg_bm_seq') || '0');
         for (const bm of saved) {
             if (!bm.thumbSvg) bm.thumbSvg = genomeToSVG(bm.genome, 160, 90, `bm${bm.id}`);
         }
@@ -2457,12 +2457,12 @@ const SLIDER_CONFIG = [
 function saveSliders() {
     const vals = {};
     SLIDER_CONFIG.forEach(({ id }) => { vals[id] = document.getElementById(id).value; });
-    localStorage.setItem('svgbreeder_sliders', JSON.stringify(vals));
+    localStorage.setItem('evolvesvg_sliders', JSON.stringify(vals));
 }
 
 function loadSliders() {
     let saved = {};
-    try { saved = JSON.parse(localStorage.getItem('svgbreeder_sliders') || '{}'); } catch {}
+    try { saved = JSON.parse(localStorage.getItem('evolvesvg_sliders') || '{}'); } catch {}
     SLIDER_CONFIG.forEach(({ id, display, fmt }) => {
         const el = document.getElementById(id);
         if (saved[id] !== undefined) el.value = saved[id];
