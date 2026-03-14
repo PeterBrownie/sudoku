@@ -1821,12 +1821,12 @@ document.getElementById('breedFromBtn').addEventListener('click', () => {
 const EX_W = 1280, EX_H = 720;
 // Zoom tiers: each defines a zoom range and a pixel scale multiplier relative to EX_W/EX_H.
 // Increase a tier's scale for more detail in that zoom range. MAX_EX_RASTER caps all tiers.
-const MAX_EX_RASTER = 16384;
+const MAX_EX_RASTER = 32768;
 const EX_TIERS = [
-    { maxZoom: 0.75, scale: 1 },  // fit view / zoomed out  → 1280×720
-    { maxZoom: 1.5,  scale: 2 },  // around 1:1             → 2560×1440
-    { maxZoom: 3,    scale: 4 },  // moderately zoomed in   → 5120×2880
-    { maxZoom: Infinity, scale: 8 }, // zoomed in           → capped by MAX_EX_RASTER
+    { maxZoom: 0.75, scale: 1 },  
+    { maxZoom: 5,  scale: 4 }, 
+    { maxZoom: 12,    scale: 8 },
+    { maxZoom: Infinity, scale: 16 }, 
 ];
 function getExTierIdx() {
     return EX_TIERS.findIndex(t => exZoom < t.maxZoom);
