@@ -699,6 +699,13 @@
             </div>
 
             <div class="control-group">
+                <div class="control-group-title">Import</div>
+                <input type="file" id="loadSvgInput" accept=".svg" style="display:none">
+                <button class="action-btn secondary" id="loadSvgBtn">Load SVG File…</button>
+                <div class="help-text" id="loadSvgHelp">Load a previously exported SVG to breed from it.</div>
+            </div>
+
+            <div class="control-group">
                 <div class="control-group-title">Advanced Effects</div>
                 <label class="checkbox-label">
                     <input type="checkbox" id="feat-turbulence" checked>
@@ -888,6 +895,90 @@ function randomGenome(numLayers = null) {
         layers: Array.from({length: layers}, () => randomLayer(paletteSize))
     };
 }
+
+// ─── Pattern Name Generator ────────────────────────────────────────────────
+(function() {
+    // Word banks keyed by hue sector (0-11, each ~30°) and lightness
+    const HUE_WORDS = [
+        // 0: Red (0-30°)
+        ['Crimson','Scarlet','Vermillion','Garnet','Ruby','Flame','Ember','Cherry','Cinnabar','Carmine','Sangria','Burgundy','Firebrick','Blaze','Hearth'],
+        // 1: Red-Orange (30-60°)
+        ['Rust','Terracotta','Coral','Sienna','Copper','Brick','Auburn','Cayenne','Paprika','Carnelian','Ochre','Cinnamon','Silt','Umber','Foxglove'],
+        // 2: Orange (60-90°)
+        ['Amber','Saffron','Tangerine','Marigold','Topaz','Harvest','Ember','Persimmon','Pumpkin','Citrine','Bronze','Butterscotch','Honey','Ginger','Marmalade'],
+        // 3: Yellow (90-120°)
+        ['Gold','Aureate','Ochre','Chamomile','Straw','Flax','Soleil','Citron','Mustard','Goldenrod','Daffodil','Brass','Canary','Lemon','Sunlit'],
+        // 4: Yellow-Green (120-150°)
+        ['Chartreuse','Lime','Peridot','Pistachio','Lichen','Fern','Celery','Citrus','Linden','Absinthe','Grass','Verdure','Sprig','Willow','Celadon'],
+        // 5: Green (150-180°)
+        ['Jade','Emerald','Viridian','Sage','Forest','Moss','Fern','Malachite','Clover','Laurel','Ivy','Basil','Juniper','Verdant','Chloris'],
+        // 6: Teal / Cyan-Green (180-210°)
+        ['Teal','Seafoam','Patina','Verdigris','Aqua','Spearmint','Celadon','Glacial','Lagoon','Seagrass','Turquoise','Mist','Shallows','Brine','Shoal'],
+        // 7: Cyan / Sky (210-240°)
+        ['Azure','Cerulean','Skyline','Cyan','Aquamarine','Frost','Zenith','Arctic','Glacier','Crystalline','Nimbus','Breeze','Halcyon','Zephyr','Celeste'],
+        // 8: Blue (240-270°)
+        ['Cobalt','Sapphire','Ultramarine','Indigo','Navy','Lapis','Royal','Midnight','Cadet','Electric','Hyacinth','Delft','Admiral','Blueprint','Aegean'],
+        // 9: Blue-Violet (270-300°)
+        ['Violet','Iris','Periwinkle','Lavender','Wisteria','Twilight','Amethyst','Heliotrope','Cornflower','Plum','Byzantium','Thistle','Dusk','Cosmic','Prism'],
+        // 10: Purple / Magenta (300-330°)
+        ['Plum','Mulberry','Mauve','Orchid','Aubergine','Fuchsia','Grape','Heather','Thistle','Boysenberry','Tyrian','Puce','Damask','Amaranth','Sangria'],
+        // 11: Pink / Rose (330-360°)
+        ['Rose','Blush','Carnation','Magenta','Flamingo','Peony','Cerise','Coral','Taffy','Quartz','Blossom','Confetti','Punch','Cameo','Petal'],
+    ];
+
+    // Lightness-based descriptors (picked when lightness is very high or very low)
+    const LIGHT_WORDS = ['Alabaster','Ivory','Pearl','Frost','Bone','Parchment','Chalk','Linen','Cream','Haze','Opal','Snow','Milk','Vapor','Veil'];
+    const DARK_WORDS  = ['Obsidian','Onyx','Abyss','Shadow','Dusk','Eclipse','Void','Raven','Cinder','Pitch','Charcoal','Ebony','Nocturne','Ash','Sable'];
+
+    // Evocative second words — paired with the color word to form a 2-word name
+    const SECOND_WORDS = [
+        'Drift','Bloom','Tide','Storm','Veil','Pulse','Cascade','Echo','Haze','Surge',
+        'Flare','Wisp','Glow','Shade','Wave','Rift','Vortex','Shroud','Aurora','Gleam',
+        'Current','Mirage','Breath','Trace','Reverie','Specter','Canopy','Hollow','Aura','Torrent',
+        'Prism','Dusk','Fringe','Crest','Flux','Spiral','Radiance','Lumen','Shimmer','Halo',
+        'Gradient','Static','Horizon','Cavern','Vale','Summit','Basin','Fold','Lattice','Ember',
+        'Vein','Plume','Crown','Petal','Mire','Blaze','Swell','Quiver','Ripple','Nebula',
+    ];
+
+    function pickFrom(arr, seed) {
+        // deterministic-ish pick using seed so same genome → same name
+        return arr[Math.abs(seed) % arr.length];
+    }
+
+    function simpleHash(str) {
+        let h = 0;
+        for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+        return h;
+    }
+
+    window.generatePatternName = function(genome) {
+        if (!genome || !genome.palette || genome.palette.length === 0) return 'Pattern';
+
+        // Palette colors are {h:0-360, s:30-100, l:20-80} objects
+        // Find the most saturated (visually dominant) color
+        let dominant = null, bestS = -1;
+        for (const c of genome.palette) {
+            if (c && typeof c.s === 'number' && c.s > bestS) { bestS = c.s; dominant = c; }
+        }
+        if (!dominant) return 'Pattern';
+
+        const paletteKey = genome.palette.map(c => `${~~c.h},${~~c.s},${~~c.l}`).join('|');
+        const seed = simpleHash(paletteKey);
+
+        let colorWord;
+        if (dominant.l > 75) {           // very light
+            colorWord = pickFrom(LIGHT_WORDS, seed);
+        } else if (dominant.l < 20) {    // very dark
+            colorWord = pickFrom(DARK_WORDS, seed);
+        } else {
+            const sector = Math.floor(((dominant.h % 360) / 360) * 12);
+            colorWord = pickFrom(HUE_WORDS[sector], seed);
+        }
+
+        const secondWord = pickFrom(SECOND_WORDS, seed ^ 0xdeadbeef);
+        return `${colorWord} ${secondWord}`;
+    };
+})();
 
 // ─── SVG Generation ───────────────────────────────────────────────────────
 
@@ -1388,12 +1479,12 @@ function mutateLayer(layer, palette, range, structRate, maxLayers, flags = {}) {
 
     // Displacement (feTurbulence + feDisplacementMap)
     if (l.displace != null) {
-        l.displace.scale    = clamp(nudge(l.displace.scale,    range * 15),   1, 200);
-        l.displace.baseFreq = clamp(nudge(l.displace.baseFreq, range * 0.01), 0.001, 0.12);
-        l.displace.octaves  = clamp(Math.round(nudge(l.displace.octaves, range * 0.5)), 1, 6);
+        l.displace.scale    = clamp(nudge(l.displace.scale,    range * 20),   1, 300);
+        l.displace.baseFreq = clamp(nudge(l.displace.baseFreq, range * 0.008), 0.0005, 0.13);
+        l.displace.octaves  = clamp(Math.round(nudge(l.displace.octaves, range * 0.8)), 1, 8);
         if (Math.random() < structRate * 0.08) delete l.displace;
     } else if (flags.turbulence && Math.random() < structRate * 0.15) {
-        l.displace = { scale: rand(10, 80), baseFreq: rand(0.003, 0.05), octaves: randInt(1, 4) };
+        l.displace = { scale: rand(10, 150), baseFreq: rand(0.0005, 0.2), octaves: randInt(1, 6) };
     }
 
     // Dashes
@@ -1677,6 +1768,19 @@ function restart() {
     for (let i = 0; i < 9; i++) renderCell(i);
 }
 
+// ─── SVG Genome Embedding ──────────────────────────────────────────────────
+function svgWithGenomeMeta(svgStr, genome) {
+    const json = JSON.stringify(genome).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const meta = `<metadata><svgbreeder:genome xmlns:svgbreeder="https://svgbreeder">${json}</svgbreeder:genome></metadata>`;
+    return svgStr.replace('</svg>', meta + '</svg>');
+}
+
+function extractGenomeFromSVG(svgText) {
+    const match = svgText.match(/<svgbreeder:genome[^>]*>([\s\S]*?)<\/svgbreeder:genome>/);
+    if (!match) return null;
+    try { return JSON.parse(match[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')); } catch { return null; }
+}
+
 // Export
 document.getElementById('copyBtn').addEventListener('click', () => {
     if (selectedIdx < 0) return;
@@ -1691,13 +1795,41 @@ document.getElementById('copyBtn').addEventListener('click', () => {
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
     if (selectedIdx < 0) return;
-    const svg = genomeToSVG(genomes[selectedIdx], 1920, 1080, 'ex');
+    const genome = genomes[selectedIdx];
+    const svg = svgWithGenomeMeta(genomeToSVG(genome, 1920, 1080, 'ex'), genome);
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'pattern.svg';
+    a.download = `${generatePatternName(genome)}.svg`;
     a.click();
     URL.revokeObjectURL(a.href);
+});
+
+// ─── Import SVG ────────────────────────────────────────────────────────────
+document.getElementById('loadSvgBtn').addEventListener('click', () => {
+    document.getElementById('loadSvgInput').click();
+});
+
+document.getElementById('loadSvgInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const genome = extractGenomeFromSVG(ev.target.result);
+        const helpEl = document.getElementById('loadSvgHelp');
+        if (!genome) {
+            helpEl.textContent = 'No genome data found — only SVGs exported from this app can be loaded.';
+            helpEl.style.color = '#c06040';
+            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to breed from it.'; helpEl.style.color = ''; }, 3000);
+        } else {
+            helpEl.textContent = 'Loaded! Breeding from imported pattern…';
+            helpEl.style.color = '#60c080';
+            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to breed from it.'; helpEl.style.color = ''; }, 2500);
+            breedFromGenome(genome);
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
 });
 
 // ─── Bookmarks ────────────────────────────────────────────────────────────
@@ -1764,7 +1896,7 @@ async function getBookmarkDir(forcePickNew = false) {
 }
 
 async function writeBookmarkFile(bm) {
-    const svg = genomeToSVG(bm.genome, 1920, 1080, `bm${bm.id}`);
+    const svg = svgWithGenomeMeta(genomeToSVG(bm.genome, 1920, 1080, `bm${bm.id}`), bm.genome);
     const filename = `bookmark_${String(bm.id).padStart(4, '0')}.svg`;
     const dir = await getBookmarkDir();
     if (dir) {
@@ -2072,7 +2204,7 @@ async function saveExpandAsPng() {
         canvas.toBlob(pngBlob => {
             const a = document.createElement('a');
             a.href = URL.createObjectURL(pngBlob);
-            a.download = `svgbreeder_${Date.now()}.png`;
+            a.download = `${generatePatternName(genomes[expandIdx])}.png`;
             a.click();
             URL.revokeObjectURL(a.href);
             btn.textContent = '↓';
@@ -2286,6 +2418,7 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
         sidebar.style.width = '280px';
     }
     document.getElementById('float-restart').classList.toggle('visible', isCollapsed);
+    setTimeout(() => { for (let i = 0; i < 9; i++) { if (genomes[i]) rasterizeCell(i); } }, 50);
 });
 
 document.getElementById('float-restart').addEventListener('click', restart);
@@ -2306,6 +2439,7 @@ document.getElementById('float-restart').addEventListener('click', restart);
             document.body.classList.remove('resizing-sidebar');
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
+            for (let i = 0; i < 9; i++) { if (genomes[i]) rasterizeCell(i); }
         };
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
