@@ -1416,8 +1416,12 @@ let selectedIdx = -1;
 let wrappers = [];
 let canvases = [];
 const rasterizeGen = new Array(9).fill(0);
-const MAX_RASTER_W = 3840;
-const MAX_RASTER_H = 2160;
+const MAX_RASTER_W = 1920;
+const MAX_RASTER_H = 1080;
+// Canonical SVG render size — used for ALL display rendering (grid + expand).
+// Keeping this fixed ensures feTurbulence and other filter effects produce an
+// identical pattern regardless of zoom level, sidebar state, or which view is active.
+const CANONICAL_W = 1280, CANONICAL_H = 720;
 
 // ─── Viewport (shared across all cells) ──────────────────────────────────
 let viewZoom = 1;
@@ -1455,11 +1459,11 @@ async function rasterizeCell(idx) {
 
     const cellRect = cellRects.get(cell) ?? cell.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    const zoomFactor = Math.min(Math.max(viewZoom, 1), 4);
+    const zoomFactor = Math.min(Math.max(viewZoom, 1), 2);
     const targetW = Math.min(Math.round(cellRect.width * zoomFactor * dpr), MAX_RASTER_W);
     const targetH = Math.min(Math.round(cellRect.height * zoomFactor * dpr), MAX_RASTER_H);
 
-    const svgStr = genomeToSVG(genomes[idx], targetW, targetH, `c${idx}`);
+    const svgStr = genomeToSVG(genomes[idx], CANONICAL_W, CANONICAL_H, `c${idx}`);
     const blob = new Blob([svgStr], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
@@ -1469,7 +1473,7 @@ async function rasterizeCell(idx) {
             if (rasterizeGen[idx] !== gen) { URL.revokeObjectURL(url); resolve(); return; }
             canvas.width = targetW;
             canvas.height = targetH;
-            canvas.getContext('2d').drawImage(img, 0, 0);
+            canvas.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
             URL.revokeObjectURL(url);
             resolve();
         };
@@ -1823,10 +1827,10 @@ const EX_W = 1280, EX_H = 720;
 // Increase a tier's scale for more detail in that zoom range. MAX_EX_RASTER caps all tiers.
 const MAX_EX_RASTER = 32768;
 const EX_TIERS = [
-    { maxZoom: 0.75, scale: 1 },  
-    { maxZoom: 5,  scale: 4 }, 
-    { maxZoom: 12,    scale: 8 },
-    { maxZoom: Infinity, scale: 16 }, 
+    { maxZoom: 1, scale: 1 },  
+    { maxZoom: 3,  scale: 3 }, 
+    { maxZoom: 7,    scale: 6 },
+    { maxZoom: Infinity, scale: 9 }, 
 ];
 function getExTierIdx() {
     return EX_TIERS.findIndex(t => exZoom < t.maxZoom);
@@ -1906,9 +1910,9 @@ async function rasterizeExpand() {
     const gen = ++exRasterGen;
     const [targetW, targetH] = getExTierDims(tierIdx);
 
-    // Always render SVG at EX_W×EX_H so feTurbulence coordinates stay consistent,
-    // then upscale onto the canvas for quality (same strategy as saveExpandAsPng).
-    const svgStr = genomeToSVG(genomes[expandIdx], EX_W, EX_H, 'ex');
+    // Always render SVG at CANONICAL_W×CANONICAL_H so feTurbulence coordinates
+    // stay consistent with the grid view and across all zoom levels.
+    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'ex');
     const blob = new Blob([svgStr], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
@@ -1942,9 +1946,31 @@ async function saveExpandAsPng() {
     btn.disabled = true;
 
     const PNG_W = 7680, PNG_H = 4320;
-    // Render SVG at expand resolution so feTurbulence matches what's on screen,
-    // then upscale to PNG dimensions on the canvas.
-    const svgStr = genomeToSVG(genomes[expandIdx], EX_W, EX_H, 'save');
+
+    const triggerDownload = canvas => {
+        canvas.toBlob(pngBlob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(pngBlob);
+            a.download = `svgbreeder_${Date.now()}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            btn.textContent = '↓';
+            btn.disabled = false;
+        }, 'image/png');
+    };
+
+    // Use the highest cached LOD if it exceeds the default PNG resolution —
+    // it was rendered at genuinely higher quality (more filter sample points).
+    for (let i = EX_TIERS.length - 1; i >= 0; i--) {
+        const cached = exTierCache[i];
+        if (cached && cached.width * cached.height > PNG_W * PNG_H) {
+            triggerDownload(cached);
+            return;
+        }
+    }
+
+    // No suitable cache — render fresh at PNG dimensions.
+    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'save');
     const blob = new Blob([svgStr], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
@@ -1955,15 +1981,7 @@ async function saveExpandAsPng() {
         canvas.height = PNG_H;
         canvas.getContext('2d').drawImage(img, 0, 0, PNG_W, PNG_H);
         URL.revokeObjectURL(url);
-        canvas.toBlob(pngBlob => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(pngBlob);
-            a.download = `svgbreeder_${Date.now()}.png`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-            btn.textContent = '↓';
-            btn.disabled = false;
-        }, 'image/png');
+        triggerDownload(canvas);
     };
     img.onerror = () => { URL.revokeObjectURL(url); btn.textContent = '↓'; btn.disabled = false; };
     img.src = url;
