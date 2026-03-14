@@ -527,6 +527,37 @@
         }
         #expand-controls button:hover { background: rgba(60,60,60,0.95); color: #fff; border-color: #777; }
 
+        #expand-lod {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 6px;
+            height: 32px;
+        }
+        #expand-lod .lod-bar {
+            width: 3px;
+            height: 12px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.1);
+            transition: background 0.25s, height 0.15s, width 0.15s;
+        }
+        #expand-lod .lod-bar.lod-cached {
+            background: rgba(255,255,255,0.3);
+        }
+        #expand-lod .lod-bar.lod-current {
+            width: 4px;
+            height: 20px;
+            background: rgba(255,255,255,0.85);
+        }
+        #expand-lod .lod-bar.lod-rendering {
+            background: #e09030;
+            animation: lod-pulse 0.75s ease-in-out infinite;
+        }
+        @keyframes lod-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
         #expand-hint {
             position: absolute;
             bottom: 16px;
@@ -660,6 +691,12 @@
         <div id="expand-svg-wrapper"></div>
     </div>
     <div id="expand-controls">
+        <div id="expand-lod">
+            <div class="lod-bar" data-tier="0"></div>
+            <div class="lod-bar" data-tier="1"></div>
+            <div class="lod-bar" data-tier="2"></div>
+            <div class="lod-bar" data-tier="3"></div>
+        </div>
         <button id="expand-save" title="Save as PNG">↓</button>
         <button id="expand-reset" title="Reset zoom (double-click)">⊡</button>
         <button id="expand-close" title="Close (Esc)">✕</button>
@@ -1782,13 +1819,47 @@ document.getElementById('breedFromBtn').addEventListener('click', () => {
 
 // ─── Expand overlay ──────────────────────────────────────────────────────
 const EX_W = 1280, EX_H = 720;
+// Zoom tiers: each defines a zoom range and a pixel scale multiplier relative to EX_W/EX_H.
+// Increase a tier's scale for more detail in that zoom range. MAX_EX_RASTER caps all tiers.
+const MAX_EX_RASTER = 16384;
+const EX_TIERS = [
+    { maxZoom: 0.75, scale: 1 },  // fit view / zoomed out  → 1280×720
+    { maxZoom: 1.5,  scale: 2 },  // around 1:1             → 2560×1440
+    { maxZoom: 3,    scale: 4 },  // moderately zoomed in   → 5120×2880
+    { maxZoom: Infinity, scale: 8 }, // zoomed in           → capped by MAX_EX_RASTER
+];
+function getExTierIdx() {
+    return EX_TIERS.findIndex(t => exZoom < t.maxZoom);
+}
+function getExTierDims(tierIdx) {
+    const s = Math.min(EX_TIERS[tierIdx].scale, MAX_EX_RASTER / EX_W, MAX_EX_RASTER / EX_H);
+    return [Math.round(EX_W * s), Math.round(EX_H * s)];
+}
 let exZoom = 1, exPanX = 0, exPanY = 0;
 let exDragging = false, exDidPan = false;
 let exDragStartX = 0, exDragStartY = 0, exDragStartPanX = 0, exDragStartPanY = 0;
+let exCanvas = null, exRasterGen = 0, exZoomSettleTimer = null, exRafPending = false;
+let exTierCache = {}; // tierIdx → offscreen canvas
+let exRenderingTier = -1, exDisplayedTier = -1;
+const exWrapper = document.getElementById('expand-svg-wrapper');
+
+function updateLodIndicator() {
+    const currentTier = getExTierIdx();
+    document.querySelectorAll('#expand-lod .lod-bar').forEach(bar => {
+        const i = +bar.dataset.tier;
+        bar.classList.toggle('lod-current', i === currentTier);
+        bar.classList.toggle('lod-cached', !!exTierCache[i]);
+        bar.classList.toggle('lod-rendering', i === exRenderingTier);
+    });
+}
 
 function applyExpandTransform() {
-    document.getElementById('expand-svg-wrapper').style.transform =
-        `translate(${exPanX}px,${exPanY}px) scale(${exZoom})`;
+    if (exRafPending) return;
+    exRafPending = true;
+    requestAnimationFrame(() => {
+        exWrapper.style.transform = `translate(${exPanX}px,${exPanY}px) scale(${exZoom})`;
+        exRafPending = false;
+    });
 }
 
 function fitExpandView() {
@@ -1804,14 +1875,64 @@ let expandIdx = -1;
 
 function openExpand(idx) {
     expandIdx = idx;
-    const wrapper = document.getElementById('expand-svg-wrapper');
-    const svg = genomeToSVG(genomes[idx], EX_W, EX_H, `ex`)
-        .replace('xMidYMid slice', 'xMidYMid meet');
-    wrapper.innerHTML = svg;
-    const svgEl = wrapper.querySelector('svg');
-    if (svgEl) { svgEl.style.width = EX_W + 'px'; svgEl.style.height = EX_H + 'px'; }
+    exTierCache = {};
+    exDisplayedTier = -1;
+    exWrapper.innerHTML = '';
+    exCanvas = document.createElement('canvas');
+    exCanvas.style.cssText = `width:${EX_W}px;height:${EX_H}px;display:block;`;
+    exWrapper.appendChild(exCanvas);
     document.getElementById('expand-overlay').classList.add('visible');
     fitExpandView();
+    rasterizeExpand();
+}
+
+async function rasterizeExpand() {
+    if (expandIdx < 0 || !exCanvas) return;
+    const tierIdx = getExTierIdx();
+
+    // Serve from cache if this tier has already been rendered
+    if (exTierCache[tierIdx]) {
+        const cached = exTierCache[tierIdx];
+        exCanvas.width = cached.width;
+        exCanvas.height = cached.height;
+        exCanvas.getContext('2d').drawImage(cached, 0, 0);
+        exDisplayedTier = tierIdx;
+        updateLodIndicator();
+        return;
+    }
+
+    exRenderingTier = tierIdx;
+    updateLodIndicator();
+    const gen = ++exRasterGen;
+    const [targetW, targetH] = getExTierDims(tierIdx);
+
+    // Always render SVG at EX_W×EX_H so feTurbulence coordinates stay consistent,
+    // then upscale onto the canvas for quality (same strategy as saveExpandAsPng).
+    const svgStr = genomeToSVG(genomes[expandIdx], EX_W, EX_H, 'ex');
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            if (exRasterGen !== gen) { URL.revokeObjectURL(url); resolve(); return; }
+            const offscreen = document.createElement('canvas');
+            offscreen.width = targetW;
+            offscreen.height = targetH;
+            offscreen.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+            exTierCache[tierIdx] = offscreen;
+            exCanvas.width = targetW;
+            exCanvas.height = targetH;
+            exCanvas.getContext('2d').drawImage(offscreen, 0, 0);
+            URL.revokeObjectURL(url);
+            exRenderingTier = -1;
+            exDisplayedTier = tierIdx;
+            updateLodIndicator();
+            resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img.src = url;
+    });
 }
 
 async function saveExpandAsPng() {
@@ -1820,7 +1941,7 @@ async function saveExpandAsPng() {
     btn.textContent = '…';
     btn.disabled = true;
 
-    const PNG_W = 3840, PNG_H = 2160;
+    const PNG_W = 7680, PNG_H = 4320;
     // Render SVG at expand resolution so feTurbulence matches what's on screen,
     // then upscale to PNG dimensions on the canvas.
     const svgStr = genomeToSVG(genomes[expandIdx], EX_W, EX_H, 'save');
@@ -1850,7 +1971,12 @@ async function saveExpandAsPng() {
 
 function closeExpand() {
     document.getElementById('expand-overlay').classList.remove('visible');
-    document.getElementById('expand-svg-wrapper').innerHTML = '';
+    exWrapper.innerHTML = '';
+    exCanvas = null;
+    exTierCache = {};
+    exRenderingTier = -1;
+    exDisplayedTier = -1;
+    clearTimeout(exZoomSettleTimer);
     document.body.classList.remove('expand-panning');
 }
 
@@ -1901,6 +2027,19 @@ exViewport.addEventListener('wheel', e => {
     exPanY = my - (my - exPanY) * (newZoom / exZoom);
     exZoom = newZoom;
     applyExpandTransform();
+    const newTierIdx = getExTierIdx();
+    updateLodIndicator();
+    clearTimeout(exZoomSettleTimer);
+    if (newTierIdx !== exDisplayedTier) {
+        if (exTierCache[newTierIdx]) {
+            rasterizeExpand(); // cached — switch immediately, no delay
+        } else {
+            exZoomSettleTimer = setTimeout(rasterizeExpand, 350);
+        }
+    } else if (!exTierCache[newTierIdx]) {
+        // Still in same uncached tier — keep debouncing while user zooms
+        exZoomSettleTimer = setTimeout(rasterizeExpand, 350);
+    }
 }, { passive: false });
 
 // Double-click to fit
@@ -1995,7 +2134,7 @@ gridContainer.addEventListener('wheel', e => {
     clearTimeout(zoomSettleTimer);
     zoomSettleTimer = setTimeout(() => {
         for (let i = 0; i < 9; i++) { if (genomes[i]) rasterizeCell(i); }
-    }, 250);
+    }, 350);
 }, { passive: false });
 
 // Sidebar toggle
