@@ -1721,8 +1721,13 @@ async function rasterizeCell(idx) {
     const cellRect = cellRects.get(cell) ?? cell.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const zoomFactor = Math.min(Math.max(viewZoom, 1), 2);
-    const targetW = Math.min(Math.round(cellRect.width * zoomFactor * dpr), MAX_RASTER_W);
-    const targetH = Math.min(Math.round(cellRect.height * zoomFactor * dpr), MAX_RASTER_H);
+    // Scale both dimensions by the same factor so the canvas always matches the
+    // cell's aspect ratio — independent capping causes CSS stretch/squish.
+    const rawW = cellRect.width * zoomFactor * dpr;
+    const rawH = cellRect.height * zoomFactor * dpr;
+    const capScale = Math.min(1, MAX_RASTER_W / rawW, MAX_RASTER_H / rawH);
+    const targetW = Math.round(rawW * capScale);
+    const targetH = Math.round(rawH * capScale);
 
     // If a cached render at >= the target size exists, downscale it — much cheaper
     // than re-rasterizing the SVG through the browser engine.
