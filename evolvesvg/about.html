@@ -30,6 +30,7 @@
             font-size: 15px;
             line-height: 1.65;
             min-height: 100vh;
+            overflow-x: clip;
         }
 
         /* ── Top nav ──────────────────────────────────────── */
@@ -290,13 +291,18 @@
             gap: 20px;
             align-items: flex-start;
             margin-top: 28px;
+            position: relative;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(1200px, calc(100vw - 56px));
         }
 
         .mutations-left {
-            flex: 0 0 270px;
-            display: flex;
-            flex-direction: column;
+            flex: 0 0 560px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 6px;
+            align-content: start;
         }
 
         .mutations-hint {
@@ -304,6 +310,16 @@
             color: var(--text-faint);
             margin-bottom: 6px;
             line-height: 1.4;
+            grid-column: 1 / -1;
+        }
+        .mut-pill-section-label {
+            grid-column: 1 / -1;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-faint);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding-top: 6px;
         }
 
         .mut-pill {
@@ -343,16 +359,16 @@
             background: var(--surface);
             border: 1px solid var(--border2);
             border-radius: 8px;
-            padding: 18px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 10px;
         }
 
         .mut-demo-images {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
 
         .mut-demo-col {
@@ -372,6 +388,7 @@
 
         .mut-demo-img {
             width: 100%;
+            max-height: 260px;
             aspect-ratio: 16 / 9;
             display: block;
             border-radius: 4px;
@@ -418,27 +435,10 @@
         .mut-after-wrapper {
             position: relative;
         }
-        .mut-after-open {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            background: rgba(0,0,0,0.65);
-            border: 1px solid var(--border2);
-            border-radius: 4px;
-            color: var(--accent);
-            cursor: pointer;
-            font-size: 11px;
-            padding: 3px 8px;
-            line-height: 1.4;
-            transition: background 0.15s, border-color 0.15s, color 0.15s;
-            white-space: nowrap;
-            backdrop-filter: blur(4px);
-        }
-        .mut-after-open:hover { background: rgba(74,158,255,0.18); border-color: var(--accent); color: #fff; }
 
         @media (max-width: 720px) {
             .mutations-split { flex-direction: column; }
-            .mutations-left { flex: none; width: 100%; }
+            .mutations-left { flex: none; width: 100%; grid-template-columns: 1fr; }
             .mutations-right { position: static; }
         }
 
@@ -667,7 +667,7 @@
     <div class="hero">
         <div class="hero-wordmark">evolve<span>SVG</span></div>
         <p class="hero-tagline">
-            A generative art tool (not AI-generated) that breeds abstract patterns through interactive evolution.
+            A generative art tool that breeds abstract patterns through interactive evolution. Images are algorithmically generated, not ai-generated.
         </p>
         <a class="hero-cta" href="index.html">Open evolveSVG</a>
     </div>
@@ -851,9 +851,11 @@
             <div class="mutations-left">
                 <p class="mutations-hint">Select any mutation type to see it demonstrated &#8594;</p>
 
-                <div class="mut-pill selected" data-mut="param">
+                <div class="mut-pill-section-label">Core</div>
+
+                <div class="mut-pill" data-mut="param">
                     <div class="mut-pill-name">Parametric</div>
-                    <div class="mut-pill-desc">Numeric values &mdash; size, position, opacity, rotation &mdash; nudge via Gaussian noise. Offspring remain recognizable relatives.</div>
+                    <div class="mut-pill-desc">Shifts values for size, position, opacity, rotation. Mutations remain recognizable.</div>
                 </div>
 
                 <div class="mut-pill" data-mut="structure">
@@ -866,18 +868,18 @@
                     <div class="mut-pill-desc">Palette hues, saturations, and lightnesses drift in HSL space. Colors can be added or removed from the palette.</div>
                 </div>
 
-                <div class="mut-pill" data-mut="displace">
-                    <div class="mut-pill-name">Displacement</div>
+                <div class="mut-pill selected" data-mut="displace">
+                    <div class="mut-pill-name">Displacement ★</div>
                     <div class="mut-pill-desc"><code>feTurbulence</code> fractal noise warps pixels organically. Frequency, scale, and octave count all evolve.</div>
                 </div>
 
                 <div class="mut-pill" data-mut="blur">
                     <div class="mut-pill-name">Blur</div>
-                    <div class="mut-pill-desc">Gaussian blur per layer before compositing. Creates soft glows, halos, and atmospheric depth.</div>
+                    <div class="mut-pill-desc">Gaussian blur per layer before compositing. Pretty self explanatory.</div>
                 </div>
 
-                <div class="mut-pill" data-mut="colorshift">
-                    <div class="mut-pill-name">Color Shift</div>
+                <div class="mut-pill selected" data-mut="colorshift">
+                    <div class="mut-pill-name">Color Shift ★</div>
                     <div class="mut-pill-desc"><code>feColorMatrix</code> rotates hue and scales saturation independently from the palette.</div>
                 </div>
 
@@ -889,6 +891,33 @@
                 <div class="mut-pill" data-mut="dashes">
                     <div class="mut-pill-name">Dashes</div>
                     <div class="mut-pill-desc">Stroke dash patterns on tiling layers. Turns stripes and grids into dotted or dashed textures.</div>
+                </div>
+
+                <div class="mut-pill-section-label">Experimental</div>
+
+                <div class="mut-pill" data-mut="morph">
+                    <div class="mut-pill-name">Morphology</div>
+                    <div class="mut-pill-desc"><code>feMorphology</code> dilates or erodes layer edges, fattening shapes outward or carving them inward.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="shadow">
+                    <div class="mut-pill-name">Drop Shadow</div>
+                    <div class="mut-pill-desc">A coloured shadow offset from the layer, blurred and composited behind it using palette colours.</div>
+                </div>
+
+                <div class="mut-pill selected" data-mut="comptrans">
+                    <div class="mut-pill-name">Channel Curves ★</div>
+                    <div class="mut-pill-desc"><code>feComponentTransfer</code> applies an independent gamma curve to each RGB channel, creating tonal shifts.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="diffuse">
+                    <div class="mut-pill-name">Diffuse Light</div>
+                    <div class="mut-pill-desc"><code>feDiffuseLighting</code> simulates a distant light source shining on the layer surface, giving a 3D embossed look.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="convolve">
+                    <div class="mut-pill-name">Convolve</div>
+                    <div class="mut-pill-desc"><code>feConvolveMatrix</code> applies a 3&times;3 kernel — emboss, sharpen, or edge-detect — directly to the layer pixels.</div>
                 </div>
             </div>
 
@@ -908,7 +937,6 @@
                             <div class="mut-demo-label">after</div>
                             <div class="mut-after-wrapper">
                                 <img id="mut-after" class="mut-demo-img" alt="">
-                                <button class="mut-after-open" id="mut-open" title="Open in evolveSVG">&#8599; open</button>
                             </div>
                         </div>
                     </div>
@@ -1173,10 +1201,16 @@
         }
     }
 
-    function buildFilter(layer, defs) {
-        if (!layer.displace && !layer.blur && !layer.colorShift) return '';
+    function buildFilter(layer, pal, defs) {
+        if (!layer.displace && !layer.blur && !layer.colorShift && !layer.morph &&
+            !layer.shadow && !layer.componentTransfer && !layer.diffuseLight && !layer.convolve) return '';
         const id = gid();
         let steps = '', cur = 'SourceGraphic';
+        if (layer.morph) {
+            const {operator, radiusX, radiusY} = layer.morph;
+            steps += `<feMorphology in="${cur}" operator="${operator}" radius="${radiusX.toFixed(1)} ${radiusY.toFixed(1)}" result="morph"/>`;
+            cur = 'morph';
+        }
         if (layer.displace) {
             const {scale, baseFreq, octaves} = layer.displace;
             steps += `<feTurbulence type="fractalNoise" baseFrequency="${baseFreq.toFixed(4)}" numOctaves="${Math.round(octaves)}" result="noise"/>`;
@@ -1193,8 +1227,34 @@
                 cur = 'hued';
             }
             if (layer.colorShift.saturate != null) {
-                steps += `<feColorMatrix in="${cur}" type="saturate" values="${layer.colorShift.saturate.toFixed(2)}"/>`;
+                steps += `<feColorMatrix in="${cur}" type="saturate" values="${layer.colorShift.saturate.toFixed(2)}" result="sat"/>`;
+                cur = 'sat';
             }
+        }
+        if (layer.componentTransfer) {
+            const {rExp, gExp, bExp} = layer.componentTransfer;
+            steps += `<feComponentTransfer in="${cur}" result="ctrans"><feFuncR type="gamma" amplitude="1" exponent="${rExp.toFixed(3)}" offset="0"/><feFuncG type="gamma" amplitude="1" exponent="${gExp.toFixed(3)}" offset="0"/><feFuncB type="gamma" amplitude="1" exponent="${bExp.toFixed(3)}" offset="0"/></feComponentTransfer>`;
+            cur = 'ctrans';
+        }
+        if (layer.diffuseLight) {
+            const {azimuth, elevation, scale: surfScale, strength} = layer.diffuseLight;
+            steps += `<feDiffuseLighting in="${cur}" surfaceScale="${surfScale.toFixed(1)}" diffuseConstant="${strength.toFixed(2)}" result="diffuse"><feDistantLight azimuth="${azimuth.toFixed(1)}" elevation="${elevation.toFixed(1)}"/></feDiffuseLighting>`;
+            steps += `<feComposite in="diffuse" in2="${cur}" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="lit"/>`;
+            cur = 'lit';
+        }
+        if (layer.convolve) {
+            const kernels = { emboss: '-2 -1 0 -1 1 1 0 1 2', sharpen: '0 -1 0 -1 5 -1 0 -1 0', edge: '-1 -1 -1 -1 8 -1 -1 -1 -1' };
+            steps += `<feConvolveMatrix in="${cur}" order="3" kernelMatrix="${kernels[layer.convolve.type] || kernels.emboss}" preserveAlpha="true" result="conv"/>`;
+            cur = 'conv';
+        }
+        if (layer.shadow) {
+            const {dx, dy, blur: sBlur, paletteIdx, alpha} = layer.shadow;
+            const sc = cStr(pal[paletteIdx % pal.length], alpha);
+            steps += `<feFlood flood-color="${sc}" result="shadowFlood"/>`;
+            steps += `<feComposite in="shadowFlood" in2="SourceAlpha" operator="in" result="shadowMask"/>`;
+            steps += `<feGaussianBlur in="shadowMask" stdDeviation="${sBlur.toFixed(1)}" result="shadowBlur"/>`;
+            steps += `<feOffset in="shadowBlur" dx="${dx.toFixed(1)}" dy="${dy.toFixed(1)}" result="shadowOffset"/>`;
+            steps += `<feMerge><feMergeNode in="shadowOffset"/><feMergeNode in="${cur}"/></feMerge>`;
         }
         defs.push(`<filter id="${id}" x="-40%" y="-40%" width="180%" height="180%">${steps}</filter>`);
         return ` filter="url(#${id})"`;
@@ -1219,7 +1279,7 @@
         const fill = fillAttr(pal, layer.fill, defs);
         const sk   = cStr(pal[layer.stroke.i%pal.length], layer.stroke.a);
         const sw   = (layer.stroke.w*W).toFixed(2);
-        const flt  = buildFilter(layer, defs);
+        const flt  = buildFilter(layer, pal, defs);
         const attrs = `fill="${fill}" stroke="${sk}" stroke-width="${sw}" opacity="${layer.opacity.toFixed(3)}" style="mix-blend-mode:${layer.blendMode}"${flt}`;
         const {rot,sx,sy} = layer.tf;
         const tf = (tx,ty) => `translate(${tx.toFixed(1)},${ty.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
@@ -1366,6 +1426,51 @@
         return g;
     }
 
+    function mutateMorph(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.morph = { operator: PK(['dilate','erode']), radiusX: R(2, 15), radiusY: R(2, 15) };
+            return l;
+        });
+        return g;
+    }
+
+    function mutateShadow(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.shadow = { dx: R(-40, 40), dy: R(-40, 40), blur: R(5, 20), paletteIdx: RI(0, g.pal.length - 1), alpha: R(0.3, 0.8) };
+            return l;
+        });
+        return g;
+    }
+
+    function mutateComponentTransfer(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.componentTransfer = { rExp: R(0.3, 3), gExp: R(0.3, 3), bExp: R(0.3, 3) };
+            return l;
+        });
+        return g;
+    }
+
+    function mutateDiffuseLight(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.diffuseLight = { azimuth: R(0, 360), elevation: R(15, 75), scale: R(3, 15), strength: R(0.8, 2.5) };
+            return l;
+        });
+        return g;
+    }
+
+    function mutateConvolve(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.convolve = { type: PK(['emboss', 'sharpen', 'edge']) };
+            return l;
+        });
+        return g;
+    }
+
     // ── Demo wiring ───────────────────────────────────────────────────────
     function setImg(el, genome) {
         const svg  = genomeSVG(genome);
@@ -1376,24 +1481,34 @@
     }
 
     const MUT_MAP = {
-        param:      { fn: mutateParam,      label: 'Parametric'   },
-        structure:  { fn: mutateStructure,  label: 'Structural'   },
-        color:      { fn: mutateColor,      label: 'Color'        },
-        displace:   { fn: mutateDisplace,   label: 'Displacement' },
-        blur:       { fn: mutateBlurEffect, label: 'Blur'         },
-        colorshift: { fn: mutateColorShift, label: 'Color Shift'  },
-        mask:       { fn: mutateMask,       label: 'Mask'         },
-        dashes:     { fn: mutateDashes,     label: 'Dashes'       },
+        param:      { fn: mutateParam,             label: 'Parametric'     },
+        structure:  { fn: mutateStructure,         label: 'Structural'     },
+        color:      { fn: mutateColor,             label: 'Color'          },
+        displace:   { fn: mutateDisplace,          label: 'Displacement'   },
+        blur:       { fn: mutateBlurEffect,        label: 'Blur'           },
+        colorshift: { fn: mutateColorShift,        label: 'Color Shift'    },
+        mask:       { fn: mutateMask,              label: 'Mask'           },
+        dashes:     { fn: mutateDashes,            label: 'Dashes'         },
+        morph:      { fn: mutateMorph,             label: 'Morphology'     },
+        shadow:     { fn: mutateShadow,            label: 'Drop Shadow'    },
+        comptrans:  { fn: mutateComponentTransfer, label: 'Channel Curves' },
+        diffuse:    { fn: mutateDiffuseLight,      label: 'Diffuse Light'  },
+        convolve:   { fn: mutateConvolve,          label: 'Convolve'       },
     };
 
     // mutChain: ordered array of {id, genome} — genome is the cumulative result after that step.
     // Mutations whose per-layer effects can be lifted off and replanted onto a different base:
     const REPLAYABLE = {
-        displace:   { get: l => l.displace,   set: (l,v) => v ? (l.displace   = v) : delete l.displace   },
-        blur:       { get: l => l.blur,        set: (l,v) => v != null ? (l.blur = v) : delete l.blur     },
-        colorshift: { get: l => l.colorShift,  set: (l,v) => v ? (l.colorShift = v) : delete l.colorShift },
-        mask:       { get: l => l.mask,        set: (l,v) => v ? (l.mask       = v) : delete l.mask       },
-        dashes:     { get: l => l.dash,        set: (l,v) => v ? (l.dash       = v) : delete l.dash       },
+        displace:   { get: l => l.displace,          set: (l,v) => v ? (l.displace          = v) : delete l.displace          },
+        blur:       { get: l => l.blur,              set: (l,v) => v != null ? (l.blur       = v) : delete l.blur              },
+        colorshift: { get: l => l.colorShift,        set: (l,v) => v ? (l.colorShift        = v) : delete l.colorShift        },
+        mask:       { get: l => l.mask,              set: (l,v) => v ? (l.mask               = v) : delete l.mask              },
+        dashes:     { get: l => l.dash,              set: (l,v) => v ? (l.dash               = v) : delete l.dash              },
+        morph:      { get: l => l.morph,             set: (l,v) => v ? (l.morph              = v) : delete l.morph             },
+        shadow:     { get: l => l.shadow,            set: (l,v) => v ? (l.shadow             = v) : delete l.shadow            },
+        comptrans:  { get: l => l.componentTransfer, set: (l,v) => v ? (l.componentTransfer  = v) : delete l.componentTransfer },
+        diffuse:    { get: l => l.diffuseLight,      set: (l,v) => v ? (l.diffuseLight       = v) : delete l.diffuseLight      },
+        convolve:   { get: l => l.convolve,          set: (l,v) => v ? (l.convolve           = v) : delete l.convolve          },
     };
 
     // Apply mutation `id` to `target`, reusing the exact effect values from `stored` where possible.
@@ -1413,15 +1528,15 @@
 
     function displayAfter() {
         const afterEl = document.getElementById('mut-after');
-        if (afterEl && mutChain.length) setImg(afterEl, mutChain[mutChain.length - 1].genome);
+        if (afterEl) setImg(afterEl, mutChain.length ? mutChain[mutChain.length - 1].genome : parentGenome);
     }
 
     function updateActiveLabel() {
         const activeName = document.getElementById('mut-active-name');
         if (!activeName) return;
-        activeName.textContent = selectedMuts.size === 1
-            ? MUT_MAP[[...selectedMuts][0]].label
-            : `${selectedMuts.size} mutations`;
+        if (selectedMuts.size === 0) activeName.textContent = 'None';
+        else if (selectedMuts.size === 1) activeName.textContent = MUT_MAP[[...selectedMuts][0]].label;
+        else activeName.textContent = `${selectedMuts.size} mutations`;
     }
 
     function rebuildChain() {
@@ -1462,14 +1577,12 @@
     function initMutationDemo() {
         const pills = document.querySelectorAll('.mut-pill');
         // Seed initial selection
-        selectedMuts.add('param');
-        pills.forEach(p => { if (p.dataset.mut === 'param') p.classList.add('selected'); });
+        ['displace', 'colorshift', 'comptrans'].forEach(id => selectedMuts.add(id));
 
         pills.forEach(pill => {
             pill.addEventListener('click', () => {
                 const id = pill.dataset.mut;
                 if (selectedMuts.has(id)) {
-                    if (selectedMuts.size === 1) return;
                     selectedMuts.delete(id);
                     pill.classList.remove('selected');
                     removeMutFromChain(id);
@@ -1487,60 +1600,6 @@
 
         const remutateBtn = document.getElementById('mut-remutate');
         if (remutateBtn) remutateBtn.addEventListener('click', rebuildChain);
-
-        function demoToMainGenome(g) {
-            function convertFill(f) {
-                if (!f) return f;
-                const r = { type: f.type, paletteIdx: f.i ?? 0, alpha: f.a ?? 1 };
-                if (f.i2 != null) r.paletteIdx2 = f.i2; else r.paletteIdx2 = r.paletteIdx;
-                if (f.ang != null) r.angle = f.ang;
-                return r;
-            }
-            function convertStroke(s) {
-                if (!s) return s;
-                return { paletteIdx: s.i ?? 0, width: s.w ?? 0, alpha: s.a ?? 0 };
-            }
-            function convertLayer(l) {
-                const ml = {
-                    type: l.type,
-                    cx: l.cx, cy: l.cy,
-                    params: DC(l.params),
-                    fill: convertFill(l.fill),
-                    stroke: convertStroke(l.stroke),
-                    opacity: l.opacity,
-                    blendMode: l.blendMode,
-                    arrangement: l.arr,
-                    arrangementParams: DC(l.arrP),
-                    transform: { rotate: l.tf?.rot ?? 0, scaleX: l.tf?.sx ?? 1, scaleY: l.tf?.sy ?? 1 },
-                };
-                if (l.displace) ml.displace = DC(l.displace);
-                if (l.blur != null) ml.blur = l.blur;
-                if (l.colorShift) ml.colorShift = DC(l.colorShift);
-                if (l.mask) ml.mask = DC(l.mask);
-                if (l.dash) ml.dash = DC(l.dash);
-                return ml;
-            }
-            const bg = g.bg;
-            return {
-                palette: DC(g.pal),
-                background: {
-                    type: bg.type,
-                    paletteIdx: bg.i ?? 0,
-                    paletteIdx2: bg.i2 ?? 0,
-                    angle: bg.ang ?? 0,
-                },
-                layers: g.layers.map(convertLayer),
-            };
-        }
-
-        const openBtn = document.getElementById('mut-open');
-        if (openBtn) openBtn.addEventListener('click', () => {
-            const after = mutChain.length ? mutChain[mutChain.length - 1].genome : parentGenome;
-            if (!after) return;
-            const main = demoToMainGenome(after);
-            const encoded = btoa(JSON.stringify(main));
-            window.open(`index.html?genome=${encodeURIComponent(encoded)}`, '_blank');
-        });
 
         newParent();
     }

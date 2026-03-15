@@ -76,6 +76,13 @@
             transition: background 0.15s, color 0.15s;
         }
         #toggleSidebar:hover { background: #444; color: #fff; border-color: #666; }
+        #toggleSidebar.hint-pulse { animation: sidebar-hint-pulse 1s ease-out; }
+        @keyframes sidebar-hint-pulse {
+            0%   { background: #333; color: #888; box-shadow: none; }
+            25%  { background: #555; color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.25); }
+            75%  { background: #444; color: #ccc; box-shadow: 0 0 0 1px rgba(255,255,255,0.1); }
+            100% { background: #333; color: #888; box-shadow: none; }
+        }
 
         .sidebar-header {
             padding: 15px;
@@ -302,6 +309,42 @@
             height: 13px;
             flex-shrink: 0;
             cursor: pointer;
+        }
+
+        .experimental-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+        .experimental-header .control-group-title { margin-bottom: 0; }
+        .experimental-master-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #666;
+            cursor: pointer;
+            user-select: none;
+        }
+        .experimental-master-label input[type="checkbox"] {
+            accent-color: #4a9eff;
+            width: 13px;
+            height: 13px;
+            cursor: pointer;
+        }
+        .experimental-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+            max-height: 200px;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+        .experimental-list.collapsed {
+            max-height: 0;
+            opacity: 0;
         }
 
         input[type="range"] {
@@ -786,6 +829,38 @@
             </div>
 
             <div class="control-group">
+                <div class="experimental-header">
+                    <div class="control-group-title">Experimental Effects</div>
+                    <label class="experimental-master-label">
+                        <input type="checkbox" id="feat-experimental-master">
+                        Enable
+                    </label>
+                </div>
+                <div class="experimental-list collapsed" id="experimental-list">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="feat-morph">
+                        <span class="label-text" data-tooltip="Grows (dilate) or shrinks (erode) layer edges using morphological expansion — fattens shapes or carves them inward.">Morphology</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="feat-shadow">
+                        <span class="label-text" data-tooltip="Adds a coloured drop shadow behind the layer, offset by a random amount and optionally blurred.">Drop Shadow</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="feat-component-transfer">
+                        <span class="label-text" data-tooltip="Applies independent gamma curves to each colour channel — creates posterisation, tonal inversion, and channel-specific contrast shifts.">Channel Curves</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="feat-diffuse-light">
+                        <span class="label-text" data-tooltip="Simulates directional diffuse lighting on the layer surface using a distant light source, giving a 3D embossed appearance.">Diffuse Light</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="feat-convolve">
+                        <span class="label-text" data-tooltip="Applies a convolution kernel to the layer — choose from emboss, sharpen, or edge-detect presets.">Convolve</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-group">
                 <div class="control-group-title">Save / Load Options</div>
                 <input type="file" id="loadSvgInput" accept=".svg" style="display:none">
                 <div class="file-btn-grid">
@@ -1067,27 +1142,43 @@ function genomeToSVG(genome, W = 640, H = 360, prefix = 'x', loose = false) {
 }
 
 function getFeatureFlags() {
+    const experimental = document.getElementById('feat-experimental-master').checked;
     return {
-        turbulence:  document.getElementById('feat-turbulence').checked,
-        dash:        document.getElementById('feat-dash').checked,
-        blur:        document.getElementById('feat-blur').checked,
-        colorMatrix: document.getElementById('feat-colormatrix').checked,
-        mask:        document.getElementById('feat-mask').checked,
+        turbulence:        document.getElementById('feat-turbulence').checked,
+        dash:              document.getElementById('feat-dash').checked,
+        blur:              document.getElementById('feat-blur').checked,
+        colorMatrix:       document.getElementById('feat-colormatrix').checked,
+        mask:              document.getElementById('feat-mask').checked,
+        morph:             experimental && document.getElementById('feat-morph').checked,
+        shadow:            experimental && document.getElementById('feat-shadow').checked,
+        componentTransfer: experimental && document.getElementById('feat-component-transfer').checked,
+        diffuseLight:      experimental && document.getElementById('feat-diffuse-light').checked,
+        convolve:          experimental && document.getElementById('feat-convolve').checked,
     };
 }
 
-// Builds a single chained SVG filter for blur, displacement, and color-shift effects.
+// Builds a single chained SVG filter for all layer effects.
 // Returns the filter attribute string (empty if no effects).
-function buildLayerFilter(layer, defs, makeGradientId) {
-    const hasDisplace = layer.displace != null;
-    const hasBlur     = layer.blur != null;
-    const hasColor    = layer.colorShift != null;
-    if (!hasDisplace && !hasBlur && !hasColor) return '';
+function buildLayerFilter(layer, palette, defs, makeGradientId) {
+    const hasMorph     = layer.morph != null;
+    const hasDisplace  = layer.displace != null;
+    const hasBlur      = layer.blur != null;
+    const hasColor     = layer.colorShift != null;
+    const hasCompTrans = layer.componentTransfer != null;
+    const hasDiffuse   = layer.diffuseLight != null;
+    const hasConvolve  = layer.convolve != null;
+    const hasShadow    = layer.shadow != null;
+    if (!hasMorph && !hasDisplace && !hasBlur && !hasColor && !hasCompTrans && !hasDiffuse && !hasConvolve && !hasShadow) return '';
 
     const fid = makeGradientId();
     const steps = [];
     let cur = 'SourceGraphic';
 
+    if (hasMorph) {
+        const { operator, radiusX, radiusY } = layer.morph;
+        steps.push(`<feMorphology in="${cur}" operator="${operator}" radius="${radiusX.toFixed(1)} ${radiusY.toFixed(1)}" result="morph"/>`);
+        cur = 'morph';
+    }
     if (hasDisplace) {
         const { scale, baseFreq, octaves } = layer.displace;
         steps.push(`<feTurbulence type="fractalNoise" baseFrequency="${baseFreq.toFixed(4)}" numOctaves="${Math.round(octaves)}" result="noise"/>`);
@@ -1106,7 +1197,42 @@ function buildLayerFilter(layer, defs, makeGradientId) {
         }
         if (saturate != null) {
             steps.push(`<feColorMatrix in="${cur}" type="saturate" values="${saturate.toFixed(2)}" result="sat"/>`);
+            cur = 'sat';
         }
+    }
+    if (hasCompTrans) {
+        const { rExp, gExp, bExp } = layer.componentTransfer;
+        steps.push(`<feComponentTransfer in="${cur}" result="ctrans"><feFuncR type="gamma" amplitude="1" exponent="${rExp.toFixed(3)}" offset="0"/><feFuncG type="gamma" amplitude="1" exponent="${gExp.toFixed(3)}" offset="0"/><feFuncB type="gamma" amplitude="1" exponent="${bExp.toFixed(3)}" offset="0"/></feComponentTransfer>`);
+        cur = 'ctrans';
+    }
+    if (hasDiffuse) {
+        const { azimuth, elevation, scale: surfScale, strength } = layer.diffuseLight;
+        steps.push(`<feDiffuseLighting in="${cur}" surfaceScale="${surfScale.toFixed(1)}" diffuseConstant="${strength.toFixed(2)}" result="diffuse"><feDistantLight azimuth="${azimuth.toFixed(1)}" elevation="${elevation.toFixed(1)}"/></feDiffuseLighting>`);
+        steps.push(`<feComposite in="diffuse" in2="${cur}" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="lit"/>`);
+        cur = 'lit';
+    }
+    if (hasConvolve) {
+        const kernels = {
+            emboss:  '-2 -1 0 -1 1 1 0 1 2',
+            sharpen: '0 -1 0 -1 5 -1 0 -1 0',
+            edge:    '-1 -1 -1 -1 8 -1 -1 -1 -1',
+        };
+        const kernel = kernels[layer.convolve.type] || kernels.emboss;
+        steps.push(`<feConvolveMatrix in="${cur}" order="3" kernelMatrix="${kernel}" preserveAlpha="true" result="conv"/>`);
+        cur = 'conv';
+    }
+    if (hasShadow) {
+        const { dx, dy, blur: sBlur, paletteIdx, alpha } = layer.shadow;
+        const shadowColor = colorString(palette[paletteIdx % palette.length], alpha);
+        steps.push(`<feFlood flood-color="${shadowColor}" result="shadowFlood"/>`);
+        steps.push(`<feComposite in="shadowFlood" in2="SourceAlpha" operator="in" result="shadowMask"/>`);
+        if (sBlur > 0) {
+            steps.push(`<feGaussianBlur in="shadowMask" stdDeviation="${sBlur.toFixed(1)}" result="shadowBlur"/>`);
+            steps.push(`<feOffset in="shadowBlur" dx="${dx.toFixed(1)}" dy="${dy.toFixed(1)}" result="shadowOffset"/>`);
+        } else {
+            steps.push(`<feOffset in="shadowMask" dx="${dx.toFixed(1)}" dy="${dy.toFixed(1)}" result="shadowOffset"/>`);
+        }
+        steps.push(`<feMerge><feMergeNode in="shadowOffset"/><feMergeNode in="${cur}"/></feMerge>`);
     }
 
     defs.push(`<filter id="${fid}" x="-30%" y="-30%" width="160%" height="160%">${steps.join('')}</filter>`);
@@ -1333,7 +1459,7 @@ function renderTilingLayer(layer, palette, W, H, defs, makeGradientId) {
         default: return '';
     }
 
-    const filterAttr = buildLayerFilter(layer, defs, makeGradientId);
+    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
     return `<g opacity="${opacity}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${result}</g>`;
 }
@@ -1362,7 +1488,7 @@ function renderLayer(layer, palette, W, H, defs, makeGradientId) {
     const shapeEl = shapePathForType(layer.type, layer.params, W);
     if (!shapeEl) return '';
 
-    const filterAttr = buildLayerFilter(layer, defs, makeGradientId);
+    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
 
     const instances = getInstances(layer, cx, cy, W, H);
@@ -1594,6 +1720,59 @@ function mutateLayer(layer, palette, range, structRate, maxLayers, flags = {}) {
         if (Math.random() < structRate * 0.08) delete l.mask;
     } else if (flags.mask && Math.random() < structRate * 0.15) {
         l.mask = { type: pick(['radial', 'linear']), cx: rand(0.2, 0.8), cy: rand(0.2, 0.8), r: rand(0.3, 0.9), angle: rand(0, 360) };
+    }
+
+    // ── Experimental effects ───────────────────────────────────────────────
+
+    // Morphology (feMorphology dilate/erode)
+    if (l.morph != null) {
+        l.morph.radiusX = clamp(nudge(l.morph.radiusX, range * 3), 0.5, 30);
+        l.morph.radiusY = clamp(nudge(l.morph.radiusY, range * 3), 0.5, 30);
+        if (Math.random() < structRate * 0.1) l.morph.operator = pick(['dilate', 'erode']);
+        if (Math.random() < structRate * 0.08) delete l.morph;
+    } else if (flags.morph && Math.random() < structRate * 0.15) {
+        l.morph = { operator: pick(['dilate', 'erode']), radiusX: rand(1, 15), radiusY: rand(1, 15) };
+    }
+
+    // Drop shadow (feFlood + feComposite + feGaussianBlur + feOffset + feMerge)
+    if (l.shadow != null) {
+        l.shadow.dx    = clamp(nudge(l.shadow.dx,    range * 10), -80, 80);
+        l.shadow.dy    = clamp(nudge(l.shadow.dy,    range * 10), -80, 80);
+        l.shadow.blur  = clamp(nudge(l.shadow.blur,  range * 3),   0, 30);
+        l.shadow.alpha = clamp(nudge(l.shadow.alpha, range * 0.1), 0.1, 0.9);
+        if (Math.random() < range * 0.2) l.shadow.paletteIdx = randInt(0, palette.length - 1);
+        if (Math.random() < structRate * 0.08) delete l.shadow;
+    } else if (flags.shadow && Math.random() < structRate * 0.15) {
+        l.shadow = { dx: rand(-40, 40), dy: rand(-40, 40), blur: rand(2, 20), paletteIdx: randInt(0, palette.length - 1), alpha: rand(0.2, 0.8) };
+    }
+
+    // Channel curves (feComponentTransfer gamma per R/G/B)
+    if (l.componentTransfer != null) {
+        l.componentTransfer.rExp = clamp(nudge(l.componentTransfer.rExp, range * 0.5), 0.1, 5);
+        l.componentTransfer.gExp = clamp(nudge(l.componentTransfer.gExp, range * 0.5), 0.1, 5);
+        l.componentTransfer.bExp = clamp(nudge(l.componentTransfer.bExp, range * 0.5), 0.1, 5);
+        if (Math.random() < structRate * 0.08) delete l.componentTransfer;
+    } else if (flags.componentTransfer && Math.random() < structRate * 0.15) {
+        l.componentTransfer = { rExp: rand(0.3, 3), gExp: rand(0.3, 3), bExp: rand(0.3, 3) };
+    }
+
+    // Diffuse lighting (feDiffuseLighting + feDistantLight)
+    if (l.diffuseLight != null) {
+        l.diffuseLight.azimuth   = (l.diffuseLight.azimuth + gauss() * range * 30 + 360) % 360;
+        l.diffuseLight.elevation = clamp(nudge(l.diffuseLight.elevation, range * 10), 5, 85);
+        l.diffuseLight.scale     = clamp(nudge(l.diffuseLight.scale,     range * 2),  1, 25);
+        l.diffuseLight.strength  = clamp(nudge(l.diffuseLight.strength,  range * 0.3), 0.2, 4);
+        if (Math.random() < structRate * 0.08) delete l.diffuseLight;
+    } else if (flags.diffuseLight && Math.random() < structRate * 0.15) {
+        l.diffuseLight = { azimuth: rand(0, 360), elevation: rand(15, 75), scale: rand(2, 15), strength: rand(0.5, 2.5) };
+    }
+
+    // Convolve matrix (feConvolveMatrix preset kernels)
+    if (l.convolve != null) {
+        if (Math.random() < structRate * 0.15) l.convolve.type = pick(['emboss', 'sharpen', 'edge']);
+        if (Math.random() < structRate * 0.08) delete l.convolve;
+    } else if (flags.convolve && Math.random() < structRate * 0.15) {
+        l.convolve = { type: pick(['emboss', 'sharpen', 'edge']) };
     }
 
     return l;
@@ -2528,7 +2707,12 @@ exViewport.addEventListener('dblclick', fitExpandView);
 document.getElementById('expand-save').addEventListener('click', saveExpandAsPng);
 document.getElementById('expand-reset').addEventListener('click', fitExpandView);
 document.getElementById('expand-close').addEventListener('click', closeExpand);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeExpand(); });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeExpand();
+    if (e.key === ' ' && document.getElementById('expand-overlay').classList.contains('visible')) {
+        e.preventDefault();
+    }
+});
 
 document.getElementById('restartBtn').addEventListener('click', restart);
 
@@ -2622,6 +2806,25 @@ gridContainer.addEventListener('wheel', e => {
     }, 350);
 }, { passive: false });
 
+// Experimental effects master toggle
+(function() {
+    const master = document.getElementById('feat-experimental-master');
+    const list   = document.getElementById('experimental-list');
+    master.addEventListener('change', function() {
+        if (this.checked) {
+            list.style.overflow = 'hidden';
+            list.classList.remove('collapsed');
+            list.addEventListener('transitionend', function handler() {
+                list.style.overflow = 'visible';
+                list.removeEventListener('transitionend', handler);
+            });
+        } else {
+            list.style.overflow = 'hidden';
+            list.classList.add('collapsed');
+        }
+    });
+})();
+
 // Sidebar toggle
 document.getElementById('toggleSidebar').addEventListener('click', () => {
     const sidebar = document.getElementById('sidebar');
@@ -2654,6 +2857,12 @@ fullscreenBtn.addEventListener('click', () => {
 document.addEventListener('fullscreenchange', () => {
     fullscreenBtn.textContent = document.fullscreenElement ? '⊠' : '⛶';
     fullscreenBtn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
+    if (document.fullscreenElement && !document.getElementById('sidebar').classList.contains('collapsed')) {
+        const toggleBtn = document.getElementById('toggleSidebar');
+        toggleBtn.classList.remove('hint-pulse');
+        requestAnimationFrame(() => toggleBtn.classList.add('hint-pulse'));
+        toggleBtn.addEventListener('animationend', () => toggleBtn.classList.remove('hint-pulse'), { once: true });
+    }
     requestAnimationFrame(() => requestAnimationFrame(() => {
         refreshCellRects();
         for (let i = 0; i < 9; i++) {
@@ -2737,16 +2946,6 @@ if (FS_SUPPORTED) {
 buildGrid();
 restart();
 
-// Load a genome passed via ?genome= URL parameter (e.g. from the about page demo)
-(function() {
-    const genomeParam = new URLSearchParams(window.location.search).get('genome');
-    if (!genomeParam) return;
-    try {
-        const genome = JSON.parse(atob(decodeURIComponent(genomeParam)));
-        breedFromGenome(genome);
-    } catch {}
-    history.replaceState(null, '', window.location.pathname);
-})();
 </script>
 </body>
 </html>
