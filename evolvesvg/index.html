@@ -2704,6 +2704,17 @@ if (FS_SUPPORTED) {
 }
 buildGrid();
 restart();
+
+// Load a genome passed via ?genome= URL parameter (e.g. from the about page demo)
+(function() {
+    const genomeParam = new URLSearchParams(window.location.search).get('genome');
+    if (!genomeParam) return;
+    try {
+        const genome = JSON.parse(atob(decodeURIComponent(genomeParam)));
+        breedFromGenome(genome);
+    } catch {}
+    history.replaceState(null, '', window.location.pathname);
+})();
 </script>
 </body>
 </html>

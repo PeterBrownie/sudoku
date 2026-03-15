@@ -220,47 +220,6 @@
         }
         .insp-link:hover { background: #222; border-color: #555; }
 
-        /* ── How it works ─────────────────────────────────── */
-        .how-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin-top: 28px;
-        }
-
-        @media (max-width: 600px) {
-            .how-grid { grid-template-columns: 1fr; }
-        }
-
-        .how-card {
-            background: var(--surface);
-            border: 1px solid var(--border2);
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        .how-card-icon {
-            font-size: 22px;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .how-card-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 8px;
-            letter-spacing: -0.2px;
-        }
-
-        .how-card-body {
-            font-size: 13px;
-            color: var(--text-dim);
-            line-height: 1.55;
-        }
-
-        .how-card-body b { color: var(--text); }
-
         /* ── Genome anatomy ───────────────────────────────── */
         .genome-diagram {
             margin-top: 28px;
@@ -325,33 +284,162 @@
             white-space: nowrap;
         }
 
-        /* ── Effect pills ─────────────────────────────────── */
-        .effect-list {
-            margin-top: 24px;
+        /* ── Mutations split layout ───────────────────────── */
+        .mutations-split {
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            gap: 20px;
+            align-items: flex-start;
+            margin-top: 28px;
         }
 
-        .effect-pill {
+        .mutations-left {
+            flex: 0 0 270px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .mutations-hint {
+            font-size: 11px;
+            color: var(--text-faint);
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .mut-pill {
             background: var(--surface);
             border: 1px solid var(--border2);
-            border-radius: 6px;
-            padding: 12px 16px;
-            flex: 1 1 180px;
+            border-radius: 7px;
+            padding: 11px 14px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            user-select: none;
         }
+        .mut-pill:hover { border-color: #555; background: #1a1a1a; }
+        .mut-pill.selected { border-color: var(--accent); background: rgba(74,158,255,0.06); }
 
-        .effect-pill-name {
+        .mut-pill-name {
             font-size: 13px;
             font-weight: 700;
-            color: #fff;
-            margin-bottom: 4px;
+            color: #ddd;
+            margin-bottom: 3px;
         }
+        .mut-pill.selected .mut-pill-name { color: var(--accent); }
 
-        .effect-pill-desc {
+        .mut-pill-desc {
             font-size: 12px;
             color: var(--text-dim);
             line-height: 1.45;
+        }
+
+        .mutations-right {
+            flex: 1;
+            min-width: 0;
+            position: sticky;
+            top: 68px;
+        }
+
+        .mut-demo-panel {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .mut-demo-images {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .mut-demo-col {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .mut-demo-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--text-faint);
+            text-align: center;
+        }
+
+        .mut-demo-img {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            display: block;
+            border-radius: 4px;
+            border: 1px solid var(--border2);
+            background: #0a0a0a;
+            object-fit: cover;
+        }
+
+        .mut-demo-arrow {
+            color: var(--text-faint);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .mut-demo-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .mut-demo-active-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .mut-reroll-btn {
+            background: transparent;
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            color: var(--accent2);
+            cursor: pointer;
+            font-size: 12px;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+        .mut-reroll-btn:hover { background: #1e1e1e; border-color: #555; color: #fff; }
+
+        .mut-after-wrapper {
+            position: relative;
+        }
+        .mut-after-open {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(0,0,0,0.65);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 11px;
+            padding: 3px 8px;
+            line-height: 1.4;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+            white-space: nowrap;
+            backdrop-filter: blur(4px);
+        }
+        .mut-after-open:hover { background: rgba(74,158,255,0.18); border-color: var(--accent); color: #fff; }
+
+        @media (max-width: 720px) {
+            .mutations-split { flex-direction: column; }
+            .mutations-left { flex: none; width: 100%; }
+            .mutations-right { position: static; }
         }
 
         /* ── Expand view ──────────────────────────────────── */
@@ -746,111 +834,88 @@
         </div>
     </div>
 
-    <!-- Mutation -->
+    <!-- Mutations -->
     <div class="section">
-        <div class="section-label">Mutation &amp; selection</div>
-        <h2 class="section-title">How patterns drift and jump</h2>
+        <div class="section-label">Mutations</div>
+        <h2 class="section-title">How patterns change</h2>
         <div class="section-body">
             <p>
-                Two kinds of mutation happen simultaneously during each generation.
-                You control their balance with the <strong>Param Range</strong> and
-                <strong>Structure Rate</strong> sliders.
+                Each generation applies a mix of mutations to the parent genome. Basic mutations
+                adjust numeric parameters or swap structural elements. Advanced effects add
+                SVG filter operations per layer. The <strong>Mutations</strong> slider in the
+                sidebar controls how many are applied per child.
             </p>
         </div>
 
-        <div class="how-grid">
-            <div class="how-card">
-                <span class="how-card-icon">&#126;</span>
-                <div class="how-card-title">Parametric mutation</div>
-                <div class="how-card-body">
-                    Every numeric value &mdash; size, position, color, opacity, rotation, scale &mdash;
-                    is nudged by <b>Gaussian noise</b> (Box&ndash;Muller transform). Small moves are
-                    much more likely than large ones, so offspring look like <em>relatives</em>, not
-                    strangers. Param Range scales how far values can wander.
-                </div>
-            </div>
-            <div class="how-card">
-                <span class="how-card-icon">&#9889;</span>
-                <div class="how-card-title">Structural mutation</div>
-                <div class="how-card-body">
-                    At a rate controlled by Structure Rate, deeper changes can occur:
-                    a layer&apos;s <b>shape type</b> swaps (e.g. circle &rarr; hexgrid),
-                    its <b>blend mode</b> changes, its <b>arrangement</b> shifts, or a new layer
-                    is added / an existing one removed. These create the surprising jumps that
-                    open up new visual territory.
-                </div>
-            </div>
-            <div class="how-card">
-                <span class="how-card-icon">&#127756;</span>
-                <div class="how-card-title">Color mutation</div>
-                <div class="how-card-body">
-                    Each palette color drifts independently in HSL space. Structural mutations
-                    can also <b>add or remove palette entries</b>, changing the number of colors
-                    available to all layers. The per-layer <b>color dice</b> button lets you
-                    randomize just the palette of one cell without touching its structure.
-                </div>
-            </div>
-            <div class="how-card">
-                <span class="how-card-icon">&#128203;</span>
-                <div class="how-card-title">Mutation count</div>
-                <div class="how-card-body">
-                    The <b>Mutations</b> slider sets how many independent mutations are applied
-                    to produce each child. Low values (1&ndash;2) keep offspring very close to
-                    the parent. High values (10&ndash;20) compound changes and produce wilder,
-                    more diverse results across the grid.
-                </div>
-            </div>
-        </div>
-    </div>
+        <div class="mutations-split">
+            <div class="mutations-left">
+                <p class="mutations-hint">Select any mutation type to see it demonstrated &#8594;</p>
 
-    <!-- Advanced effects -->
-    <div class="section">
-        <div class="section-label">Visual depth</div>
-        <h2 class="section-title">Advanced effects</h2>
-        <div class="section-body">
-            <p>
-                Each layer can independently carry one or more SVG filter effects. These are
-                optional &mdash; they appear through structural mutation and can disappear the same way.
-                You can disable any category in the sidebar to keep them out of the gene pool entirely.
-            </p>
-        </div>
+                <div class="mut-pill selected" data-mut="param">
+                    <div class="mut-pill-name">Parametric</div>
+                    <div class="mut-pill-desc">Numeric values &mdash; size, position, opacity, rotation &mdash; nudge via Gaussian noise. Offspring remain recognizable relatives.</div>
+                </div>
 
-        <div class="effect-list">
-            <div class="effect-pill">
-                <div class="effect-pill-name">Displacement</div>
-                <div class="effect-pill-desc">
-                    <code>feTurbulence</code> + <code>feDisplacementMap</code> &mdash;
-                    fractal noise warps the layer&apos;s pixels, creating organic flowing distortion.
-                    Frequency and scale both evolve.
+                <div class="mut-pill" data-mut="structure">
+                    <div class="mut-pill-name">Structural</div>
+                    <div class="mut-pill-desc">Shape types, blend modes, and arrangements can swap entirely. Layers may be added or removed.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="color">
+                    <div class="mut-pill-name">Color</div>
+                    <div class="mut-pill-desc">Palette hues, saturations, and lightnesses drift in HSL space. Colors can be added or removed from the palette.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="displace">
+                    <div class="mut-pill-name">Displacement</div>
+                    <div class="mut-pill-desc"><code>feTurbulence</code> fractal noise warps pixels organically. Frequency, scale, and octave count all evolve.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="blur">
+                    <div class="mut-pill-name">Blur</div>
+                    <div class="mut-pill-desc">Gaussian blur per layer before compositing. Creates soft glows, halos, and atmospheric depth.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="colorshift">
+                    <div class="mut-pill-name">Color Shift</div>
+                    <div class="mut-pill-desc"><code>feColorMatrix</code> rotates hue and scales saturation independently from the palette.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="mask">
+                    <div class="mut-pill-name">Mask</div>
+                    <div class="mut-pill-desc">A radial or linear gradient mask fades a layer in or out, creating vignettes and directional reveals.</div>
+                </div>
+
+                <div class="mut-pill" data-mut="dashes">
+                    <div class="mut-pill-name">Dashes</div>
+                    <div class="mut-pill-desc">Stroke dash patterns on tiling layers. Turns stripes and grids into dotted or dashed textures.</div>
                 </div>
             </div>
-            <div class="effect-pill">
-                <div class="effect-pill-name">Blur</div>
-                <div class="effect-pill-desc">
-                    Gaussian blur applied before compositing with the next layer above.
-                    Creates glowing halos, atmospheric depth, and soft edges.
-                </div>
-            </div>
-            <div class="effect-pill">
-                <div class="effect-pill-name">Color Shift</div>
-                <div class="effect-pill-desc">
-                    <code>feColorMatrix</code> hue rotation and saturation scaling, applied
-                    independently from the palette. Lets a single layer drift to a completely
-                    different color family.
-                </div>
-            </div>
-            <div class="effect-pill">
-                <div class="effect-pill-name">Mask</div>
-                <div class="effect-pill-desc">
-                    A radial or linear luminance gradient mask fades a layer in or out.
-                    Creates vignettes, directional reveals, and spotlight effects.
-                </div>
-            </div>
-            <div class="effect-pill">
-                <div class="effect-pill-name">Dashes</div>
-                <div class="effect-pill-desc">
-                    Stroke dash patterns on tiling layers. Turns wave lines, zigzags, and hex
-                    grids into dotted or dashed textures with evolving gap and length.
+
+            <div class="mutations-right">
+                <div class="mut-demo-panel">
+                    <div class="mut-demo-footer">
+                        <span class="mut-demo-active-name" id="mut-active-name">Parametric</span>
+                        <button class="mut-reroll-btn" id="mut-reroll">&#8635; New example</button>
+                    </div>
+                    <div class="mut-demo-images">
+                        <div class="mut-demo-col">
+                            <div class="mut-demo-label">before</div>
+                            <img id="mut-before" class="mut-demo-img" alt="">
+                        </div>
+                        <div class="mut-demo-arrow">&#8595;</div>
+                        <div class="mut-demo-col">
+                            <div class="mut-demo-label">after</div>
+                            <div class="mut-after-wrapper">
+                                <img id="mut-after" class="mut-demo-img" alt="">
+                                <button class="mut-after-open" id="mut-open" title="Open in evolveSVG">&#8599; open</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mut-demo-footer">
+                        <span></span>
+                        <button class="mut-reroll-btn" id="mut-remutate">&#8635; Re-mutate</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -943,27 +1008,24 @@
 </div><!-- /page -->
 
 <script>
-    const TEMPLATES = [
-        "Blaze Vortex",
-        "Milk Drift",
-        "Royal Specter",
-        "Vapor Trace",
-        "Shallows Tide",
-        "Ash Glow",
-        "Opal Crest",
-        "The Spot"
-    ];
-
+// ── Gallery: load from manifest ───────────────────────────────────────────
+(async function() {
     const grid = document.getElementById('gallery-grid');
+    let names = [];
+    try {
+        const manifest = await fetch('templates/manifest.json').then(r => r.ok ? r.json() : null);
+        if (manifest) names = manifest.map(f => f.replace(/\.svg$/i, ''));
+    } catch {}
 
-    TEMPLATES.forEach(name => {
+    if (!names.length) { grid.innerHTML = '<p style="color:#555;font-size:13px;">No templates found.</p>'; return; }
+
+    names.forEach(name => {
         const item = document.createElement('a');
         item.className = 'gallery-item';
         item.href = `index.html?template=${encodeURIComponent(name)}`;
 
         const thumb = document.createElement('div');
         thumb.className = 'gallery-thumb';
-
         const img = document.createElement('img');
         img.src = `templates/${encodeURIComponent(name)}.svg`;
         img.alt = name;
@@ -978,6 +1040,514 @@
         item.appendChild(info);
         grid.appendChild(item);
     });
+})();
+
+// ── Mutation demo engine ──────────────────────────────────────────────────
+(function() {
+    const R  = (a, b) => a + Math.random() * (b - a);
+    const RI = (a, b) => Math.floor(R(a, b + 1));
+    const PK = a => a[Math.floor(Math.random() * a.length)];
+    const CL = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const DC = o => JSON.parse(JSON.stringify(o));
+    function GS() {
+        let u = 0, v = 0;
+        while (!u) u = Math.random();
+        while (!v) v = Math.random();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    const TYPES  = ['circle','ellipse','rect','polygon','dots_grid','stripes','checkerboard'];
+    const TILING = new Set(['dots_grid','stripes','checkerboard']);
+    const ARRS   = ['single','grid','radial','scatter'];
+    const BLENDS = ['normal','multiply','screen','overlay','color-dodge','difference','hard-light'];
+
+    function rCol() { return { h:R(0,360), s:R(30,100), l:R(20,75) }; }
+    function cStr(c, a=1) { return `hsla(${c.h.toFixed(1)},${c.s.toFixed(1)}%,${c.l.toFixed(1)}%,${a.toFixed(3)})`; }
+    function rFill(n) { return { type:PK(['solid','linear','radial']), i:RI(0,n-1), i2:RI(0,n-1), a:R(0.35,1), ang:R(0,360) }; }
+    function rStroke(n) { return { i:RI(0,n-1), w:R(0,0.012), a:R(0,0.7) }; }
+    function rArrP(arr) {
+        if (arr==='grid')    return { nx:RI(2,4), ny:RI(2,4) };
+        if (arr==='radial')  return { count:RI(3,10) };
+        if (arr==='scatter') { const c=RI(3,7); return { count:c, pos:Array.from({length:c},()=>[R(0.05,0.95),R(0.05,0.95)]) }; }
+        return {};
+    }
+    function rParams(t) {
+        switch(t) {
+            case 'circle':       return { r:R(0.05,0.35) };
+            case 'ellipse':      return { rx:R(0.05,0.4), ry:R(0.05,0.4) };
+            case 'rect':         return { w:R(0.06,0.5), h:R(0.06,0.5), rx:R(0,0.08) };
+            case 'polygon':      return { sides:RI(3,8), r:R(0.05,0.35) };
+            case 'dots_grid':    return { spacing:R(6,55), r:R(1,12) };
+            case 'stripes':      return { spacing:R(4,50), lineWidth:R(0.5,18), angle:R(0,180) };
+            case 'checkerboard': return { size:R(6,55) };
+            default:             return {};
+        }
+    }
+    function rLayer(n) {
+        const t=PK(TYPES), arr=PK(ARRS);
+        return { type:t, arr, arrP:rArrP(arr), cx:R(0,1), cy:R(0,1),
+                 params:rParams(t), fill:rFill(n), stroke:rStroke(n),
+                 opacity:R(0.4,1), blendMode:PK(BLENDS), tf:{rot:R(0,360),sx:R(0.4,1.8),sy:R(0.4,1.8)} };
+    }
+    function rGenome() {
+        const n=RI(2,4), pal=Array.from({length:n},rCol);
+        return { pal, bg:{type:PK(['solid','linear','radial']),i:0,i2:1,ang:R(0,360)},
+                 layers:Array.from({length:RI(1,3)},()=>rLayer(n)) };
+    }
+
+    // Moderately complex high-contrast genome for "before" tiles.
+    function rSimpleGenome() {
+        const fg  = { h:R(0,360),            s:R(70,100), l:R(45,72) };
+        const fg2 = { h:(fg.h+R(30,90))%360, s:R(60,100), l:R(40,70) };
+        const dark = { h:(fg.h+R(150,210))%360, s:R(15,40), l:R(8,20) };
+        const pal = [fg, fg2, dark];
+
+        const shapeTypes = ['circle','ellipse','rect','polygon'];
+        const simpleArrs = ['single','radial','grid'];
+
+        function simpleLayer(palIdx, arrHint) {
+            const t = PK(shapeTypes);
+            const arr = arrHint || PK(simpleArrs);
+            return {
+                type: t, arr, arrP: rArrP(arr),
+                cx: R(0.25, 0.75), cy: R(0.25, 0.75),
+                params: rParams(t),
+                fill:   { type: PK(['solid','solid','linear']), i:palIdx, i2:(palIdx+1)%3, a:R(0.75,1), ang:R(0,360) },
+                stroke: { i:2, w:R(0,0.008), a:R(0,0.5) },
+                opacity: R(0.75, 1), blendMode: PK(['normal','normal','screen','overlay']),
+                tf: { rot:R(0,360), sx:R(0.5,1.5), sy:R(0.5,1.5) }
+            };
+        }
+
+        const layers = [ simpleLayer(0, PK(['single','radial'])) ];
+        if (Math.random() < 0.75) layers.push(simpleLayer(1, PK(['grid','radial','single'])));
+        if (Math.random() < 0.35) layers.push(simpleLayer(0, 'single'));
+
+        const bgType = PK(['solid','solid','linear']);
+        return { pal, bg:{ type:bgType, i:2, i2:2, ang:R(0,360) }, layers };
+    }
+
+    // ── SVG renderer ─────────────────────────────────────────────────────
+    let gN = 0;
+    function gid() { return `d${++gN}`; }
+
+    function fillAttr(pal, f, defs) {
+        const c1 = cStr(pal[f.i%pal.length], f.a);
+        if (f.type==='solid') return c1;
+        const c2 = cStr(pal[f.i2%pal.length], f.a), id = gid();
+        if (f.type==='linear') {
+            const rad=f.ang*Math.PI/180, dx=Math.cos(rad)*0.5, dy=Math.sin(rad)*0.5;
+            defs.push(`<linearGradient id="${id}" x1="${(0.5-dx)*100}%" y1="${(0.5-dy)*100}%" x2="${(0.5+dx)*100}%" y2="${(0.5+dy)*100}%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient>`);
+        } else {
+            defs.push(`<radialGradient id="${id}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></radialGradient>`);
+        }
+        return `url(#${id})`;
+    }
+
+    function tilingFill(type, p, fStr, defs, dashStr='') {
+        const id = gid();
+        if (type==='stripes') {
+            const sp=p.spacing||20, lw=p.lineWidth||3, ang=p.angle||0;
+            defs.push(`<pattern id="${id}" x="0" y="0" width="${sp}" height="${sp}" patternUnits="userSpaceOnUse" patternTransform="rotate(${ang})"><line x1="0" y1="${sp/2}" x2="${sp*2}" y2="${sp/2}" stroke="${fStr}" stroke-width="${lw}"${dashStr}/></pattern>`);
+        } else if (type==='dots_grid') {
+            const sp=p.spacing||20, r=p.r||3;
+            defs.push(`<pattern id="${id}" x="0" y="0" width="${sp}" height="${sp}" patternUnits="userSpaceOnUse"><circle cx="${sp/2}" cy="${sp/2}" r="${r}" fill="${fStr}"/></pattern>`);
+        } else {
+            const sz=p.size||20, h=sz/2;
+            defs.push(`<pattern id="${id}" x="0" y="0" width="${sz}" height="${sz}" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="${h}" height="${h}" fill="${fStr}"/><rect x="${h}" y="${h}" width="${h}" height="${h}" fill="${fStr}"/></pattern>`);
+        }
+        return `url(#${id})`;
+    }
+
+    function shapeSVG(t, p, W) {
+        switch(t) {
+            case 'circle':  return `<circle cx="0" cy="0" r="${(p.r*W).toFixed(2)}"/>`;
+            case 'ellipse': return `<ellipse cx="0" cy="0" rx="${(p.rx*W).toFixed(2)}" ry="${(p.ry*W).toFixed(2)}"/>`;
+            case 'rect': { const w=p.w*W,h=p.h*W,rx=(p.rx||0)*W; return `<rect x="${(-w/2).toFixed(2)}" y="${(-h/2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${rx.toFixed(2)}"/>`; }
+            case 'polygon': {
+                const s=Math.round(p.sides)||5, r=p.r*W, pts=[];
+                for(let i=0;i<s;i++){const a=(i/s)*2*Math.PI-Math.PI/2; pts.push(`${(r*Math.cos(a)).toFixed(2)},${(r*Math.sin(a)).toFixed(2)}`);}
+                return `<polygon points="${pts.join(' ')}"/>`;
+            }
+            default: return '';
+        }
+    }
+
+    function buildFilter(layer, defs) {
+        if (!layer.displace && !layer.blur && !layer.colorShift) return '';
+        const id = gid();
+        let steps = '', cur = 'SourceGraphic';
+        if (layer.displace) {
+            const {scale, baseFreq, octaves} = layer.displace;
+            steps += `<feTurbulence type="fractalNoise" baseFrequency="${baseFreq.toFixed(4)}" numOctaves="${Math.round(octaves)}" result="noise"/>`;
+            steps += `<feDisplacementMap in="${cur}" in2="noise" scale="${scale.toFixed(1)}" xChannelSelector="R" yChannelSelector="G" result="disp"/>`;
+            cur = 'disp';
+        }
+        if (layer.blur) {
+            steps += `<feGaussianBlur in="${cur}" stdDeviation="${layer.blur.toFixed(2)}" result="blr"/>`;
+            cur = 'blr';
+        }
+        if (layer.colorShift) {
+            if (layer.colorShift.hueRotate != null) {
+                steps += `<feColorMatrix in="${cur}" type="hueRotate" values="${layer.colorShift.hueRotate.toFixed(1)}" result="hued"/>`;
+                cur = 'hued';
+            }
+            if (layer.colorShift.saturate != null) {
+                steps += `<feColorMatrix in="${cur}" type="saturate" values="${layer.colorShift.saturate.toFixed(2)}"/>`;
+            }
+        }
+        defs.push(`<filter id="${id}" x="-40%" y="-40%" width="180%" height="180%">${steps}</filter>`);
+        return ` filter="url(#${id})"`;
+    }
+
+    function buildMask(layer, W, H, defs) {
+        if (!layer.mask) return '';
+        const {type='radial', cx=0.5, cy=0.5, r=0.5, angle=0} = layer.mask;
+        const gid1=gid(), gid2=gid();
+        if (type==='radial') {
+            const mcx=cx*W, mcy=cy*H, mr=r*Math.max(W,H);
+            defs.push(`<radialGradient id="${gid1}" cx="${mcx.toFixed(1)}" cy="${mcy.toFixed(1)}" r="${mr.toFixed(1)}" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="white"/><stop offset="100%" stop-color="black"/></radialGradient>`);
+        } else {
+            const rad=angle*Math.PI/180, dx=Math.cos(rad)*W/2, dy=Math.sin(rad)*H/2;
+            defs.push(`<linearGradient id="${gid1}" x1="${(W/2-dx).toFixed(1)}" y1="${(H/2-dy).toFixed(1)}" x2="${(W/2+dx).toFixed(1)}" y2="${(H/2+dy).toFixed(1)}" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="white"/><stop offset="100%" stop-color="black"/></linearGradient>`);
+        }
+        defs.push(`<mask id="${gid2}"><rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${gid1})"/></mask>`);
+        return ` mask="url(#${gid2})"`;
+    }
+
+    function renderLayer(layer, pal, W, H, defs) {
+        const fill = fillAttr(pal, layer.fill, defs);
+        const sk   = cStr(pal[layer.stroke.i%pal.length], layer.stroke.a);
+        const sw   = (layer.stroke.w*W).toFixed(2);
+        const flt  = buildFilter(layer, defs);
+        const attrs = `fill="${fill}" stroke="${sk}" stroke-width="${sw}" opacity="${layer.opacity.toFixed(3)}" style="mix-blend-mode:${layer.blendMode}"${flt}`;
+        const {rot,sx,sy} = layer.tf;
+        const tf = (tx,ty) => `translate(${tx.toFixed(1)},${ty.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
+
+        const msk = buildMask(layer, W, H, defs);
+        if (TILING.has(layer.type)) {
+            const dashStr = layer.dash ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"` : '';
+            const pf = tilingFill(layer.type, layer.params, fill, defs, dashStr);
+            return `<g style="mix-blend-mode:${layer.blendMode}" opacity="${layer.opacity.toFixed(3)}"${flt}${msk}><g transform="rotate(${rot.toFixed(1)},${W/2},${H/2})"><rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="${pf}"/></g></g>`;
+        }
+
+        const shape = shapeSVG(layer.type, layer.params, W);
+        if (!shape) return '';
+        const cx=layer.cx*W, cy=layer.cy*H;
+
+        const attrsM = attrs + msk;
+        if (layer.arr==='single') return `<g transform="${tf(cx,cy)}" ${attrsM}>${shape}</g>`;
+        if (layer.arr==='grid') {
+            const {nx=2,ny=2}=layer.arrP, gx=W/nx, gy=H/ny;
+            let o=`<g ${attrsM}>`;
+            for(let iy=0;iy<=ny;iy++) for(let ix=0;ix<=nx;ix++) o+=`<g transform="${tf(ix*gx,iy*gy)}">${shape}</g>`;
+            return o+`</g>`;
+        }
+        if (layer.arr==='radial') {
+            const {count=6}=layer.arrP, d=W*0.2;
+            let o=`<g ${attrsM}>`;
+            for(let i=0;i<count;i++){const a=(i/count)*360; o+=`<g transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${a.toFixed(1)}) translate(${d.toFixed(1)},0) rotate(${rot.toFixed(1)}) scale(${sx.toFixed(3)},${sy.toFixed(3)})">${shape}</g>`;}
+            return o+`</g>`;
+        }
+        if (layer.arr==='scatter') {
+            const {pos=[]}=layer.arrP;
+            let o=`<g ${attrsM}>`;
+            for(const [fx,fy] of pos) o+=`<g transform="${tf(fx*W,fy*H)}">${shape}</g>`;
+            return o+`</g>`;
+        }
+        return `<g transform="${tf(cx,cy)}" ${attrsM}>${shape}</g>`;
+    }
+
+    function genomeSVG(genome) {
+        const W=240, H=135, defs=[], parts=[], {pal,bg}=genome;
+        const bgFill = bg.type==='solid' ? cStr(pal[bg.i%pal.length])
+                                         : fillAttr(pal,{type:bg.type,i:bg.i,i2:bg.i2,a:1,ang:bg.ang},defs);
+        parts.push(`<rect width="${W}" height="${H}" fill="${bgFill}"/>`);
+        for(const l of genome.layers) parts.push(renderLayer(l,pal,W,H,defs));
+        const ds = defs.length ? `<defs>${defs.join('')}</defs>` : '';
+        return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice">${ds}${parts.join('')}</svg>`;
+    }
+
+    // ── Mutation functions ────────────────────────────────────────────────
+    function mCol(c, r) { return { h:(c.h+GS()*r*30+360)%360, s:CL(c.s+GS()*r*10,20,100), l:CL(c.l+GS()*r*10,15,80) }; }
+
+    function mutateParam(genome) {
+        const g=DC(genome);
+        g.pal=g.pal.map(c=>mCol(c,0.12));
+        g.layers=g.layers.map(l=>{
+            l.cx=CL(l.cx+GS()*0.06,0,1); l.cy=CL(l.cy+GS()*0.06,0,1);
+            const p=l.params;
+            for(const k of Object.keys(p)) if(typeof p[k]==='number') p[k]=CL(p[k]+GS()*Math.abs(p[k])*0.25,0.001,200);
+            l.fill.a=CL(l.fill.a+GS()*0.06,0.1,1);
+            l.opacity=CL(l.opacity+GS()*0.07,0.1,1);
+            l.tf.rot=(l.tf.rot+GS()*15+360)%360;
+            l.tf.sx=CL(l.tf.sx+GS()*0.12,0.1,3); l.tf.sy=CL(l.tf.sy+GS()*0.12,0.1,3);
+            return l;
+        });
+        return g;
+    }
+
+    function mutateStructure(genome) {
+        const g=DC(genome);
+        g.layers=g.layers.map(l=>{
+            if(Math.random()<0.75) l.blendMode=PK(BLENDS);
+            if(Math.random()<0.65) { l.type=PK(TYPES); l.params=rParams(l.type); }
+            if(Math.random()<0.55) { l.arr=PK(ARRS); l.arrP=rArrP(l.arr); }
+            if(Math.random()<0.4)  l.fill.type=PK(['solid','linear','radial']);
+            return l;
+        });
+        if(Math.random()<0.5 && g.layers.length<4) g.layers.push(rLayer(g.pal.length));
+        if(Math.random()<0.35 && g.layers.length>1) g.layers.splice(RI(0,g.layers.length-1),1);
+        return g;
+    }
+
+    function mutateColor(genome) {
+        const g=DC(genome);
+        g.pal=g.pal.map(c=>mCol(c,0.9));
+        if(Math.random()<0.15 && g.pal.length<5) g.pal.push(rCol());
+        if(Math.random()<0.1  && g.pal.length>2) g.pal.splice(RI(0,g.pal.length-1),1);
+        return g;
+    }
+
+    function mutateHighCount(genome) {
+        let g=genome;
+        for(let i=0;i<9;i++) g=mutateParam(g);
+        return g;
+    }
+
+    function mutateDisplace(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.displace = { scale: R(40, 160), baseFreq: R(0.003, 0.07), octaves: RI(2, 6) };
+            return l;
+        });
+        return g;
+    }
+
+    function mutateBlurEffect(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.blur = R(5, 14);
+            return l;
+        });
+        return g;
+    }
+
+    function mutateColorShift(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.colorShift = { hueRotate: R(90, 270), saturate: R(1.5, 4) };
+            return l;
+        });
+        return g;
+    }
+
+    function mutateMask(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            l.mask = { type: PK(['radial','linear']), cx: R(0.25,0.75), cy: R(0.25,0.75), r: R(0.25,0.6), angle: R(0,360) };
+            return l;
+        });
+        return g;
+    }
+
+    function mutateDashes(genome) {
+        const g = DC(genome);
+        g.layers = g.layers.map(l => {
+            // Convert to a tiling type so dashes are visible
+            if (!TILING.has(l.type)) {
+                l.type = PK(['stripes','checkerboard']);
+                l.params = rParams(l.type);
+                l.arr = 'single'; l.arrP = {};
+            }
+            l.dash = { len: R(4, 18), gap: R(3, 14) };
+            return l;
+        });
+        return g;
+    }
+
+    // ── Demo wiring ───────────────────────────────────────────────────────
+    function setImg(el, genome) {
+        const svg  = genomeSVG(genome);
+        const blob = new Blob([svg], {type:'image/svg+xml'});
+        const old  = el.src;
+        el.src = URL.createObjectURL(blob);
+        if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+    }
+
+    const MUT_MAP = {
+        param:      { fn: mutateParam,      label: 'Parametric'   },
+        structure:  { fn: mutateStructure,  label: 'Structural'   },
+        color:      { fn: mutateColor,      label: 'Color'        },
+        displace:   { fn: mutateDisplace,   label: 'Displacement' },
+        blur:       { fn: mutateBlurEffect, label: 'Blur'         },
+        colorshift: { fn: mutateColorShift, label: 'Color Shift'  },
+        mask:       { fn: mutateMask,       label: 'Mask'         },
+        dashes:     { fn: mutateDashes,     label: 'Dashes'       },
+    };
+
+    // mutChain: ordered array of {id, genome} — genome is the cumulative result after that step.
+    // Mutations whose per-layer effects can be lifted off and replanted onto a different base:
+    const REPLAYABLE = {
+        displace:   { get: l => l.displace,   set: (l,v) => v ? (l.displace   = v) : delete l.displace   },
+        blur:       { get: l => l.blur,        set: (l,v) => v != null ? (l.blur = v) : delete l.blur     },
+        colorshift: { get: l => l.colorShift,  set: (l,v) => v ? (l.colorShift = v) : delete l.colorShift },
+        mask:       { get: l => l.mask,        set: (l,v) => v ? (l.mask       = v) : delete l.mask       },
+        dashes:     { get: l => l.dash,        set: (l,v) => v ? (l.dash       = v) : delete l.dash       },
+    };
+
+    // Apply mutation `id` to `target`, reusing the exact effect values from `stored` where possible.
+    function replayOnto(id, stored, target) {
+        const re = REPLAYABLE[id];
+        if (re) {
+            const g = DC(target);
+            g.layers.forEach((l, i) => re.set(l, re.get((stored.layers[i] || {}))));
+            return g;
+        }
+        return MUT_MAP[id].fn(target); // re-randomise for non-replayable types
+    }
+
+    let mutChain    = []; // [{id, genome}]
+    let selectedMuts = new Set();
+    let parentGenome = null;
+
+    function displayAfter() {
+        const afterEl = document.getElementById('mut-after');
+        if (afterEl && mutChain.length) setImg(afterEl, mutChain[mutChain.length - 1].genome);
+    }
+
+    function updateActiveLabel() {
+        const activeName = document.getElementById('mut-active-name');
+        if (!activeName) return;
+        activeName.textContent = selectedMuts.size === 1
+            ? MUT_MAP[[...selectedMuts][0]].label
+            : `${selectedMuts.size} mutations`;
+    }
+
+    function rebuildChain() {
+        // Re-run all selected mutations from scratch (Re-mutate / New example)
+        mutChain = [];
+        let g = parentGenome;
+        for (const id of selectedMuts) { g = MUT_MAP[id].fn(g); mutChain.push({id, genome: g}); }
+        displayAfter();
+    }
+
+    function addMutToChain(id) {
+        const base = mutChain.length ? mutChain[mutChain.length - 1].genome : parentGenome;
+        mutChain.push({id, genome: MUT_MAP[id].fn(base)});
+        displayAfter();
+    }
+
+    function removeMutFromChain(id) {
+        const idx = mutChain.findIndex(e => e.id === id);
+        if (idx === -1) return;
+        // Rebuild the chain from the point of removal, replaying subsequent steps exactly
+        const newChain = mutChain.slice(0, idx);
+        let base = idx === 0 ? parentGenome : mutChain[idx - 1].genome;
+        for (let j = idx + 1; j < mutChain.length; j++) {
+            base = replayOnto(mutChain[j].id, mutChain[j].genome, base);
+            newChain.push({id: mutChain[j].id, genome: base});
+        }
+        mutChain = newChain;
+        displayAfter();
+    }
+
+    function newParent() {
+        parentGenome = rSimpleGenome();
+        const beforeEl = document.getElementById('mut-before');
+        if (beforeEl) setImg(beforeEl, parentGenome);
+        rebuildChain();
+    }
+
+    function initMutationDemo() {
+        const pills = document.querySelectorAll('.mut-pill');
+        // Seed initial selection
+        selectedMuts.add('param');
+        pills.forEach(p => { if (p.dataset.mut === 'param') p.classList.add('selected'); });
+
+        pills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                const id = pill.dataset.mut;
+                if (selectedMuts.has(id)) {
+                    if (selectedMuts.size === 1) return;
+                    selectedMuts.delete(id);
+                    pill.classList.remove('selected');
+                    removeMutFromChain(id);
+                } else {
+                    selectedMuts.add(id);
+                    pill.classList.add('selected');
+                    addMutToChain(id);
+                }
+                updateActiveLabel();
+            });
+        });
+
+        const rerollBtn = document.getElementById('mut-reroll');
+        if (rerollBtn) rerollBtn.addEventListener('click', newParent);
+
+        const remutateBtn = document.getElementById('mut-remutate');
+        if (remutateBtn) remutateBtn.addEventListener('click', rebuildChain);
+
+        function demoToMainGenome(g) {
+            function convertFill(f) {
+                if (!f) return f;
+                const r = { type: f.type, paletteIdx: f.i ?? 0, alpha: f.a ?? 1 };
+                if (f.i2 != null) r.paletteIdx2 = f.i2; else r.paletteIdx2 = r.paletteIdx;
+                if (f.ang != null) r.angle = f.ang;
+                return r;
+            }
+            function convertStroke(s) {
+                if (!s) return s;
+                return { paletteIdx: s.i ?? 0, width: s.w ?? 0, alpha: s.a ?? 0 };
+            }
+            function convertLayer(l) {
+                const ml = {
+                    type: l.type,
+                    cx: l.cx, cy: l.cy,
+                    params: DC(l.params),
+                    fill: convertFill(l.fill),
+                    stroke: convertStroke(l.stroke),
+                    opacity: l.opacity,
+                    blendMode: l.blendMode,
+                    arrangement: l.arr,
+                    arrangementParams: DC(l.arrP),
+                    transform: { rotate: l.tf?.rot ?? 0, scaleX: l.tf?.sx ?? 1, scaleY: l.tf?.sy ?? 1 },
+                };
+                if (l.displace) ml.displace = DC(l.displace);
+                if (l.blur != null) ml.blur = l.blur;
+                if (l.colorShift) ml.colorShift = DC(l.colorShift);
+                if (l.mask) ml.mask = DC(l.mask);
+                if (l.dash) ml.dash = DC(l.dash);
+                return ml;
+            }
+            const bg = g.bg;
+            return {
+                palette: DC(g.pal),
+                background: {
+                    type: bg.type,
+                    paletteIdx: bg.i ?? 0,
+                    paletteIdx2: bg.i2 ?? 0,
+                    angle: bg.ang ?? 0,
+                },
+                layers: g.layers.map(convertLayer),
+            };
+        }
+
+        const openBtn = document.getElementById('mut-open');
+        if (openBtn) openBtn.addEventListener('click', () => {
+            const after = mutChain.length ? mutChain[mutChain.length - 1].genome : parentGenome;
+            if (!after) return;
+            const main = demoToMainGenome(after);
+            const encoded = btoa(JSON.stringify(main));
+            window.open(`index.html?genome=${encodeURIComponent(encoded)}`, '_blank');
+        });
+
+        newParent();
+    }
+
+    if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', initMutationDemo);
+    else initMutationDemo();
+})();
 </script>
 
 </body>
