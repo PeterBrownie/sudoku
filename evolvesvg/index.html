@@ -2295,13 +2295,43 @@ function applyExpandTransform() {
     });
 }
 
-function fitExpandView() {
+let exFitAnimId = null;
+
+function fitExpandView(animate = true) {
     const vp = document.getElementById('expand-viewport');
     const vw = vp.clientWidth, vh = vp.clientHeight;
-    exZoom = Math.min(vw / EX_W, vh / EX_H) * 0.95;
-    exPanX = (vw - EX_W * exZoom) / 2;
-    exPanY = (vh - EX_H * exZoom) / 2;
-    applyExpandTransform();
+    const targetZoom = Math.min(vw / EX_W, vh / EX_H) * 0.95;
+    const targetPanX = (vw - EX_W * targetZoom) / 2;
+    const targetPanY = (vh - EX_H * targetZoom) / 2;
+
+    if (!animate) {
+        exZoom = targetZoom; exPanX = targetPanX; exPanY = targetPanY;
+        applyExpandTransform();
+        return;
+    }
+
+    if (exFitAnimId) cancelAnimationFrame(exFitAnimId);
+    clearTimeout(exZoomSettleTimer); // prevent any pending rasterize from firing mid-animation
+    const startZoom = exZoom, startPanX = exPanX, startPanY = exPanY;
+    const duration = 750;
+    const startTime = performance.now();
+
+    function step(now) {
+        const t = Math.min((now - startTime) / duration, 1);
+        const e = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        exZoom  = startZoom  + (targetZoom  - startZoom)  * e;
+        exPanX  = startPanX  + (targetPanX  - startPanX)  * e;
+        exPanY  = startPanY  + (targetPanY  - startPanY)  * e;
+        exWrapper.style.transform = `translate(${exPanX}px,${exPanY}px) scale(${exZoom})`;
+        updateLodIndicator();
+        if (t < 1) {
+            exFitAnimId = requestAnimationFrame(step);
+        } else {
+            exFitAnimId = null;
+            rasterizeExpand(); // swap LOD only after animation completes
+        }
+    }
+    exFitAnimId = requestAnimationFrame(step);
 }
 
 let expandIdx = -1;
@@ -2315,7 +2345,7 @@ function openExpand(idx) {
     exCanvas.style.cssText = `width:${EX_W}px;height:${EX_H}px;display:block;`;
     exWrapper.appendChild(exCanvas);
     document.getElementById('expand-overlay').classList.add('visible');
-    fitExpandView();
+    fitExpandView(false);
     rasterizeExpand();
 }
 
@@ -2432,6 +2462,7 @@ function closeExpand() {
 const exViewport = document.getElementById('expand-viewport');
 exViewport.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
+    if (exFitAnimId) { cancelAnimationFrame(exFitAnimId); exFitAnimId = null; }
     exDragging = true;
     exDidPan = false;
     exDragStartX = e.clientX;
@@ -2465,6 +2496,7 @@ document.addEventListener('mouseup', e => {
 // Scroll zoom
 exViewport.addEventListener('wheel', e => {
     e.preventDefault();
+    if (exFitAnimId) { cancelAnimationFrame(exFitAnimId); exFitAnimId = null; }
     const rect = exViewport.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;

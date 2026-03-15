@@ -1259,7 +1259,7 @@
     }
 
     function genomeSVG(genome) {
-        const W=240, H=135, defs=[], parts=[], {pal,bg}=genome;
+        const W=1280, H=720, defs=[], parts=[], {pal,bg}=genome;
         const bgFill = bg.type==='solid' ? cStr(pal[bg.i%pal.length])
                                          : fillAttr(pal,{type:bg.type,i:bg.i,i2:bg.i2,a:1,ang:bg.ang},defs);
         parts.push(`<rect width="${W}" height="${H}" fill="${bgFill}"/>`);
