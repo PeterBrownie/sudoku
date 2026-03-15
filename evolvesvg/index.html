@@ -485,14 +485,14 @@
             position: absolute;
             top: 6px;
             right: 6px;
-            width: 22px;
-            height: 22px;
+            width: 26px;
+            height: 26px;
             background: rgba(0,0,0,0.55);
             border: 1px solid rgba(255,255,255,0.18);
             color: rgba(255,255,255,0.65);
             border-radius: 4px;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -508,14 +508,14 @@
             position: absolute;
             top: 6px;
             left: 6px;
-            width: 22px;
-            height: 22px;
+            width: 26px;
+            height: 26px;
             background: rgba(0,0,0,0.55);
             border: 1px solid rgba(255,255,255,0.18);
             color: rgba(255,255,255,0.5);
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -530,15 +530,15 @@
         .reroll-btn {
             position: absolute;
             top: 6px;
-            left: 34px;
-            width: 22px;
-            height: 22px;
+            left: 38px;
+            width: 26px;
+            height: 26px;
             background: rgba(0,0,0,0.55);
             border: 1px solid rgba(255,255,255,0.18);
             color: rgba(255,255,255,0.5);
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -720,7 +720,10 @@
 <div id="sidebar-wrapper">
     <div id="sidebar">
         <div class="sidebar-header">
-            <h2>evolveSVG</h2>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <h2>evolveSVG</h2>
+                <a class="nav-link" href="about.html" target="_blank" rel="noopener noreferrer">About</a>
+            </div>
         </div>
 
         <div class="controls-content">
@@ -2195,6 +2198,7 @@ function breedFromGenome(sourceGenome) {
 
 // ─── Templates ───────────────────────────────────────────────────────────
 const templateGenomes = [];
+const templatesByName = {};
 (async function loadTemplates() {
     try {
         const manifest = await fetch('templates/manifest.json').then(r => r.ok ? r.json() : null);
@@ -2202,10 +2206,15 @@ const templateGenomes = [];
         const results = await Promise.all(
             manifest.map(f => fetch(`templates/${f}`).then(r => r.ok ? r.text() : null).catch(() => null))
         );
-        for (const svgText of results) {
+        for (let i = 0; i < results.length; i++) {
+            const svgText = results[i];
             if (!svgText) continue;
             const genome = extractGenomeFromSVG(svgText);
-            if (genome) templateGenomes.push(genome);
+            if (genome) {
+                templateGenomes.push(genome);
+                const name = manifest[i].replace(/\.svg$/i, '');
+                templatesByName[name] = genome;
+            }
         }
         if (!templateGenomes.length) return;
         const btn = document.getElementById('randomTemplateBtn');
@@ -2213,6 +2222,13 @@ const templateGenomes = [];
         btn.style.display = '';
         help.textContent = `${templateGenomes.length} template${templateGenomes.length === 1 ? '' : 's'} available`;
         help.style.display = '';
+
+        // Load a specific template if ?template= is present in the URL
+        const tplParam = new URLSearchParams(window.location.search).get('template');
+        if (tplParam && templatesByName[tplParam]) {
+            breedFromGenome(templatesByName[tplParam]);
+            history.replaceState(null, '', window.location.pathname);
+        }
     } catch {}
 })();
 

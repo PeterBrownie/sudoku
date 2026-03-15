@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About — evolveSVG</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg:        #0e0e0e;
+            --surface:   #161616;
+            --surface2:  #1e1e1e;
+            --border:    #2a2a2a;
+            --border2:   #333;
+            --text:      #ccc;
+            --text-dim:  #777;
+            --text-faint:#444;
+            --accent:    #4a9eff;
+            --accent2:   #7ee8a2;
+            --gold:      #f5c542;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.65;
+            min-height: 100vh;
+        }
+
+        /* ── Top nav ──────────────────────────────────────── */
+        .topnav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(14,14,14,0.92);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 28px;
+            height: 52px;
+        }
+
+        .topnav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 5px 10px;
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            transition: background 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+        .topnav-back:hover { background: #1a1a1a; border-color: #555; }
+        .topnav-back .arrow { font-size: 15px; line-height: 1; }
+
+        .topnav-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: -0.2px;
+        }
+
+        .topnav-sep { color: var(--border2); }
+
+        .topnav-subtitle {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* ── Page layout ──────────────────────────────────── */
+        .page {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 60px 28px 100px;
+        }
+
+        /* ── Hero ─────────────────────────────────────────── */
+        .hero {
+            text-align: center;
+            padding: 20px 0 56px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 64px;
+        }
+
+        .hero-wordmark {
+            font-size: clamp(38px, 8vw, 68px);
+            font-weight: 800;
+            letter-spacing: -2px;
+            color: #fff;
+            line-height: 1.05;
+        }
+
+        .hero-wordmark span { color: var(--accent); }
+
+        .hero-tagline {
+            margin-top: 16px;
+            font-size: 17px;
+            color: var(--text-dim);
+            max-width: 540px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.55;
+        }
+
+        .hero-cta {
+            margin-top: 28px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        .hero-cta:hover { background: #3b82d6; }
+
+        /* ── Section ──────────────────────────────────────── */
+        .section {
+            margin-bottom: 72px;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+            margin-bottom: 18px;
+            line-height: 1.25;
+        }
+
+        .section-body p {
+            color: var(--text);
+            margin-bottom: 14px;
+        }
+        .section-body p:last-child { margin-bottom: 0; }
+
+        .section-body a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .section-body a:hover { text-decoration: underline; }
+
+        /* ── Inspiration quote ───────────────────────────── */
+        .inspiration-card {
+            margin-top: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-left: 3px solid var(--accent);
+            border-radius: 6px;
+            padding: 20px 22px;
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .inspiration-icon {
+            font-size: 26px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .inspiration-text {
+            flex: 1;
+        }
+
+        .inspiration-text strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .inspiration-text p {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .inspiration-links {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .insp-link {
+            font-size: 12px;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 3px 8px;
+            border: 1px solid var(--border2);
+            border-radius: 3px;
+            transition: background 0.15s;
+        }
+        .insp-link:hover { background: #222; border-color: #555; }
+
+        /* ── How it works ─────────────────────────────────── */
+        .how-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        @media (max-width: 600px) {
+            .how-grid { grid-template-columns: 1fr; }
+        }
+
+        .how-card {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .how-card-icon {
+            font-size: 22px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .how-card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+            letter-spacing: -0.2px;
+        }
+
+        .how-card-body {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.55;
+        }
+
+        .how-card-body b { color: var(--text); }
+
+        /* ── Genome anatomy ───────────────────────────────── */
+        .genome-diagram {
+            margin-top: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .genome-diagram-header {
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border2);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .genome-rows {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .genome-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .genome-row:last-child { border-bottom: none; }
+
+        .genome-row-key {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            min-width: 110px;
+            flex-shrink: 0;
+            padding-top: 1px;
+        }
+
+        .genome-row-val {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .genome-row-val b { color: var(--text); }
+
+        .chip {
+            display: inline-block;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 3px;
+            font-size: 11px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            padding: 1px 6px;
+            color: var(--text);
+            margin: 1px 2px;
+            white-space: nowrap;
+        }
+
+        /* ── Effect pills ─────────────────────────────────── */
+        .effect-list {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .effect-pill {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            padding: 12px 16px;
+            flex: 1 1 180px;
+        }
+
+        .effect-pill-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .effect-pill-desc {
+            font-size: 12px;
+            color: var(--text-dim);
+            line-height: 1.45;
+        }
+
+        /* ── Expand view ──────────────────────────────────── */
+        .expand-steps {
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .expand-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .expand-step:last-child { border-bottom: none; }
+
+        .expand-step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .expand-step-content {
+            flex: 1;
+        }
+
+        .expand-step-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 3px;
+        }
+
+        .expand-step-body {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .lod-visual {
+            margin-top: 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lod-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            min-width: 68px;
+        }
+
+        .lod-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 22px;
+        }
+
+        .lod-b {
+            width: 4px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 2px;
+        }
+
+        .lod-b.t0 { height: 8px; }
+        .lod-b.t1 { height: 12px; }
+        .lod-b.t2 { height: 17px; }
+        .lod-b.t3 { height: 22px; background: rgba(255,255,255,0.85); }
+
+        .lod-desc {
+            font-size: 12px;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        /* ── Gallery ──────────────────────────────────────── */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .gallery-item {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.15s, transform 0.15s;
+            text-decoration: none;
+        }
+        .gallery-item:hover {
+            border-color: #555;
+            transform: translateY(-2px);
+        }
+
+        .gallery-thumb {
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+        }
+
+        .gallery-thumb img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+
+        .gallery-info {
+            padding: 10px 14px 12px;
+        }
+
+        .gallery-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .gallery-hint {
+            font-size: 11px;
+            color: var(--text-faint);
+            margin-top: 2px;
+        }
+
+        /* ── Workflow diagram ─────────────────────────────── */
+        .workflow {
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 640px) {
+            .workflow { flex-direction: column; }
+            .workflow-arrow { transform: rotate(90deg); }
+        }
+
+        .workflow-step {
+            flex: 1;
+            padding: 18px 16px;
+            text-align: center;
+        }
+
+        .workflow-step-icon {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .workflow-step-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .workflow-step-desc {
+            font-size: 11px;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        .workflow-arrow {
+            color: var(--text-faint);
+            font-size: 18px;
+            flex-shrink: 0;
+            padding: 0 2px;
+        }
+
+        /* ── Footer ───────────────────────────────────────── */
+        .about-footer {
+            border-top: 1px solid var(--border);
+            padding-top: 32px;
+            margin-top: 40px;
+            color: var(--text-dim);
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .about-footer a { color: var(--text-dim); text-decoration: none; }
+        .about-footer a:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+
+<nav class="topnav">
+    <a class="topnav-back" href="index.html"><span class="arrow">&#8592;</span> evolveSVG</a>
+    <span class="topnav-sep">/</span>
+    <span class="topnav-subtitle">About</span>
+</nav>
+
+<div class="page">
+
+    <!-- Hero -->
+    <div class="hero">
+        <div class="hero-wordmark">evolve<span>SVG</span></div>
+        <p class="hero-tagline">
+            A generative art tool that breeds abstract patterns through interactive evolution.
+        </p>
+        <a class="hero-cta" href="index.html">Open evolveSVG</a>
+    </div>
+
+    <!-- Inspiration -->
+    <div class="section">
+        <div class="section-label">Origin</div>
+        <h2 class="section-title">Where this came from</h2>
+        <div class="section-body">
+            <p>
+                evolveSVG was directly inspired by <strong>Emergent Garden</strong> and his
+                <em>hyperdimensions</em> project &mdash; an interactive genetic art explorer
+                that uses the same core idea: present a grid of variants, let the user pick
+                a favorite, and evolve the next generation from it.
+            </p>
+            <p>
+                The original project worked with a high-dimensional parameterized image renderer.
+                evolveSVG takes the same selection-based evolution loop and applies it to
+                procedurally-generated scalable vector graphic (SVG) images, using a layer-based genome system with
+                shapes, tiling patterns, blend modes, and SVG filter effects.
+            </p>
+        </div>
+
+        <div class="inspiration-card">
+            <!-- <div class="inspiration-icon">&#127909;</div> -->
+            <div class="inspiration-text">
+                <strong>Emergent Garden &mdash; hyperdimensions</strong>
+                <p>
+                    The original generative art evolution explorer. Highly recommended watching his various youtube videos about many different generative coding projects.
+                </p>
+                <div class="inspiration-links">
+                    <a class="insp-link" href="https://evolvecode.io/hyperspace/picbreeder.html" target="_blank" rel="noopener noreferrer">Picbreeder by Emergent Garden</a>
+                    <a class="insp-link" href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">YouTube channel</a>
+                    <a class="insp-link" href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">hyperdimensions on GitHub (picbreeder and more)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How it works: overview -->
+    <div class="section">
+        <div class="section-label">How it works</div>
+        <h2 class="section-title">Evolution through selection</h2>
+        <div class="section-body">
+            <p>
+                Every pattern in evolveSVG is encoded as a <strong>genome</strong> &mdash; a
+                structured description of colors, shapes, and effects. Clicking a pattern
+                generates eight mutated offspring and places them around the original parent
+                in a 3&times;3 grid. You steer evolution by choosing which one to breed from next.
+            </p>
+        </div>
+
+        <div class="workflow">
+            <div class="workflow-step">
+                <div class="workflow-step-icon">&#127922;</div>
+                <div class="workflow-step-name">Random Start</div>
+                <div class="workflow-step-desc">Nine patterns are generated from scratch with random genomes</div>
+            </div>
+            <div class="workflow-arrow">&#8250;</div>
+            <div class="workflow-step">
+                <div class="workflow-step-icon">&#9654;</div>
+                <div class="workflow-step-name">Select</div>
+                <div class="workflow-step-desc">Click a pattern once to select it (blue border)</div>
+            </div>
+            <div class="workflow-arrow">&#8250;</div>
+            <div class="workflow-step">
+                <div class="workflow-step-icon">&#10024;</div>
+                <div class="workflow-step-name">Evolve</div>
+                <div class="workflow-step-desc">Click it again &mdash; eight mutations appear around it as the new parent</div>
+            </div>
+            <div class="workflow-arrow">&#8250;</div>
+            <div class="workflow-step">
+                <div class="workflow-step-icon">&#9733;</div>
+                <div class="workflow-step-name">Bookmark</div>
+                <div class="workflow-step-desc">Star any pattern to save it, then keep exploring</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Genome anatomy -->
+    <div class="section">
+        <div class="section-label">The genome</div>
+        <h2 class="section-title">What each pattern is made of</h2>
+        <div class="section-body">
+            <p>
+                Each pattern is fully described by a JSON genome. When you download an SVG,
+                the genome is embedded in its metadata &mdash; meaning you can load it back
+                later and continue evolving from exactly where you left off.
+            </p>
+        </div>
+
+        <div class="genome-diagram">
+            <div class="genome-diagram-header">Genome structure</div>
+            <div class="genome-rows">
+                <div class="genome-row">
+                    <div class="genome-row-key">palette</div>
+                    <div class="genome-row-val">
+                        3&ndash;5 HSL colors that all layers draw from. Mutations drift hue,
+                        saturation, and lightness. Structure mutations can add or remove colors.
+                    </div>
+                </div>
+                <div class="genome-row">
+                    <div class="genome-row-key">background</div>
+                    <div class="genome-row-val">
+                        A solid color or gradient fill that anchors the composition.
+                        Type can be <b>solid</b>, <b>linear</b>, or <b>radial</b>.
+                    </div>
+                </div>
+                <div class="genome-row">
+                    <div class="genome-row-key">layers[ ]</div>
+                    <div class="genome-row-val">
+                        Up to 15+ composited layers. Each has a <b>type</b>, <b>arrangement</b>,
+                        fill, stroke, blend mode, opacity, transform, and optional effects.
+                    </div>
+                </div>
+                <div class="genome-row">
+                    <div class="genome-row-key">&#8627; type</div>
+                    <div class="genome-row-val">
+                        Shape types:
+                        <span class="chip">circle</span>
+                        <span class="chip">ellipse</span>
+                        <span class="chip">rect</span>
+                        <span class="chip">polygon</span>
+                        <span class="chip">path</span><br>
+                        Tiling types:
+                        <span class="chip">dots_grid</span>
+                        <span class="chip">stripes</span>
+                        <span class="chip">crosshatch</span>
+                        <span class="chip">checkerboard</span>
+                        <span class="chip">waves</span>
+                        <span class="chip">zigzag</span>
+                        <span class="chip">hexgrid</span>
+                    </div>
+                </div>
+                <div class="genome-row">
+                    <div class="genome-row-key">&#8627; arrangement</div>
+                    <div class="genome-row-val">
+                        <span class="chip">single</span> &mdash; one centered instance &nbsp;
+                        <span class="chip">grid</span> &mdash; N&times;M tiled repetition &nbsp;
+                        <span class="chip">radial</span> &mdash; rotated around center &nbsp;
+                        <span class="chip">scatter</span> &mdash; random placements
+                    </div>
+                </div>
+                <div class="genome-row">
+                    <div class="genome-row-key">&#8627; blendMode</div>
+                    <div class="genome-row-val">
+                        <span class="chip">normal</span>
+                        <span class="chip">multiply</span>
+                        <span class="chip">screen</span>
+                        <span class="chip">overlay</span>
+                        <span class="chip">color-dodge</span>
+                        <span class="chip">difference</span>
+                        <span class="chip">hard-light</span>
+                    </div>
+                </div>
+                <div class="genome-row">
+                    <div class="genome-row-key">&#8627; effects</div>
+                    <div class="genome-row-val">
+                        Optional per-layer SVG filter effects: displacement, blur, color shift, and gradient mask.
+                        Each effect has its own evolvable parameters.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mutation -->
+    <div class="section">
+        <div class="section-label">Mutation &amp; selection</div>
+        <h2 class="section-title">How patterns drift and jump</h2>
+        <div class="section-body">
+            <p>
+                Two kinds of mutation happen simultaneously during each generation.
+                You control their balance with the <strong>Param Range</strong> and
+                <strong>Structure Rate</strong> sliders.
+            </p>
+        </div>
+
+        <div class="how-grid">
+            <div class="how-card">
+                <span class="how-card-icon">&#126;</span>
+                <div class="how-card-title">Parametric mutation</div>
+                <div class="how-card-body">
+                    Every numeric value &mdash; size, position, color, opacity, rotation, scale &mdash;
+                    is nudged by <b>Gaussian noise</b> (Box&ndash;Muller transform). Small moves are
+                    much more likely than large ones, so offspring look like <em>relatives</em>, not
+                    strangers. Param Range scales how far values can wander.
+                </div>
+            </div>
+            <div class="how-card">
+                <span class="how-card-icon">&#9889;</span>
+                <div class="how-card-title">Structural mutation</div>
+                <div class="how-card-body">
+                    At a rate controlled by Structure Rate, deeper changes can occur:
+                    a layer&apos;s <b>shape type</b> swaps (e.g. circle &rarr; hexgrid),
+                    its <b>blend mode</b> changes, its <b>arrangement</b> shifts, or a new layer
+                    is added / an existing one removed. These create the surprising jumps that
+                    open up new visual territory.
+                </div>
+            </div>
+            <div class="how-card">
+                <span class="how-card-icon">&#127756;</span>
+                <div class="how-card-title">Color mutation</div>
+                <div class="how-card-body">
+                    Each palette color drifts independently in HSL space. Structural mutations
+                    can also <b>add or remove palette entries</b>, changing the number of colors
+                    available to all layers. The per-layer <b>color dice</b> button lets you
+                    randomize just the palette of one cell without touching its structure.
+                </div>
+            </div>
+            <div class="how-card">
+                <span class="how-card-icon">&#128203;</span>
+                <div class="how-card-title">Mutation count</div>
+                <div class="how-card-body">
+                    The <b>Mutations</b> slider sets how many independent mutations are applied
+                    to produce each child. Low values (1&ndash;2) keep offspring very close to
+                    the parent. High values (10&ndash;20) compound changes and produce wilder,
+                    more diverse results across the grid.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced effects -->
+    <div class="section">
+        <div class="section-label">Visual depth</div>
+        <h2 class="section-title">Advanced effects</h2>
+        <div class="section-body">
+            <p>
+                Each layer can independently carry one or more SVG filter effects. These are
+                optional &mdash; they appear through structural mutation and can disappear the same way.
+                You can disable any category in the sidebar to keep them out of the gene pool entirely.
+            </p>
+        </div>
+
+        <div class="effect-list">
+            <div class="effect-pill">
+                <div class="effect-pill-name">Displacement</div>
+                <div class="effect-pill-desc">
+                    <code>feTurbulence</code> + <code>feDisplacementMap</code> &mdash;
+                    fractal noise warps the layer&apos;s pixels, creating organic flowing distortion.
+                    Frequency and scale both evolve.
+                </div>
+            </div>
+            <div class="effect-pill">
+                <div class="effect-pill-name">Blur</div>
+                <div class="effect-pill-desc">
+                    Gaussian blur applied before compositing with the next layer above.
+                    Creates glowing halos, atmospheric depth, and soft edges.
+                </div>
+            </div>
+            <div class="effect-pill">
+                <div class="effect-pill-name">Color Shift</div>
+                <div class="effect-pill-desc">
+                    <code>feColorMatrix</code> hue rotation and saturation scaling, applied
+                    independently from the palette. Lets a single layer drift to a completely
+                    different color family.
+                </div>
+            </div>
+            <div class="effect-pill">
+                <div class="effect-pill-name">Mask</div>
+                <div class="effect-pill-desc">
+                    A radial or linear luminance gradient mask fades a layer in or out.
+                    Creates vignettes, directional reveals, and spotlight effects.
+                </div>
+            </div>
+            <div class="effect-pill">
+                <div class="effect-pill-name">Dashes</div>
+                <div class="effect-pill-desc">
+                    Stroke dash patterns on tiling layers. Turns wave lines, zigzags, and hex
+                    grids into dotted or dashed textures with evolving gap and length.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expand view -->
+    <div class="section">
+        <div class="section-label">Expand view</div>
+        <h2 class="section-title">Exploring a pattern up close</h2>
+        <div class="section-body">
+            <p>
+                Hover over any cell in the grid and click the <strong>&#9974;</strong> button in
+                the top-right corner to open the expand view &mdash; a fullscreen, zoomable canvas
+                for examining a pattern in detail.
+            </p>
+        </div>
+
+        <div class="expand-steps">
+            <div class="expand-step">
+                <div class="expand-step-num">1</div>
+                <div class="expand-step-content">
+                    <div class="expand-step-title">Open &amp; navigate</div>
+                    <div class="expand-step-body">
+                        The pattern fills the screen. <b>Scroll</b> to zoom, <b>drag</b> to pan,
+                        <b>double-click</b> to fit it back to the window. Press <b>Esc</b> to close.
+                    </div>
+                </div>
+            </div>
+            <div class="expand-step">
+                <div class="expand-step-num">2</div>
+                <div class="expand-step-content">
+                    <div class="expand-step-title">Progressive LOD rendering</div>
+                    <div class="expand-step-body">
+                        As you zoom in, the pattern is re-rasterized at increasing resolution
+                        across four LOD tiers (up to 1920&times;1080 native). The bar indicator at
+                        the bottom shows which tier is cached and which is currently rendering.
+                        Once rendered, zooming back out reuses the cached result instantly.
+                    </div>
+                    <div class="lod-visual">
+                        <div class="lod-label">Resolution tiers</div>
+                        <div class="lod-bars">
+                            <div class="lod-b t0"></div>
+                            <div class="lod-b t1"></div>
+                            <div class="lod-b t2"></div>
+                            <div class="lod-b t3"></div>
+                        </div>
+                        <div class="lod-desc">
+                            The tallest lit bar is the current tier &mdash; shorter bars are cached lower resolutions.
+                            An orange pulsing bar means a higher-res render is in progress.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="expand-step">
+                <div class="expand-step-num">3</div>
+                <div class="expand-step-content">
+                    <div class="expand-step-title">Save as PNG</div>
+                    <div class="expand-step-body">
+                        Click the <b>&#8595;</b> button to save the current view as a full-resolution PNG.
+                        For a lossless vector export, use <b>Download SVG</b> from the main grid sidebar instead.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gallery -->
+    <div class="section">
+        <div class="section-label">Gallery</div>
+        <h2 class="section-title">Built-in templates</h2>
+        <div class="section-body">
+            <p>
+                These templates are included with evolveSVG as starting points for exploration.
+                Load any of them via <strong>Load SVG&hellip;</strong> in the sidebar, then
+                begin evolving from there. Each genome is embedded in the file so the full
+                structure is preserved.
+            </p>
+        </div>
+
+        <div class="gallery-grid" id="gallery-grid">
+            <!-- populated by JS below -->
+        </div>
+    </div>
+
+    <div class="about-footer">
+        <span>Made by <a href="https://github.com/PeterBrownie/sudoku/" target="_blank" rel="noopener noreferrer">Peter Brown</a></span>
+        <span>Inspired by <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">Emergent Garden</a> &mdash; <a href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">hyperdimensions</a></span>
+    </div>
+
+</div><!-- /page -->
+
+<script>
+    const TEMPLATES = [
+        "Blaze Vortex",
+        "Milk Drift",
+        "Royal Specter",
+        "Vapor Trace",
+        "Shallows Tide",
+        "Ash Glow",
+        "Opal Crest"
+    ];
+
+    const grid = document.getElementById('gallery-grid');
+
+    TEMPLATES.forEach(name => {
+        const item = document.createElement('a');
+        item.className = 'gallery-item';
+        item.href = `index.html?template=${encodeURIComponent(name)}`;
+
+        const thumb = document.createElement('div');
+        thumb.className = 'gallery-thumb';
+
+        const img = document.createElement('img');
+        img.src = `templates/${encodeURIComponent(name)}.svg`;
+        img.alt = name;
+        img.loading = 'lazy';
+        thumb.appendChild(img);
+
+        const info = document.createElement('div');
+        info.className = 'gallery-info';
+        info.innerHTML = `<div class="gallery-name">${name}</div><div class="gallery-hint">Open &amp; evolve in evolveSVG</div>`;
+
+        item.appendChild(thumb);
+        item.appendChild(info);
+        grid.appendChild(item);
+    });
+</script>
+
+</body>
+</html>
