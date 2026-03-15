@@ -1971,7 +1971,7 @@ async function getBookmarkDir(forcePickNew = false) {
 
 async function writeBookmarkFile(bm) {
     const svg = svgWithGenomeMeta(genomeToSVG(bm.genome, 1920, 1080, `bm${bm.id}`), bm.genome);
-    const filename = `bookmark_${String(bm.id).padStart(4, '0')}.svg`;
+    const filename = `${generatePatternName(bm.genome)}.svg`;
     const dir = await getBookmarkDir();
     if (dir) {
         try {
@@ -1992,7 +1992,7 @@ async function writeBookmarkFile(bm) {
 
 async function deleteBookmarkFile(bm) {
     if (!bookmarkDirHandle) return;
-    const filename = `bookmark_${String(bm.id).padStart(4, '0')}.svg`;
+    const filename = `${generatePatternName(bm.genome)}.svg`;
     try { await bookmarkDirHandle.removeEntry(filename); } catch {}
 }
 
