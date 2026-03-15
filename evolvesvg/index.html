@@ -805,7 +805,7 @@
             </div>
 
             <div class="control-group">
-                <div class="control-group-title">Advanced Effects</div>
+                <div class="control-group-title">Major Effects</div>
                 <label class="checkbox-label">
                     <input type="checkbox" id="feat-turbulence" checked>
                     <span class="label-text" data-tooltip="Warps layers with fractal noise, creating organic flowing distortion on any pattern or shape.">Displacement ★</span>
@@ -2364,7 +2364,46 @@ function renderBookmarksPanel() {
     }
 }
 
+// Map of experimental effect property names → their individual checkbox IDs
+const EXPERIMENTAL_EFFECT_FLAGS = {
+    morph:             'feat-morph',
+    shadow:            'feat-shadow',
+    componentTransfer: 'feat-component-transfer',
+    diffuseLight:      'feat-diffuse-light',
+    convolve:          'feat-convolve',
+};
+
+function enableExperimentalFlagsForGenome(genome) {
+    const needed = new Set();
+    for (const layer of (genome.layers || [])) {
+        for (const prop of Object.keys(EXPERIMENTAL_EFFECT_FLAGS)) {
+            if (layer[prop] != null) needed.add(prop);
+        }
+    }
+    if (!needed.size) return;
+
+    const master = document.getElementById('feat-experimental-master');
+    const list   = document.getElementById('experimental-list');
+
+    // Enable individual checkboxes for the effects present in this genome
+    for (const prop of needed) {
+        document.getElementById(EXPERIMENTAL_EFFECT_FLAGS[prop]).checked = true;
+    }
+
+    // Expand the experimental section if it was collapsed
+    if (!master.checked) {
+        master.checked = true;
+        list.style.overflow = 'hidden';
+        list.classList.remove('collapsed');
+        list.addEventListener('transitionend', function handler() {
+            list.style.overflow = 'visible';
+            list.removeEventListener('transitionend', handler);
+        });
+    }
+}
+
 function breedFromGenome(sourceGenome) {
+    enableExperimentalFlagsForGenome(sourceGenome);
     const opts = getOpts();
     // Clone source into center; all 8 others are mutations — source is never touched
     for (let i = 0; i < 9; i++) {
