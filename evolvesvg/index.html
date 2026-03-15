@@ -175,8 +175,8 @@
         }
 
         .credit-note {
-            margin-top: auto;
-            padding-top: 10px;
+            padding: 10px 15px 12px;
+            flex-shrink: 0;
             border-top: 1px solid #2a2a2a;
             color: #5f5f5f;
             font-size: 11px;
@@ -233,6 +233,12 @@
             padding: 10px;
             border-radius: 6px;
             border: 1px solid #333;
+        }
+
+        .file-btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
         }
 
         .control-group-title {
@@ -698,6 +704,7 @@
 
         <div class="controls-content">
 
+
             <button class="action-btn" id="restartBtn">Restart</button>
             <div class="help-text" style="color:#555; font-size:11px;">
                 Click once to select &bull; Click selected to evolve &bull; Center cell = parent
@@ -755,27 +762,15 @@
             </div>
 
             <div class="control-group">
-                <div class="control-group-title">Export selected image</div>
-                <button class="action-btn secondary" id="copyBtn" disabled>Copy SVG Code</button>
-                <button class="action-btn secondary" id="downloadBtn" disabled>Download SVG File</button>
-                <div class="help-text" id="exportHelp">You may import this file later.</div>
-            </div>
-
-            <div class="control-group">
-                <div class="control-group-title">Import from file</div>
+                <div class="control-group-title">Save / Load Options</div>
                 <input type="file" id="loadSvgInput" accept=".svg" style="display:none">
-                <button class="action-btn secondary" id="loadSvgBtn">Load SVG File…</button>
-                <div class="help-text" id="loadSvgHelp">Load SVGs exported from this tool.</div>
-            </div>
-
-            
-
-            
-
-            <div class="control-group" id="templates-section" style="display:none">
-                <div class="control-group-title">Templates</div>
-                <button class="action-btn secondary" id="randomTemplateBtn">Random Template</button>
-                <div class="help-text" id="templatesHelp"></div>
+                <div class="file-btn-grid">
+                    <button class="action-btn secondary" id="copyBtn" disabled>Copy SVG</button>
+                    <button class="action-btn secondary" id="downloadBtn" disabled>Download SVG</button>
+                    <button class="action-btn secondary" id="loadSvgBtn" style="grid-column: 1 / -1">Load SVG…</button>
+                    <button class="action-btn secondary" id="randomTemplateBtn" style="display:none; grid-column: 1 / -1">Random Template</button>
+                </div>
+                <div class="help-text" id="templatesHelp" style="display:none"></div>
             </div>
 
             <div id="bookmarks-section">
@@ -793,11 +788,11 @@
                 <button class="action-btn secondary" id="breedFromBtn" disabled>Evolve From Selected</button>
             </div>
 
-            <div class="credit-note">
-                Made by <a href="https://github.com/PeterBrownie/sudoku/" target="_blank" rel="noopener noreferrer">Peter Brown</a><br>
-                Inspired by Emergent Garden. <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">YouTube</a><br>See his original project: <a href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">GitHub</a>
-            </div>
+        </div>
 
+        <div class="credit-note">
+            Made by <a href="https://github.com/PeterBrownie/sudoku/" target="_blank" rel="noopener noreferrer">Peter Brown</a><br>
+            Inspired by Emergent Garden. <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">YouTube</a><br>See his original project: <a href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
     </div>
 
@@ -1896,15 +1891,25 @@ document.getElementById('loadSvgInput').addEventListener('change', e => {
     const reader = new FileReader();
     reader.onload = ev => {
         const genome = extractGenomeFromSVG(ev.target.result);
-        const helpEl = document.getElementById('loadSvgHelp');
+        const helpEl = document.getElementById('templatesHelp');
+        const templateCount = templateGenomes.length;
+        const restoreHelp = () => {
+            if (templateCount) {
+                helpEl.textContent = `${templateCount} template${templateCount === 1 ? '' : 's'} available`;
+                helpEl.style.color = '';
+            } else {
+                helpEl.style.display = 'none';
+            }
+        };
+        helpEl.style.display = '';
         if (!genome) {
-            helpEl.textContent = 'No genome data found — only SVGs exported from this app can be loaded.';
+            helpEl.textContent = 'No genome found — only SVGs exported from this app can be loaded.';
             helpEl.style.color = '#c06040';
-            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to evolve from it.'; helpEl.style.color = ''; }, 3000);
+            setTimeout(restoreHelp, 3000);
         } else {
             helpEl.textContent = 'Loaded! Evolving from imported pattern…';
             helpEl.style.color = '#60c080';
-            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to evolve from it.'; helpEl.style.color = ''; }, 2500);
+            setTimeout(restoreHelp, 2500);
             breedFromGenome(genome);
         }
     };
@@ -2163,16 +2168,24 @@ const templateGenomes = [];
             if (genome) templateGenomes.push(genome);
         }
         if (!templateGenomes.length) return;
-        document.getElementById('templates-section').style.display = '';
-        document.getElementById('templatesHelp').textContent =
-            `${templateGenomes.length} template${templateGenomes.length === 1 ? '' : 's'} available`;
+        const btn = document.getElementById('randomTemplateBtn');
+        const help = document.getElementById('templatesHelp');
+        btn.style.display = '';
+        help.textContent = `${templateGenomes.length} template${templateGenomes.length === 1 ? '' : 's'} available`;
+        help.style.display = '';
     } catch {}
 })();
 
+let templateQueue = [];
+function nextTemplateGenome() {
+    if (!templateQueue.length)
+        templateQueue = [...templateGenomes].sort(() => Math.random() - 0.5);
+    return templateQueue.pop();
+}
+
 document.getElementById('randomTemplateBtn').addEventListener('click', () => {
     if (!templateGenomes.length) return;
-    const genome = templateGenomes[Math.floor(Math.random() * templateGenomes.length)];
-    breedFromGenome(genome);
+    breedFromGenome(nextTemplateGenome());
 });
 
 document.getElementById('breedFromBtn').addEventListener('click', () => {
