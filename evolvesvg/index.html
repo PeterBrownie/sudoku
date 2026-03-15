@@ -387,6 +387,31 @@
         #float-restart.visible { opacity: 1; pointer-events: auto; }
         #float-restart:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
 
+        #reset-view {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 26px;
+            padding: 0 10px;
+            background: rgba(0,0,0,0.45);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.35);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, color 0.15s, background 0.15s;
+            z-index: 50;
+        }
+        #reset-view.visible { opacity: 1; pointer-events: auto; }
+        #reset-view:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
+
         #grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -797,6 +822,7 @@
 <div id="grid-container">
     <div id="grid"></div>
     <button id="float-restart" title="Restart (New Random)">↺</button>
+    <button id="reset-view" title="Reset view">Reset view</button>
 </div>
 
 <script>
@@ -1614,6 +1640,39 @@ function applyViewTransform() {
     wrappers.forEach(applyTransformToWrapper);
 }
 
+function updateResetViewBtn() {
+    const dirty = viewZoom !== 1 || viewPanX !== 0 || viewPanY !== 0;
+    document.getElementById('reset-view').classList.toggle('visible', dirty);
+}
+
+let resetViewAnimId = null;
+function animateResetView() {
+    if (resetViewAnimId) cancelAnimationFrame(resetViewAnimId);
+    const startZoom = viewZoom, startPanX = viewPanX, startPanY = viewPanY;
+    const duration = 750;
+    const startTime = performance.now();
+    function ease(t) { return 1 - Math.pow(1 - t, 3); }
+    function frame(now) {
+        const t = Math.min((now - startTime) / duration, 1);
+        const e = ease(t);
+        viewZoom = startZoom + (1 - startZoom) * e;
+        viewPanX = startPanX * (1 - e);
+        viewPanY = startPanY * (1 - e);
+        applyViewTransform();
+        if (t < 1) {
+            resetViewAnimId = requestAnimationFrame(frame);
+        } else {
+            viewZoom = 1; viewPanX = 0; viewPanY = 0;
+            applyViewTransform();
+            updateResetViewBtn();
+            refreshCellRects();
+            for (let i = 0; i < 9; i++) { if (genomes[i]) rasterizeCell(i); }
+            resetViewAnimId = null;
+        }
+    }
+    resetViewAnimId = requestAnimationFrame(frame);
+}
+
 function getOpts() {
     return {
         mutations: +document.getElementById('mutations').value,
@@ -2386,6 +2445,7 @@ document.addEventListener('mousemove', e => {
         viewPanX = panStartViewX + dx;
         viewPanY = panStartViewY + dy;
         applyViewTransform();
+        updateResetViewBtn();
     }
 });
 
@@ -2416,6 +2476,7 @@ gridContainer.addEventListener('wheel', e => {
     viewPanY = my - (my - viewPanY) * (newZoom / viewZoom);
     viewZoom = newZoom;
     applyViewTransform();
+    updateResetViewBtn();
 
     // Mark all cells pending and re-rasterize at the new zoom once scrolling settles
     clearTimeout(zoomSettleTimer);
@@ -2444,6 +2505,7 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
 });
 
 document.getElementById('float-restart').addEventListener('click', restart);
+document.getElementById('reset-view').addEventListener('click', animateResetView);
 
 // Sidebar resizer
 (function() {
