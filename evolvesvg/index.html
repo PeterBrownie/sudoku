@@ -581,11 +581,19 @@
         #expand-controls button:hover { background: rgba(60,60,60,0.95); color: #fff; border-color: #777; }
 
         #expand-lod {
+            position: absolute;
+            bottom: 36px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 4px;
             padding: 0 6px;
-            height: 32px;
+            width: 220px;
+            height: 20px;
+            z-index: 2001;
+            pointer-events: none;
         }
         #expand-lod .lod-bar {
             width: 3px;
@@ -611,13 +619,16 @@
             font-size: 12px;
             font-weight: 600;
             white-space: nowrap;
-            margin-left: 4px;
-            opacity: 0;
-            transition: opacity 0.2s;
+            display: inline-block;
+            width: 0;
+            overflow: hidden;
+            margin-left: 0;
+            transition: width 0.25s ease, margin-left 0.25s ease;
             pointer-events: none;
         }
         #lod-rendering-label.active {
-            opacity: 1;
+            width: 90px;
+            margin-left: 4px;
             animation: lod-pulse 0.75s ease-in-out infinite;
         }
         @keyframes lod-pulse {
@@ -662,6 +673,11 @@
 
         <div class="controls-content">
 
+            <button class="action-btn" id="restartBtn">Restart</button>
+            <div class="help-text" style="color:#555; font-size:11px;">
+                Click once to select &bull; Click selected to evolve &bull; Center cell = parent
+            </div>
+
             <div class="control-group">
                 <div class="control-group-title">Evolution</div>
                 <label>
@@ -689,22 +705,6 @@
                 <input type="range" id="maxLayers" min="2" max="20" value="8">
             </div>
 
-            <button class="action-btn" id="restartBtn">Restart (New Random)</button>
-
-            <div class="control-group">
-                <div class="control-group-title">Export Selected</div>
-                <button class="action-btn secondary" id="copyBtn" disabled>Copy SVG Code</button>
-                <button class="action-btn secondary" id="downloadBtn" disabled>Download SVG</button>
-                <div class="help-text" id="exportHelp">Click a cell to select it, then click again to evolve.</div>
-            </div>
-
-            <div class="control-group">
-                <div class="control-group-title">Import</div>
-                <input type="file" id="loadSvgInput" accept=".svg" style="display:none">
-                <button class="action-btn secondary" id="loadSvgBtn">Load SVG File…</button>
-                <div class="help-text" id="loadSvgHelp">Load a previously exported SVG to breed from it.</div>
-            </div>
-
             <div class="control-group">
                 <div class="control-group-title">Advanced Effects</div>
                 <label class="checkbox-label">
@@ -729,9 +729,23 @@
                 </label>
             </div>
 
-            <div class="help-text" style="color:#555; font-size:11px;">
-                Click once to select &bull; Click selected to evolve &bull; Center cell = parent
+            <div class="control-group">
+                <div class="control-group-title">Export selected image</div>
+                <button class="action-btn secondary" id="copyBtn" disabled>Copy SVG Code</button>
+                <button class="action-btn secondary" id="downloadBtn" disabled>Download SVG File</button>
+                <div class="help-text" id="exportHelp">You may import this file later.</div>
             </div>
+
+            <div class="control-group">
+                <div class="control-group-title">Import from file</div>
+                <input type="file" id="loadSvgInput" accept=".svg" style="display:none">
+                <button class="action-btn secondary" id="loadSvgBtn">Load SVG File…</button>
+                <div class="help-text" id="loadSvgHelp">Load SVGs exported from this tool.</div>
+            </div>
+
+            
+
+            
 
             <div id="bookmarks-section">
                 <div class="bookmarks-header">
@@ -739,13 +753,13 @@
                     <span class="count" id="bookmark-count"></span>
                 </div>
                 <div id="bookmark-folder-row">
-                    <span id="bookmark-folder-name">📥 Saving to Downloads</span>
+                    <span id="bookmark-folder-name">Saving to Downloads</span>
                     <button id="bookmark-folder-btn" title="Change save folder">⋯</button>
                 </div>
                 <div id="bookmarks-grid">
                     <div class="bookmarks-empty">Star a pattern to save it here.</div>
                 </div>
-                <button class="action-btn secondary" id="breedFromBtn" disabled>Breed From Selected</button>
+                <button class="action-btn secondary" id="breedFromBtn" disabled>Evolve From Selected</button>
             </div>
 
             <div class="credit-note">
@@ -766,16 +780,16 @@
         <div id="expand-svg-wrapper"></div>
     </div>
     <div id="expand-controls">
-        <div id="expand-lod">
-            <div class="lod-bar" data-tier="0"></div>
-            <div class="lod-bar" data-tier="1"></div>
-            <div class="lod-bar" data-tier="2"></div>
-            <div class="lod-bar" data-tier="3"></div>
-            <span id="lod-rendering-label">Rendering…</span>
-        </div>
         <button id="expand-save" title="Save as PNG">↓</button>
         <button id="expand-reset" title="Reset zoom (double-click)">⊡</button>
         <button id="expand-close" title="Close (Esc)">✕</button>
+    </div>
+    <div id="expand-lod">
+        <div class="lod-bar" data-tier="0"></div>
+        <div class="lod-bar" data-tier="1"></div>
+        <div class="lod-bar" data-tier="2"></div>
+        <div class="lod-bar" data-tier="3"></div>
+        <span id="lod-rendering-label">Rendering…</span>
     </div>
     <div id="expand-hint">Scroll to zoom &bull; Drag to pan &bull; Double-click to fit &bull; Esc to close</div>
 </div>
@@ -1674,11 +1688,11 @@ function setSelected(idx) {
         document.getElementById(`cell-${idx}`).classList.add('selected');
         document.getElementById('copyBtn').disabled = false;
         document.getElementById('downloadBtn').disabled = false;
-        document.getElementById('exportHelp').textContent = 'Click selected cell again to evolve.';
+        // document.getElementById('exportHelp').textContent = 'Click selected cell again to evolve.';
     } else {
         document.getElementById('copyBtn').disabled = true;
         document.getElementById('downloadBtn').disabled = true;
-        document.getElementById('exportHelp').textContent = 'Click a cell to select it, then click again to evolve.';
+        // document.getElementById('exportHelp').textContent = 'Click a cell to select it, then click again to evolve.';
     }
 }
 
@@ -1821,11 +1835,11 @@ document.getElementById('loadSvgInput').addEventListener('change', e => {
         if (!genome) {
             helpEl.textContent = 'No genome data found — only SVGs exported from this app can be loaded.';
             helpEl.style.color = '#c06040';
-            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to breed from it.'; helpEl.style.color = ''; }, 3000);
+            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to evolve from it.'; helpEl.style.color = ''; }, 3000);
         } else {
-            helpEl.textContent = 'Loaded! Breeding from imported pattern…';
+            helpEl.textContent = 'Loaded! Evolving from imported pattern…';
             helpEl.style.color = '#60c080';
-            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to breed from it.'; helpEl.style.color = ''; }, 2500);
+            setTimeout(() => { helpEl.textContent = 'Load a previously exported SVG to evolve from it.'; helpEl.style.color = ''; }, 2500);
             breedFromGenome(genome);
         }
     };
@@ -2161,6 +2175,7 @@ async function rasterizeExpand() {
 
     exRenderingTier = tierIdx;
     updateLodIndicator();
+    await new Promise(resolve => setTimeout(resolve, 120));
     const gen = ++exRasterGen;
     const [targetW, targetH] = getExTierDims(tierIdx);
 
@@ -2419,7 +2434,13 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
         sidebar.style.width = '280px';
     }
     document.getElementById('float-restart').classList.toggle('visible', isCollapsed);
-    setTimeout(() => { for (let i = 0; i < 9; i++) { if (genomes[i]) rasterizeCell(i); } }, 50);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        refreshCellRects();
+        for (let i = 0; i < 9; i++) {
+            cellCache[i] = null;
+            if (genomes[i]) renderCell(i);
+        }
+    }));
 });
 
 document.getElementById('float-restart').addEventListener('click', restart);
