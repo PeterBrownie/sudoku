@@ -393,6 +393,26 @@
         #float-restart.visible { opacity: 1; pointer-events: auto; }
         #float-restart:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
 
+        #fullscreen-btn {
+            position: fixed;
+            bottom: 14px;
+            right: 16px;
+            width: 28px;
+            height: 28px;
+            background: rgba(0,0,0,0.45);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.35);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: color 0.15s, background 0.15s;
+        }
+        #fullscreen-btn:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
+
         #reset-view {
             position: absolute;
             top: 10px;
@@ -819,6 +839,8 @@
     </div>
     <div id="expand-hint">Scroll to zoom &bull; Drag to pan &bull; Double-click to fit &bull; Esc to close</div>
 </div>
+
+<button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
 
 <div id="grid-container">
     <div id="grid"></div>
@@ -1721,7 +1743,19 @@ async function rasterizeCell(idx) {
             if (rasterizeGen[idx] !== gen) { URL.revokeObjectURL(url); resolve(); return; }
             canvas.width = targetW;
             canvas.height = targetH;
-            canvas.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+            // Cover-fit: crop the SVG source to match the canvas aspect ratio
+            // so patterns aren't distorted when cells aren't 16:9.
+            const imgAspect = CANONICAL_W / CANONICAL_H;
+            const canvasAspect = targetW / targetH;
+            let sx = 0, sy = 0, sw = CANONICAL_W, sh = CANONICAL_H;
+            if (imgAspect > canvasAspect) {
+                sw = CANONICAL_H * canvasAspect;
+                sx = (CANONICAL_W - sw) / 2;
+            } else {
+                sh = CANONICAL_W / canvasAspect;
+                sy = (CANONICAL_H - sh) / 2;
+            }
+            canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
             URL.revokeObjectURL(url);
             // Update cache if this is the highest-res render we've done for this cell
             if (!cellCache[idx] || targetW * targetH > cellCache[idx].width * cellCache[idx].height) {
@@ -2458,7 +2492,10 @@ function refreshCellRects() {
 refreshCellRects();
 new ResizeObserver(() => {
     refreshCellRects();
-    for (let i = 0; i < 9; i++) { if (genomes[i]) renderCell(i); }
+    for (let i = 0; i < 9; i++) {
+        cellCache[i] = null;
+        if (genomes[i]) renderCell(i);
+    }
 }).observe(gridContainer);
 let isPanning = false;
 let panStartX = 0, panStartY = 0;
@@ -2551,6 +2588,26 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
 });
 
 document.getElementById('float-restart').addEventListener('click', restart);
+
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+});
+document.addEventListener('fullscreenchange', () => {
+    fullscreenBtn.textContent = document.fullscreenElement ? '⊠' : '⛶';
+    fullscreenBtn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        refreshCellRects();
+        for (let i = 0; i < 9; i++) {
+            cellCache[i] = null;
+            if (genomes[i]) renderCell(i);
+        }
+    }));
+});
 document.getElementById('reset-view').addEventListener('click', animateResetView);
 
 // Sidebar resizer
