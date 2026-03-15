@@ -17,7 +17,7 @@
             --text-dim:  #777;
             --text-faint:#444;
             --accent:    #4a9eff;
-            --accent2:   #7ee8a2;
+            --accent2:   #c0c0c0;
             --gold:      #f5c542;
         }
 
@@ -430,7 +430,7 @@
             transition: background 0.15s, border-color 0.15s, color 0.15s;
             white-space: nowrap;
         }
-        .mut-reroll-btn:hover { background: #1e1e1e; border-color: #555; color: #fff; }
+        .mut-reroll-btn:hover { background: #1e1e1e; border-color: #555; }
 
         .mut-after-wrapper {
             position: relative;
@@ -1595,11 +1595,32 @@
             });
         });
 
+        function randomVibrantColor() {
+            const h = Math.floor(Math.random() * 360);
+            return `hsl(${h}, 90%, 65%)`;
+        }
+        function addHoverColor(btn) {
+            btn.addEventListener('mouseenter', () => {
+                const c = randomVibrantColor();
+                btn.style.color = c;
+                btn.style.borderColor = c;
+            });
+            btn.addEventListener('click', () => {
+                const c = randomVibrantColor();
+                btn.style.color = c;
+                btn.style.borderColor = c;
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            });
+        }
+
         const rerollBtn = document.getElementById('mut-reroll');
-        if (rerollBtn) rerollBtn.addEventListener('click', newParent);
+        if (rerollBtn) { rerollBtn.addEventListener('click', newParent); addHoverColor(rerollBtn); }
 
         const remutateBtn = document.getElementById('mut-remutate');
-        if (remutateBtn) remutateBtn.addEventListener('click', rebuildChain);
+        if (remutateBtn) { remutateBtn.addEventListener('click', rebuildChain); addHoverColor(remutateBtn); }
 
         newParent();
     }
