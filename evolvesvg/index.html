@@ -707,27 +707,27 @@
                 <div class="control-group-title">Evolution</div>
                 <label>
                     <span class="label-text" data-tooltip="How many independent mutations are applied to each child. Higher = more varied offspring per generation.">Mutations</span>
-                    <span class="value-display" id="mutationsVal">5</span>
+                    <span class="value-display" id="mutationsVal">4</span>
                 </label>
                 <input type="range" id="mutations" min="1" max="20" value="4">
 
                 <label>
                     <span class="label-text" data-tooltip="How far numeric parameters (size, position, color, opacity) can shift per mutation. Low = subtle drift. High = wild leaps.">Param Range</span>
-                    <span class="value-display" id="paramRangeVal">0.5</span>
+                    <span class="value-display" id="paramRangeVal">0.3</span>
                 </label>
                 <input type="range" id="paramRange" min="0.05" max="2.0" step="0.05" value="0.3">
 
                 <label>
                     <span class="label-text" data-tooltip="Chance of structural changes: swapping layer types, blend modes, arrangements, or adding/removing palette colors.">Structure Rate</span>
-                    <span class="value-display" id="structureRateVal">0.3</span>
+                    <span class="value-display" id="structureRateVal">0.2</span>
                 </label>
-                <input type="range" id="structureRate" min="0.0" max="1.0" step="0.05" value="0.15">
+                <input type="range" id="structureRate" min="0.0" max="1.0" step="0.05" value="0.2">
 
                 <label>
                     <span class="label-text" data-tooltip="Maximum number of layers a pattern can have. More layers = richer compositions, but slower to render.">Max Layers</span>
-                    <span class="value-display" id="maxLayersVal">8</span>
+                    <span class="value-display" id="maxLayersVal">15</span>
                 </label>
-                <input type="range" id="maxLayers" min="2" max="20" value="8">
+                <input type="range" id="maxLayers" min="2" max="20" value="15">
             </div>
 
             <div class="control-group">
@@ -771,6 +771,12 @@
             
 
             
+
+            <div class="control-group" id="templates-section" style="display:none">
+                <div class="control-group-title">Templates</div>
+                <button class="action-btn secondary" id="randomTemplateBtn">Random Template</button>
+                <div class="help-text" id="templatesHelp"></div>
+            </div>
 
             <div id="bookmarks-section">
                 <div class="bookmarks-header">
@@ -2141,6 +2147,33 @@ function breedFromGenome(sourceGenome) {
     for (let i = 0; i < 9; i++) renderCell(i);
     setSelected(4);
 }
+
+// ─── Templates ───────────────────────────────────────────────────────────
+const templateGenomes = [];
+(async function loadTemplates() {
+    try {
+        const manifest = await fetch('templates/manifest.json').then(r => r.ok ? r.json() : null);
+        if (!manifest || !manifest.length) return;
+        const results = await Promise.all(
+            manifest.map(f => fetch(`templates/${f}`).then(r => r.ok ? r.text() : null).catch(() => null))
+        );
+        for (const svgText of results) {
+            if (!svgText) continue;
+            const genome = extractGenomeFromSVG(svgText);
+            if (genome) templateGenomes.push(genome);
+        }
+        if (!templateGenomes.length) return;
+        document.getElementById('templates-section').style.display = '';
+        document.getElementById('templatesHelp').textContent =
+            `${templateGenomes.length} template${templateGenomes.length === 1 ? '' : 's'} available`;
+    } catch {}
+})();
+
+document.getElementById('randomTemplateBtn').addEventListener('click', () => {
+    if (!templateGenomes.length) return;
+    const genome = templateGenomes[Math.floor(Math.random() * templateGenomes.length)];
+    breedFromGenome(genome);
+});
 
 document.getElementById('breedFromBtn').addEventListener('click', () => {
     const bm = bookmarks.find(b => b.id === selectedBookmarkId);
