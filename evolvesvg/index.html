@@ -1929,9 +1929,9 @@ function gauss() {
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-const TYPES = ['circle', 'ellipse', 'rect', 'polygon', 'path',
-               'dots_grid', 'stripes', 'crosshatch', 'checkerboard', 'waves', 'zigzag', 'hexgrid'];
-const TILING_TYPES = new Set(['dots_grid', 'stripes', 'crosshatch', 'checkerboard', 'waves', 'zigzag', 'hexgrid']);
+const TYPES = ['circle', 'ellipse', 'rect', 'polygon', 'path', 'blob',
+               'dots_grid', 'stripes', 'crosshatch', 'checkerboard', 'waves', 'zigzag', 'hexgrid', 'iso_cube'];
+const TILING_TYPES = new Set(['dots_grid', 'stripes', 'crosshatch', 'checkerboard', 'waves', 'zigzag', 'hexgrid', 'iso_cube']);
 const ARRANGEMENTS = ['single', 'grid', 'radial', 'scatter'];
 const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'color-dodge', 'difference', 'hard-light'];
 
@@ -2005,6 +2005,8 @@ function randomParams(type) {
         case 'waves':       return { spacing: rand(2, 120), amplitude: rand(1, 28), frequency: rand(0.5, 5), lineWidth: rand(0.3, 9) };
         case 'zigzag':      return { spacing: rand(2, 65), amplitude: rand(2, 32), lineWidth: rand(0.3, 9), angle: rand(0, 60) };
         case 'hexgrid':     return { size: rand(3, 65), lineWidth: rand(0.2, 7), filled: Math.random() < 0.4 };
+        case 'blob':        return { r: rand(0.05, 0.32), jitter: rand(0.1, 0.55), points: randInt(4, 8), seed: randInt(0, 9999) };
+        case 'iso_cube':    return { size: rand(8, 55), lineWidth: rand(0, 1.5) };
         default:            return {};
     }
 }
@@ -2318,6 +2320,36 @@ function renderBackground(genome, W, H, defs, makeGradientId) {
     return `<rect width="${W}" height="${H}" fill="${f}"/>`;
 }
 
+// Builds a smooth closed cubic-bezier path through anchor points.
+// Each anchor's handles are computed from the prev→next tangent direction.
+function buildBlobPath(anchors) {
+    const N = anchors.length;
+    if (N < 2) return '';
+    const pts = anchors.map(a => ({ x: a[0], y: a[1] }));
+    const handles = pts.map((pt, i) => {
+        const prev = pts[(i - 1 + N) % N];
+        const next = pts[(i + 1) % N];
+        const tx = next.x - prev.x, ty = next.y - prev.y;
+        const tLen = Math.sqrt(tx * tx + ty * ty) || 1;
+        const nx = tx / tLen, ny = ty / tLen;
+        const dPrev = Math.sqrt((pt.x - prev.x) ** 2 + (pt.y - prev.y) ** 2);
+        const dNext = Math.sqrt((pt.x - next.x) ** 2 + (pt.y - next.y) ** 2);
+        const k = 0.35;
+        return {
+            h0: { x: pt.x - nx * dPrev * k, y: pt.y - ny * dPrev * k },
+            h1: { x: pt.x + nx * dNext * k, y: pt.y + ny * dNext * k }
+        };
+    });
+    let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < N; i++) {
+        const c1 = handles[i].h1;
+        const nx = pts[(i + 1) % N];
+        const c2 = handles[(i + 1) % N].h0;
+        d += ` C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)},${c2.x.toFixed(1)} ${c2.y.toFixed(1)},${nx.x.toFixed(1)} ${nx.y.toFixed(1)}`;
+    }
+    return d + ' Z';
+}
+
 function shapePathForType(type, params, W) {
     switch (type) {
         case 'circle': {
@@ -2352,6 +2384,20 @@ function shapePathForType(type, params, W) {
             }
             d += ' Z';
             return `<path d="${d}"/>`;
+        }
+        case 'blob': {
+            const r = params.r * W;
+            const jitter = params.jitter || 0.3;
+            const N = Math.max(3, Math.round(params.points) || 6);
+            const seed = params.seed || 0;
+            const anchors = [];
+            for (let i = 0; i < N; i++) {
+                const angle = (i / N) * 2 * Math.PI - Math.PI / 2;
+                const rScale = 1 + (pseudoRand(seed * 17 + i * 7) * 2 - 1) * jitter;
+                const ri = r * Math.max(0.1, rScale);
+                anchors.push([ri * Math.cos(angle), ri * Math.sin(angle)]);
+            }
+            return `<path d="${buildBlobPath(anchors)}"/>`;
         }
         default: return '';
     }
@@ -2477,6 +2523,42 @@ function renderTilingLayer(layer, palette, W, H, defs, makeGradientId, renderW =
                 }
             }
             result = `<g>${hexes.join('')}</g>`;
+            break;
+        }
+
+        case 'iso_cube': {
+            const size = Math.max(p.size, 2);
+            const cw = size * Math.sqrt(3);  // projected cube width
+            const fh = size;                  // top-face rhombus height
+            const sh = size;                  // side-face height
+            const dx = cw, dy = fh;
+
+            const lw = p.lineWidth || 0;
+            const strokeAttr = lw > 0.05
+                ? ` stroke="${color}" stroke-width="${lw.toFixed(2)}" stroke-linejoin="round"`
+                : '';
+
+            const startRow = -2, endRow = Math.ceil((H + sh * 2) / dy) + 2;
+            const startCol = -2, endCol = Math.ceil((W + cw) / dx) + 2;
+
+            const cubes = [];
+            for (let row = startRow; row <= endRow; row++) {
+                const xOff = (((row % 2) + 2) % 2 !== 0) ? cw / 2 : 0;
+                const cy = row * dy;
+                for (let col = startCol; col <= endCol; col++) {
+                    const cx = col * dx + xOff;
+                    const topPts  = `${cx.toFixed(1)},${cy.toFixed(1)} ${(cx+cw/2).toFixed(1)},${(cy+fh/2).toFixed(1)} ${cx.toFixed(1)},${(cy+fh).toFixed(1)} ${(cx-cw/2).toFixed(1)},${(cy+fh/2).toFixed(1)}`;
+                    const leftPts = `${(cx-cw/2).toFixed(1)},${(cy+fh/2).toFixed(1)} ${cx.toFixed(1)},${(cy+fh).toFixed(1)} ${cx.toFixed(1)},${(cy+fh+sh).toFixed(1)} ${(cx-cw/2).toFixed(1)},${(cy+fh/2+sh).toFixed(1)}`;
+                    const rightPts= `${cx.toFixed(1)},${(cy+fh).toFixed(1)} ${(cx+cw/2).toFixed(1)},${(cy+fh/2).toFixed(1)} ${(cx+cw/2).toFixed(1)},${(cy+fh/2+sh).toFixed(1)} ${cx.toFixed(1)},${(cy+fh+sh).toFixed(1)}`;
+                    // Draw order: side faces first, then top face (top covers side-face top edges)
+                    cubes.push(`<polygon points="${leftPts}"  fill="${color}"${strokeAttr}/>`);
+                    cubes.push(`<polygon points="${leftPts}"  fill="black" fill-opacity="0.30"/>`);
+                    cubes.push(`<polygon points="${rightPts}" fill="${color}"${strokeAttr}/>`);
+                    cubes.push(`<polygon points="${rightPts}" fill="black" fill-opacity="0.48"/>`);
+                    cubes.push(`<polygon points="${topPts}"   fill="${color}"${strokeAttr}/>`);
+                }
+            }
+            result = `<g>${cubes.join('')}</g>`;
             break;
         }
 
@@ -2644,6 +2726,16 @@ function mutateParams(params, type, range) {
             p.size      = clamp(nudge(p.size, range * 6), 2, 120);
             p.lineWidth = clamp(nudge(p.lineWidth, range * 1.5), 0.1, 15);
             if (Math.random() < range * 0.05) p.filled = !p.filled;
+            break;
+        case 'blob':
+            p.r      = clamp(nudge(p.r,      range * 0.05), 0.02, 0.5);
+            p.jitter = clamp(nudge(p.jitter, range * 0.1),  0.0,  0.8);
+            if (Math.random() < range * 0.1) p.points = clamp(Math.round(nudge(p.points, 1)), 3, 10);
+            if (Math.random() < range * 0.3) p.seed = randInt(0, 9999);
+            break;
+        case 'iso_cube':
+            p.size      = clamp(nudge(p.size,           range * 6),   3, 100);
+            p.lineWidth = clamp(nudge(p.lineWidth || 0, range * 0.3), 0,   5);
             break;
     }
     return p;
