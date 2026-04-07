@@ -56,13 +56,16 @@
 			text-transform: uppercase;
 		}
 		.grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
 			gap: 20px;
 			max-width: 1080px;
 			width: 100%;
 		}
 		.card {
+			flex: 0 0 calc(33.333% - 14px);
+			min-width: 220px;
 			background: #1e1e2e;
 			border: 1px solid #2a2a3e;
 			border-radius: 12px;
@@ -224,7 +227,12 @@
 			<p class="card-desc">Math-based cage puzzle. Choose grid size from 4×4 to 8×8 with uniquely solvable puzzles.</p>
 			<span class="card-arrow">Play →</span>
 		</a>
-		
+		<a href="https://peterbrown.space/timezonetables" class="card">
+			<div class="card-icon">🌐</div>
+			<p class="card-title">Timezone Tables</p>
+			<p class="card-desc">Compare times across timezones at a glance. Search cities, drag to reorder, and see day phases at a glance.</p>
+			<span class="card-arrow">Open →</span>
+		</a>
 
 	</div>
 	<a href="https://github.com/PeterBrownie/projects" class="github-link" target="_blank" rel="noopener noreferrer">github.com/PeterBrownie</a>

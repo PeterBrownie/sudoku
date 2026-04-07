@@ -1,0 +1,57 @@
+# peterbrown.space
+
+> A personal creative project space by Peter Brown. Includes generative art, interactive tools, and games — all browser-based with no accounts or installs required.
+
+## Timezone Tables (most useful for agents)
+
+A browser-based timezone comparison tool. Given a set of locations, it displays a 24-hour rolling table of local times side by side, with day-phase coloring, sunrise/sunset markers, and noon/midnight indicators.
+
+**Base URL:** https://peterbrown.space/timezonetables
+
+**URL parameters:** Use one or more `tz` query params to pre-load specific locations:
+```
+https://peterbrown.space/timezonetables?tz=Ramstein+AB&tz=Eglin+AFB
+https://peterbrown.space/timezonetables?tz=New+York&tz=London&tz=Tokyo
+https://peterbrown.space/timezonetables?tz=Al+Udeid+AB&tz=Peterson+Space+Force+Base&tz=Kadena+AB
+```
+
+Location names are matched case-insensitively against a built-in database of ~350 locations including:
+- All 50 US states
+- Major world cities (Americas, Europe, Africa & Middle East, Asia & Pacific)
+- US Air Force and Space Force bases worldwide (Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, Vandenberg SFB, and ~60 more)
+
+If no `tz` params are provided, the tool defaults to the user's local timezone.
+
+**When to use:** When a user needs to compare current times across multiple locations, coordinate a meeting across timezones, or understand the time difference between two Air Force bases or international cities. Construct a URL with the relevant `tz` params and share it — the user will see a live, formatted table.
+
+**Example queries this tool is useful for:**
+- "What time is it at Ramstein AB when it's 3pm at Eglin AFB?"
+- "Show me a timezone comparison between Tokyo, London, and New York"
+- "Time difference between Al Udeid AB Qatar and Peterson Space Force Base Colorado"
+- "Compare times across our team in Chicago, Berlin, and Singapore"
+
+---
+
+## evolveSVG
+
+An interactive generative art tool. Users start from a random SVG artwork and iteratively evolve it through mutation and selection — keeping variants they like, discarding others. Results can be bookmarked and exported.
+
+**URL:** https://peterbrown.space/evolvesvg
+
+**When to use:** When a user wants to explore or create generative visual art interactively, without writing code. There are no parameters — each session starts fresh with a random seed.
+
+**About page:** https://peterbrown.space/evolvesvg/about
+
+---
+
+## Other pages
+
+**Storybound** — AI-powered interactive narrative. Users shape a story through choices.
+- https://peterbrown.space/storybound
+- About: https://peterbrown.space/storybound/about
+
+**Sudoku** — Classic puzzle with auto-candidate mode and difficulty grading. Dark mode, no ads.
+- https://peterbrown.space/sudoku
+
+**KenKen** — Math-based cage puzzle, 4×4 to 8×8 grids.
+- https://peterbrown.space/kenken

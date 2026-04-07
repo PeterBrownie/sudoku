@@ -3,11 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta property="og:title" content="Timezone Tables — peterbrown.space">
-  <meta property="og:description" content="Compare times across timezones at a glance.">
+  <meta name="description" content="Compare current times across US Air Force bases, Space Force stations, and cities worldwide. Instant timezone converter for Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, and hundreds more locations.">
+  <meta property="og:title" content="Timezone Tables — Compare Times Across Air Force Bases & Cities">
+  <meta property="og:description" content="Compare current times across US Air Force bases, Space Force stations, and cities worldwide. Instant timezone converter for Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, and hundreds more.">
   <meta property="og:url" content="https://peterbrown.space/timezonetables">
+  <meta property="og:type" content="website">
   <link rel="icon" type="image/png" href="../evolveIcon.png">
-  <title>Timezone Tables</title>
+  <title>Timezone Tables — Air Force Bases & Cities Time Converter</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Timezone Tables",
+    "url": "https://peterbrown.space/timezonetables",
+    "description": "Compare current times across US Air Force bases, Space Force stations, and cities worldwide. Supports Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, Peterson SFB, Vandenberg SFB, and hundreds more.",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Any",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -37,12 +51,11 @@
       padding: 2rem 2rem 0;
     }
 
-    /* ── Header ─────────────────────────────────── */
     header {
       display: flex;
       align-items: baseline;
       gap: 1rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
       flex-shrink: 0;
       flex-wrap: wrap;
     }
@@ -54,37 +67,22 @@
       letter-spacing: -0.03em;
     }
 
-    .subtitle {
-      color: var(--muted);
-      font-size: 0.82rem;
-    }
+    .subtitle { color: var(--muted); font-size: 0.82rem; }
 
     /* ── Selectors ───────────────────────────────── */
     .selectors {
       display: flex;
       flex-wrap: wrap;
       gap: 0.65rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
 
-    .tz-slot {
-      position: relative;
-      width: 195px;
-      flex-shrink: 0;
-      cursor: grab;
-    }
+    .selectors:empty { margin-bottom: 0; }
 
-    .tz-slot.dragging {
-      opacity: 0.4;
-    }
-
-    .tz-slot.drag-over .tz-slot-inner {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent);
-    }
+    .tz-slot { position: relative; width: 195px; flex-shrink: 0; }
 
     .tz-slot-inner {
       background: var(--surface);
@@ -113,22 +111,15 @@
       padding: 0.4rem 0.6rem;
       outline: none;
       transition: border-color 0.12s;
-      cursor: text;
     }
 
-    .tz-input:focus {
-      border-color: var(--accent);
-    }
-
-    .tz-input::placeholder {
-      color: var(--muted);
-    }
+    .tz-input:focus { border-color: var(--accent); }
+    .tz-input::placeholder { color: var(--muted); }
 
     .tz-dropdown {
       position: absolute;
       top: calc(100% + 3px);
-      left: 0;
-      right: 0;
+      left: 0; right: 0;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -165,27 +156,15 @@
       gap: 0.5rem;
     }
 
-    .tz-option:hover {
-      background: var(--surface2);
-      color: var(--bright);
-    }
+    .tz-option:hover { background: var(--surface2); color: var(--bright); }
 
-    .tz-opt-sub {
-      color: var(--muted);
-      font-size: 0.72rem;
-      flex-shrink: 0;
-    }
+    .tz-opt-sub { color: var(--muted); font-size: 0.72rem; flex-shrink: 0; }
 
-    .tz-option.no-match {
-      color: var(--muted);
-      cursor: default;
-      font-style: italic;
-    }
+    .tz-option.no-match { color: var(--muted); cursor: default; font-style: italic; }
 
     .remove-btn {
       position: absolute;
-      top: 7px;
-      right: 7px;
+      top: 7px; right: 7px;
       background: none;
       border: none;
       color: var(--muted);
@@ -197,10 +176,7 @@
       transition: color 0.1s, background 0.1s;
     }
 
-    .remove-btn:hover {
-      color: var(--danger);
-      background: rgba(229,83,75,0.1);
-    }
+    .remove-btn:hover { color: var(--danger); background: rgba(229,83,75,0.1); }
 
     .add-btn {
       background: transparent;
@@ -215,10 +191,7 @@
       flex-shrink: 0;
     }
 
-    .add-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
+    .add-btn:hover { border-color: var(--accent); color: var(--accent); }
 
     /* ── Table ───────────────────────────────────── */
     .table-wrap {
@@ -246,34 +219,39 @@
 
     thead th {
       background: var(--surface);
-      padding: 0.85rem 1.75rem 0.8rem;
+      padding: 0.8rem 1.5rem 0.65rem;
       text-align: center;
       border-bottom: 2px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 10;
       white-space: nowrap;
+      cursor: grab;
+      user-select: none;
+    }
+
+    thead th.col-dragging { opacity: 0.45; }
+
+    thead th.drag-over-col {
+      border-bottom-color: var(--accent);
+      background: rgba(77,157,224,0.06);
     }
 
     .th-city {
       display: block;
       color: var(--bright);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 600;
     }
 
-    .th-sub {
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 400;
-    }
+    .th-sub { color: var(--muted); font-size: 0.72rem; font-weight: 400; }
 
     .th-date {
       display: block;
       color: var(--muted);
       font-size: 0.7rem;
       font-weight: 400;
-      margin-top: 0.18rem;
+      margin-top: 0.15rem;
     }
 
     .th-abbr {
@@ -281,70 +259,140 @@
       color: var(--accent);
       font-size: 0.65rem;
       font-weight: 400;
-      margin-top: 0.12rem;
+      margin-top: 0.1rem;
       background: var(--accent-dim);
       padding: 1px 5px;
       border-radius: 3px;
     }
 
+    .th-actions {
+      display: flex;
+      justify-content: center;
+      gap: 0.25rem;
+      margin-top: 0.4rem;
+      opacity: 0.3;
+      transition: opacity 0.15s;
+    }
+
+    thead th:hover .th-actions { opacity: 1; }
+
+    .th-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 7px;
+      font-size: 0.68rem;
+      line-height: 1.5;
+      transition: color 0.1s, background 0.1s, border-color 0.1s;
+    }
+
+    .th-btn:hover { color: var(--bright); background: var(--surface2); border-color: var(--text); }
+    .th-btn.danger:hover { color: var(--danger); background: rgba(229,83,75,0.08); border-color: var(--danger); }
+
+    /* ── Table body ──────────────────────────────── */
     tbody tr td {
-      padding: 0.48rem 1.75rem;
+      position: relative;
+      padding: 0.45rem 1.5rem;
       text-align: center;
       border-bottom: 1px solid var(--border-soft);
       white-space: nowrap;
       vertical-align: middle;
-      transition: background 0.05s;
     }
 
-    /* Day-phase coloring (per cell) */
-    td.phase-day   { background: rgba(60,130,210,0.07); }
-    td.phase-dawn  { background: rgba(160,110,230,0.08); }
-    td.phase-dusk  { background: rgba(210,120,60,0.09); }
-    /* phase-night: default bg */
+    td.phase-day  { background: rgba(60,130,210,0.07); }
+    td.phase-dawn { background: rgba(160,110,230,0.08); }
+    td.phase-dusk { background: rgba(210,120,60,0.09); }
 
-    tbody tr:hover td          { background: var(--surface2) !important; }
-    tbody tr.is-current td     { background: var(--accent-dim) !important; }
+    tbody tr:hover td            { background: var(--surface2) !important; }
+    tbody tr.is-current td       { background: var(--accent-dim) !important; }
     tbody tr.is-current:hover td { background: var(--accent-dim) !important; }
 
-    .time-str {
-      display: block;
-      color: var(--text);
-    }
-
-    tbody tr.is-current .time-str {
-      color: var(--accent);
-      font-weight: 600;
-    }
+    .time-str { display: block; color: var(--text); }
+    tbody tr.is-current .time-str { color: var(--accent); font-weight: 600; }
 
     .now-label {
       display: inline-block;
-      font-size: 0.62rem;
+      font-size: 0.6rem;
       color: var(--accent);
       background: var(--accent-dim);
       border: 1px solid var(--day-line);
       border-radius: 3px;
       padding: 1px 5px;
-      margin-top: 0.15rem;
+      margin-top: 0.12rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
 
-    .day-label {
-      display: block;
-      font-size: 0.65rem;
-      color: var(--muted);
-      margin-top: 0.12rem;
+    .day-label { display: block; font-size: 0.63rem; color: var(--muted); margin-top: 0.1rem; }
+
+    td.day-change { border-top: 1px solid var(--day-line); }
+
+    /* ── Sunrise / Sunset / Noon / Midnight markers ─ */
+    .solar-marker {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.58rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0.8;
+      pointer-events: none;
     }
 
-    td.day-change {
-      border-top: 1px solid var(--day-line);
+    .solar-marker.sunrise  { color: #c98a45; }
+    .solar-marker.sunset   { color: #9070c0; }
+    .solar-marker.noon     { color: #b5a030; }
+    .solar-marker.midnight { color: #5580aa; }
+    .solar-marker svg { flex-shrink: 0; }
+
+    td.noon-split     { border-bottom: 1px solid rgba(181,160,48,0.3) !important; }
+    td.midnight-split { border-bottom: 1px solid rgba(85,128,170,0.3) !important; }
+
+    td.noon-split::after, td.midnight-split::after {
+      position: absolute;
+      bottom: -0.48em;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.5rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      pointer-events: none;
+      z-index: 2;
+      padding: 0 3px;
+      background: var(--surface);
     }
+    td.noon-split::after     { content: 'noon';     color: #b5a030; }
+    td.midnight-split::after { content: 'midnight'; color: #5580aa; }
+
+    .byline {
+      position: fixed;
+      top: 1rem;
+      right: 1.25rem;
+      font-size: 0.72rem;
+      color: #444;
+      z-index: 100;
+    }
+    .byline a {
+      color: #444;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .byline a:visited { color: #444; }
+    .byline a:hover { color: #888; }
   </style>
 </head>
 <body>
+  <span class="byline">created by <a href="https://peterbrown.space" target="_blank" rel="noopener noreferrer">peter brown</a> · <a href="https://github.com/PeterBrownie" target="_blank" rel="noopener noreferrer">github</a></span>
   <header>
     <h1>Timezone Tables</h1>
-    <span class="subtitle">Compare times across timezones at a glance · drag to reorder</span>
+    <span class="subtitle">Compare times across timezones · drag columns to reorder</span>
   </header>
 
   <div class="selectors" id="selectors"></div>
@@ -352,9 +400,25 @@
     <div class="empty-msg">Select a city above to get started.</div>
   </div>
 
+  <!-- Static content for search engine indexing -->
+  <section aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
+    <h2>Timezone converter for US Air Force and Space Force bases</h2>
+    <p>Compare current local times between any two Air Force bases or cities instantly. What time is it at Ramstein AB Germany when it is 3pm at Eglin AFB Florida? What time is it at Kadena AB Japan when it is noon at Peterson Space Force Base Colorado? Find the time difference between Al Udeid AB Qatar and any US base. Compare Yokota AB Japan time with Washington DC time. Check Aviano AB Italy versus Langley AFB Virginia. See the local time at Incirlik AB Turkey relative to Scott AFB Illinois.</p>
+    <p>Supported locations include: Ramstein AB Germany, Spangdahlem AB Germany, Aviano AB Italy, NAS Sigonella Italy, RAF Lakenheath UK, RAF Mildenhall UK, RAF Fairford UK, Incirlik AB Turkey, Moron AB Spain, Lajes Field Azores, Al Udeid AB Qatar, Al Dhafra AB UAE, Prince Sultan AB Saudi Arabia, Ali Al Salem AB Kuwait, Camp Lemonnier Djibouti, Kadena AB Japan, Misawa AB Japan, Yokota AB Japan, Osan AB South Korea, Kunsan AB South Korea, Andersen AFB Guam, Diego Garcia BIOT, JB Elmendorf-Richardson Alaska, Eielson AFB Alaska, JB Pearl Harbor-Hickam Hawaii, Eglin AFB Florida, Hurlburt Field Florida, Tyndall AFB Florida, JB Charleston South Carolina, Seymour Johnson AFB North Carolina, JB Langley-Eustis Virginia, Dover AFB Delaware, McGuire-Dix-Lakehurst New Jersey, Hanscom AFB Massachusetts, Otis ANGB Massachusetts, Patrick SFB Florida, MacDill AFB Florida, Robins AFB Georgia, Maxwell AFB Alabama, Barksdale AFB Louisiana, Whiteman AFB Missouri, Scott AFB Illinois, Offutt AFB Nebraska, Minot AFB North Dakota, Grand Forks AFB North Dakota, Ellsworth AFB South Dakota, Dyess AFB Texas, Sheppard AFB Texas, Laughlin AFB Texas, JB San Antonio Texas, USAF Academy Colorado, Peterson Space Force Base Colorado, Schriever Space Force Base Colorado, Buckley Space Force Base Colorado, Cheyenne Mountain Space Force Station Colorado, FE Warren AFB Wyoming, Malmstrom AFB Montana, Mountain Home AFB Idaho, Cannon AFB New Mexico, Holloman AFB New Mexico, Kirtland AFB New Mexico, Luke AFB Arizona, Davis-Monthan AFB Arizona, Travis AFB California, Beale AFB California, Edwards AFB California, Vandenberg Space Force Base California, Fairchild AFB Washington, JB Lewis-McChord Washington.</p>
+    <p>Time zone converter for military personnel, Department of Defense employees, and families. Compare Eastern Time, Central Time, Mountain Time, Pacific Time, Alaska Time, Hawaii Time, Central European Time, Japan Standard Time, Korea Standard Time, Gulf Standard Time, and more. Supports daylight saving time automatically.</p>
+  </section>
+
   <script>
+  // ── Solar event SVGs ───────────────────────────────────────────────────────
+  const SUNRISE_SVG = `<svg width="14" height="11" viewBox="0 0 14 11" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="7.5" x2="14" y2="7.5" stroke="currentColor" stroke-width="0.9" stroke-opacity="0.55"/><path d="M2 7.5 A5 5 0 0 1 12 7.5" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="7" y1="0.5" x2="7" y2="2" stroke="currentColor" stroke-width="0.9"/><line x1="11.7" y1="2.3" x2="10.7" y2="3.3" stroke="currentColor" stroke-width="0.9"/><line x1="2.3" y1="2.3" x2="3.3" y2="3.3" stroke="currentColor" stroke-width="0.9"/><polyline points="5,10.5 7,8.5 9,10.5" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  const SUNSET_SVG = `<svg width="14" height="11" viewBox="0 0 14 11" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="6.5" x2="14" y2="6.5" stroke="currentColor" stroke-width="0.9" stroke-opacity="0.55"/><path d="M2 6.5 A5 5 0 0 1 12 6.5" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="7" y1="0.5" x2="7" y2="2" stroke="currentColor" stroke-width="0.9"/><line x1="11.7" y1="2.3" x2="10.7" y2="3.3" stroke="currentColor" stroke-width="0.9"/><line x1="2.3" y1="2.3" x2="3.3" y2="3.3" stroke="currentColor" stroke-width="0.9"/><polyline points="5,8.5 7,10.5 9,8.5" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  const NOON_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="2.3" stroke="currentColor" stroke-width="1"/><line x1="6" y1="0.5" x2="6" y2="2.2" stroke="currentColor" stroke-width="0.9"/><line x1="6" y1="9.8" x2="6" y2="11.5" stroke="currentColor" stroke-width="0.9"/><line x1="0.5" y1="6" x2="2.2" y2="6" stroke="currentColor" stroke-width="0.9"/><line x1="9.8" y1="6" x2="11.5" y2="6" stroke="currentColor" stroke-width="0.9"/><line x1="2.1" y1="2.1" x2="3.3" y2="3.3" stroke="currentColor" stroke-width="0.9"/><line x1="8.7" y1="8.7" x2="9.9" y2="9.9" stroke="currentColor" stroke-width="0.9"/><line x1="9.9" y1="2.1" x2="8.7" y2="3.3" stroke="currentColor" stroke-width="0.9"/><line x1="3.3" y1="8.7" x2="2.1" y2="9.9" stroke="currentColor" stroke-width="0.9"/></svg>`;
+
+  const MIDNIGHT_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 6.5A4 4 0 1 1 5.5 2.5a3 3 0 0 0 4 4z" stroke="currentColor" stroke-width="1" fill="none" stroke-linejoin="round"/></svg>`;
+
   // ── City data ──────────────────────────────────────────────────────────────
-  // sub = state (US) or country label shown next to the name in the dropdown
   const CITIES = [
     // Countries — single timezone only
     { city: "United Kingdom",    sub: "",              tz: "Europe/London",                  region: "Countries" },
@@ -457,6 +521,58 @@
     { city: "Rio de Janeiro",    sub: "Brazil",        tz: "America/Sao_Paulo",              region: "Americas" },
     { city: "Montevideo",        sub: "Uruguay",       tz: "America/Montevideo",             region: "Americas" },
 
+    // US States
+    { city: "Alabama",           sub: "AL",            tz: "America/Chicago",                region: "US States" },
+    { city: "Alaska",            sub: "AK",            tz: "America/Anchorage",              region: "US States" },
+    { city: "Arizona",           sub: "AZ",            tz: "America/Phoenix",                region: "US States" },
+    { city: "Arkansas",          sub: "AR",            tz: "America/Chicago",                region: "US States" },
+    { city: "California",        sub: "CA",            tz: "America/Los_Angeles",            region: "US States" },
+    { city: "Colorado",          sub: "CO",            tz: "America/Denver",                 region: "US States" },
+    { city: "Connecticut",       sub: "CT",            tz: "America/New_York",               region: "US States" },
+    { city: "Delaware",          sub: "DE",            tz: "America/New_York",               region: "US States" },
+    { city: "Florida",           sub: "FL",            tz: "America/New_York",               region: "US States" },
+    { city: "Georgia",           sub: "GA",            tz: "America/New_York",               region: "US States" },
+    { city: "Hawaii",            sub: "HI",            tz: "Pacific/Honolulu",               region: "US States" },
+    { city: "Idaho",             sub: "ID",            tz: "America/Boise",                  region: "US States" },
+    { city: "Illinois",          sub: "IL",            tz: "America/Chicago",                region: "US States" },
+    { city: "Indiana",           sub: "IN",            tz: "America/Indiana/Indianapolis",   region: "US States" },
+    { city: "Iowa",              sub: "IA",            tz: "America/Chicago",                region: "US States" },
+    { city: "Kansas",            sub: "KS",            tz: "America/Chicago",                region: "US States" },
+    { city: "Kentucky",          sub: "KY",            tz: "America/New_York",               region: "US States" },
+    { city: "Louisiana",         sub: "LA",            tz: "America/Chicago",                region: "US States" },
+    { city: "Maine",             sub: "ME",            tz: "America/New_York",               region: "US States" },
+    { city: "Maryland",          sub: "MD",            tz: "America/New_York",               region: "US States" },
+    { city: "Massachusetts",     sub: "MA",            tz: "America/New_York",               region: "US States" },
+    { city: "Michigan",          sub: "MI",            tz: "America/New_York",               region: "US States" },
+    { city: "Minnesota",         sub: "MN",            tz: "America/Chicago",                region: "US States" },
+    { city: "Mississippi",       sub: "MS",            tz: "America/Chicago",                region: "US States" },
+    { city: "Missouri",          sub: "MO",            tz: "America/Chicago",                region: "US States" },
+    { city: "Montana",           sub: "MT",            tz: "America/Denver",                 region: "US States" },
+    { city: "Nebraska",          sub: "NE",            tz: "America/Chicago",                region: "US States" },
+    { city: "Nevada",            sub: "NV",            tz: "America/Los_Angeles",            region: "US States" },
+    { city: "New Hampshire",     sub: "NH",            tz: "America/New_York",               region: "US States" },
+    { city: "New Jersey",        sub: "NJ",            tz: "America/New_York",               region: "US States" },
+    { city: "New Mexico",        sub: "NM",            tz: "America/Denver",                 region: "US States" },
+    { city: "New York",          sub: "NY",            tz: "America/New_York",               region: "US States" },
+    { city: "North Carolina",    sub: "NC",            tz: "America/New_York",               region: "US States" },
+    { city: "North Dakota",      sub: "ND",            tz: "America/Chicago",                region: "US States" },
+    { city: "Ohio",              sub: "OH",            tz: "America/New_York",               region: "US States" },
+    { city: "Oklahoma",          sub: "OK",            tz: "America/Chicago",                region: "US States" },
+    { city: "Oregon",            sub: "OR",            tz: "America/Los_Angeles",            region: "US States" },
+    { city: "Pennsylvania",      sub: "PA",            tz: "America/New_York",               region: "US States" },
+    { city: "Rhode Island",      sub: "RI",            tz: "America/New_York",               region: "US States" },
+    { city: "South Carolina",    sub: "SC",            tz: "America/New_York",               region: "US States" },
+    { city: "South Dakota",      sub: "SD",            tz: "America/Chicago",                region: "US States" },
+    { city: "Tennessee",         sub: "TN",            tz: "America/Chicago",                region: "US States" },
+    { city: "Texas",             sub: "TX",            tz: "America/Chicago",                region: "US States" },
+    { city: "Utah",              sub: "UT",            tz: "America/Denver",                 region: "US States" },
+    { city: "Vermont",           sub: "VT",            tz: "America/New_York",               region: "US States" },
+    { city: "Virginia",          sub: "VA",            tz: "America/New_York",               region: "US States" },
+    { city: "Washington",        sub: "WA",            tz: "America/Los_Angeles",            region: "US States" },
+    { city: "West Virginia",     sub: "WV",            tz: "America/New_York",               region: "US States" },
+    { city: "Wisconsin",         sub: "WI",            tz: "America/Chicago",                region: "US States" },
+    { city: "Wyoming",           sub: "WY",            tz: "America/Denver",                 region: "US States" },
+
     // Europe
     { city: "London",            sub: "UK",            tz: "Europe/London",                  region: "Europe" },
     { city: "Dublin",            sub: "Ireland",       tz: "Europe/Dublin",                  region: "Europe" },
@@ -549,122 +665,132 @@
     { city: "Auckland",          sub: "New Zealand",   tz: "Pacific/Auckland",               region: "Asia & Pacific" },
     { city: "Fiji",              sub: "Fiji",          tz: "Pacific/Fiji",                   region: "Asia & Pacific" },
 
-    // AF & Space Force Bases — CONUS East
-    { city: "Dover AFB",                       sub: "DE",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "JB McGuire-Dix-Lakehurst",        sub: "NJ",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Westover ARB",                    sub: "MA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Niagara Falls ARS",               sub: "NY",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Stewart ANGB",                    sub: "NY",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Selfridge ANGB",                  sub: "MI",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Wright-Patterson AFB",            sub: "OH",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "JB Langley-Eustis",               sub: "VA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "JB Andrews",                      sub: "MD",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "JB Anacostia-Bolling",            sub: "DC",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Seymour Johnson AFB",             sub: "NC",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Shaw AFB",                        sub: "SC",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Robins AFB",                      sub: "GA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Moody AFB",                       sub: "GA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Patrick Space Force Base",        sub: "FL",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "Cape Canaveral SFS",              sub: "FL",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    { city: "MacDill AFB",                     sub: "FL",            tz: "America/New_York",             region: "AF & Space Force Bases" },
-    // AF & Space Force Bases — CONUS Central
-    { city: "Maxwell AFB",                     sub: "AL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Keesler AFB",                     sub: "MS",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Columbus AFB",                    sub: "MS",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Tyndall AFB",                     sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Eglin AFB",                       sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Hurlburt Field",                  sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Duke Field",                      sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Little Rock AFB",                 sub: "AR",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Barksdale AFB",                   sub: "LA",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Scott AFB",                       sub: "IL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Grissom ARB",                     sub: "IN",            tz: "America/Indiana/Indianapolis", region: "AF & Space Force Bases" },
-    { city: "Whiteman AFB",                    sub: "MO",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Offutt AFB",                      sub: "NE",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Cavalier SFS",                    sub: "ND",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Vance AFB",                       sub: "OK",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Tinker AFB",                      sub: "OK",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Altus AFB",                       sub: "OK",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Sheppard AFB",                    sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Dyess AFB",                       sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Goodfellow AFB",                  sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Laughlin AFB",                    sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "JB San Antonio (Lackland)",       sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "JB San Antonio (Randolph)",       sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    { city: "Ellington Field",                 sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
-    // AF & Space Force Bases — CONUS Mountain & Pacific
-    { city: "USAF Academy",                    sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Peterson Space Force Base",       sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Schriever Space Force Base",      sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Buckley Space Force Base",        sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Cheyenne Mountain SFS",           sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "F.E. Warren AFB",                 sub: "WY",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Malmstrom AFB",                   sub: "MT",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Mountain Home AFB",               sub: "ID",            tz: "America/Boise",                region: "AF & Space Force Bases" },
-    { city: "Cannon AFB",                      sub: "NM",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Holloman AFB",                    sub: "NM",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Kirtland AFB",                    sub: "NM",            tz: "America/Denver",               region: "AF & Space Force Bases" },
-    { city: "Luke AFB",                        sub: "AZ",            tz: "America/Phoenix",              region: "AF & Space Force Bases" },
-    { city: "Davis-Monthan AFB",               sub: "AZ",            tz: "America/Phoenix",              region: "AF & Space Force Bases" },
-    { city: "Travis AFB",                      sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    { city: "Beale AFB",                       sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    { city: "Edwards AFB",                     sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    { city: "March ARB",                       sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    { city: "Los Angeles AFB",                 sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    { city: "Vandenberg Space Force Base",     sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    { city: "Fairchild AFB",                   sub: "WA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    { city: "JB Lewis-McChord",                sub: "WA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
-    // AF & Space Force Bases — Alaska & Hawaii
-    { city: "JB Elmendorf-Richardson",         sub: "AK",            tz: "America/Anchorage",            region: "AF & Space Force Bases" },
-    { city: "Eielson AFB",                     sub: "AK",            tz: "America/Anchorage",            region: "AF & Space Force Bases" },
-    { city: "Clear Space Force Station",       sub: "AK",            tz: "America/Anchorage",            region: "AF & Space Force Bases" },
-    { city: "JB Pearl Harbor-Hickam",          sub: "HI",            tz: "Pacific/Honolulu",             region: "AF & Space Force Bases" },
-    { city: "Kaena Point SFS",                 sub: "HI",            tz: "Pacific/Honolulu",             region: "AF & Space Force Bases" },
-    // AF & Space Force Bases — Europe
-    { city: "Ramstein AB",                     sub: "Germany",       tz: "Europe/Berlin",                region: "AF & Space Force Bases" },
-    { city: "Spangdahlem AB",                  sub: "Germany",       tz: "Europe/Berlin",                region: "AF & Space Force Bases" },
-    { city: "Grafenwöhr",                      sub: "Germany",       tz: "Europe/Berlin",                region: "AF & Space Force Bases" },
-    { city: "Aviano AB",                       sub: "Italy",         tz: "Europe/Rome",                  region: "AF & Space Force Bases" },
-    { city: "NAS Sigonella",                   sub: "Italy",         tz: "Europe/Rome",                  region: "AF & Space Force Bases" },
-    { city: "RAF Lakenheath",                  sub: "UK",            tz: "Europe/London",                region: "AF & Space Force Bases" },
-    { city: "RAF Mildenhall",                  sub: "UK",            tz: "Europe/London",                region: "AF & Space Force Bases" },
-    { city: "RAF Fairford",                    sub: "UK",            tz: "Europe/London",                region: "AF & Space Force Bases" },
-    { city: "Incirlik AB",                     sub: "Turkey",        tz: "Europe/Istanbul",              region: "AF & Space Force Bases" },
-    { city: "Morón AB",                        sub: "Spain",         tz: "Europe/Madrid",                region: "AF & Space Force Bases" },
-    { city: "Lajes Field",                     sub: "Azores",        tz: "Atlantic/Azores",              region: "AF & Space Force Bases" },
-    { city: "Pituffik Space Base",             sub: "Greenland",     tz: "America/Thule",                region: "AF & Space Force Bases" },
-    // AF & Space Force Bases — Middle East & Africa
-    { city: "Al Udeid AB",                     sub: "Qatar",         tz: "Asia/Qatar",                   region: "AF & Space Force Bases" },
-    { city: "Al Dhafra AB",                    sub: "UAE",           tz: "Asia/Dubai",                   region: "AF & Space Force Bases" },
-    { city: "Prince Sultan AB",                sub: "Saudi Arabia",  tz: "Asia/Riyadh",                  region: "AF & Space Force Bases" },
-    { city: "Ali Al Salem AB",                 sub: "Kuwait",        tz: "Asia/Kuwait",                  region: "AF & Space Force Bases" },
-    { city: "Camp Lemonnier",                  sub: "Djibouti",      tz: "Africa/Djibouti",              region: "AF & Space Force Bases" },
-    // AF & Space Force Bases — Pacific & Indo-Pacific
-    { city: "Kadena AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "AF & Space Force Bases" },
-    { city: "Misawa AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "AF & Space Force Bases" },
-    { city: "Yokota AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "AF & Space Force Bases" },
-    { city: "Osan AB",                         sub: "South Korea",   tz: "Asia/Seoul",                   region: "AF & Space Force Bases" },
-    { city: "Kunsan AB",                       sub: "South Korea",   tz: "Asia/Seoul",                   region: "AF & Space Force Bases" },
-    { city: "Andersen AFB",                    sub: "Guam",          tz: "Pacific/Guam",                 region: "AF & Space Force Bases" },
-    { city: "Diego Garcia",                    sub: "BIOT",          tz: "Indian/Chagos",                region: "AF & Space Force Bases" },
+    // USAF Bases — CONUS East
+    { city: "Dover AFB",                       sub: "DE",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "JB McGuire-Dix-Lakehurst",        sub: "NJ",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Westover ARB",                    sub: "MA",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Niagara Falls ARS",               sub: "NY",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Stewart ANGB",                    sub: "NY",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Selfridge ANGB",                  sub: "MI",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Wright-Patterson AFB",            sub: "OH",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "JB Langley-Eustis",               sub: "VA",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "JB Andrews",                      sub: "MD",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "JB Anacostia-Bolling",            sub: "DC",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Seymour Johnson AFB",             sub: "NC",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Shaw AFB",                        sub: "SC",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Robins AFB",                      sub: "GA",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Moody AFB",                       sub: "GA",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Patrick Space Force Base",        sub: "FL",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "Cape Canaveral SFS",              sub: "FL",            tz: "America/New_York",             region: "USAF Bases" },
+    { city: "MacDill AFB",                     sub: "FL",            tz: "America/New_York",             region: "USAF Bases" },
+    // CONUS Central
+    { city: "Maxwell AFB",                     sub: "AL",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Keesler AFB",                     sub: "MS",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Columbus AFB",                    sub: "MS",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Tyndall AFB",                     sub: "FL",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Eglin AFB",                       sub: "FL",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Hurlburt Field",                  sub: "FL",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Duke Field",                      sub: "FL",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Little Rock AFB",                 sub: "AR",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Barksdale AFB",                   sub: "LA",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Scott AFB",                       sub: "IL",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Grissom ARB",                     sub: "IN",            tz: "America/Indiana/Indianapolis", region: "USAF Bases" },
+    { city: "Whiteman AFB",                    sub: "MO",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Offutt AFB",                      sub: "NE",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Cavalier SFS",                    sub: "ND",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Vance AFB",                       sub: "OK",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Tinker AFB",                      sub: "OK",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Altus AFB",                       sub: "OK",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Sheppard AFB",                    sub: "TX",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Dyess AFB",                       sub: "TX",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Goodfellow AFB",                  sub: "TX",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Laughlin AFB",                    sub: "TX",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "JB San Antonio (Lackland)",       sub: "TX",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "JB San Antonio (Randolph)",       sub: "TX",            tz: "America/Chicago",              region: "USAF Bases" },
+    { city: "Ellington Field",                 sub: "TX",            tz: "America/Chicago",              region: "USAF Bases" },
+    // CONUS Mountain & Pacific
+    { city: "USAF Academy",                    sub: "CO",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Peterson Space Force Base",       sub: "CO",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Schriever Space Force Base",      sub: "CO",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Buckley Space Force Base",        sub: "CO",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Cheyenne Mountain SFS",           sub: "CO",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "F.E. Warren AFB",                 sub: "WY",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Malmstrom AFB",                   sub: "MT",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Mountain Home AFB",               sub: "ID",            tz: "America/Boise",                region: "USAF Bases" },
+    { city: "Cannon AFB",                      sub: "NM",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Holloman AFB",                    sub: "NM",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Kirtland AFB",                    sub: "NM",            tz: "America/Denver",               region: "USAF Bases" },
+    { city: "Luke AFB",                        sub: "AZ",            tz: "America/Phoenix",              region: "USAF Bases" },
+    { city: "Davis-Monthan AFB",               sub: "AZ",            tz: "America/Phoenix",              region: "USAF Bases" },
+    { city: "Travis AFB",                      sub: "CA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    { city: "Beale AFB",                       sub: "CA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    { city: "Edwards AFB",                     sub: "CA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    { city: "March ARB",                       sub: "CA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    { city: "Los Angeles AFB",                 sub: "CA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    { city: "Vandenberg Space Force Base",     sub: "CA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    { city: "Fairchild AFB",                   sub: "WA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    { city: "JB Lewis-McChord",                sub: "WA",            tz: "America/Los_Angeles",          region: "USAF Bases" },
+    // Alaska & Hawaii
+    { city: "JB Elmendorf-Richardson",         sub: "AK",            tz: "America/Anchorage",            region: "USAF Bases" },
+    { city: "Eielson AFB",                     sub: "AK",            tz: "America/Anchorage",            region: "USAF Bases" },
+    { city: "Clear Space Force Station",       sub: "AK",            tz: "America/Anchorage",            region: "USAF Bases" },
+    { city: "JB Pearl Harbor-Hickam",          sub: "HI",            tz: "Pacific/Honolulu",             region: "USAF Bases" },
+    { city: "Kaena Point SFS",                 sub: "HI",            tz: "Pacific/Honolulu",             region: "USAF Bases" },
+    // Europe
+    { city: "Ramstein AB",                     sub: "Germany",       tz: "Europe/Berlin",                region: "USAF Bases" },
+    { city: "Spangdahlem AB",                  sub: "Germany",       tz: "Europe/Berlin",                region: "USAF Bases" },
+    { city: "Grafenwöhr",                      sub: "Germany",       tz: "Europe/Berlin",                region: "USAF Bases" },
+    { city: "Aviano AB",                       sub: "Italy",         tz: "Europe/Rome",                  region: "USAF Bases" },
+    { city: "NAS Sigonella",                   sub: "Italy",         tz: "Europe/Rome",                  region: "USAF Bases" },
+    { city: "RAF Lakenheath",                  sub: "UK",            tz: "Europe/London",                region: "USAF Bases" },
+    { city: "RAF Mildenhall",                  sub: "UK",            tz: "Europe/London",                region: "USAF Bases" },
+    { city: "RAF Fairford",                    sub: "UK",            tz: "Europe/London",                region: "USAF Bases" },
+    { city: "Incirlik AB",                     sub: "Turkey",        tz: "Europe/Istanbul",              region: "USAF Bases" },
+    { city: "Morón AB",                        sub: "Spain",         tz: "Europe/Madrid",                region: "USAF Bases" },
+    { city: "Lajes Field",                     sub: "Azores",        tz: "Atlantic/Azores",              region: "USAF Bases" },
+    { city: "Pituffik Space Base",             sub: "Greenland",     tz: "America/Thule",                region: "USAF Bases" },
+    // Middle East & Africa
+    { city: "Al Udeid AB",                     sub: "Qatar",         tz: "Asia/Qatar",                   region: "USAF Bases" },
+    { city: "Al Dhafra AB",                    sub: "UAE",           tz: "Asia/Dubai",                   region: "USAF Bases" },
+    { city: "Prince Sultan AB",                sub: "Saudi Arabia",  tz: "Asia/Riyadh",                  region: "USAF Bases" },
+    { city: "Ali Al Salem AB",                 sub: "Kuwait",        tz: "Asia/Kuwait",                  region: "USAF Bases" },
+    { city: "Camp Lemonnier",                  sub: "Djibouti",      tz: "Africa/Djibouti",              region: "USAF Bases" },
+    // Pacific & Indo-Pacific
+    { city: "Kadena AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "USAF Bases" },
+    { city: "Misawa AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "USAF Bases" },
+    { city: "Yokota AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "USAF Bases" },
+    { city: "Osan AB",                         sub: "South Korea",   tz: "Asia/Seoul",                   region: "USAF Bases" },
+    { city: "Kunsan AB",                       sub: "South Korea",   tz: "Asia/Seoul",                   region: "USAF Bases" },
+    { city: "Andersen AFB",                    sub: "Guam",          tz: "Pacific/Guam",                 region: "USAF Bases" },
+    { city: "Diego Garcia",                    sub: "BIOT",          tz: "Indian/Chagos",                region: "USAF Bases" },
   ];
 
   // ── State ──────────────────────────────────────────────────────────────────
-  let slots = [
-    { id: 1, cityObj: null },
-    { id: 2, cityObj: null },
-  ];
-  let nextId = 3;
-  let openDropdownId = null;
   const MAX_SLOTS = 6;
+  const _localTz   = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const _localCity = CITIES.find(c => c.tz === _localTz) ?? null;
 
-  // Drag state
-  let dragSrcId = null;
+  // Initialise slots from ?tz= URL params if present
+  function slotsFromURL() {
+    const params = new URLSearchParams(location.search).getAll('tz');
+    if (!params.length) return null;
+    const resolved = params
+      .map(name => CITIES.find(c => c.city.toLowerCase() === name.toLowerCase()) ?? null)
+      .filter(Boolean)
+      .slice(0, MAX_SLOTS);
+    if (!resolved.length) return null;
+    return resolved.map((cityObj, i) => ({ id: i + 1, cityObj }));
+  }
+
+  let slots = slotsFromURL() ?? [{ id: 1, cityObj: _localCity }, { id: 2, cityObj: null }];
+  let nextId = slots.length + 1;
+  let openDropdownId = null;
+  let colDragSrcId = null;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   function currentHourDate() {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours(), 0, 0, 0);
   }
 
   function fmt(date, tz, opts) {
@@ -684,50 +810,44 @@
   }
 
   function tzAbbr(date, tz) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, timeZoneName: 'short'
-    }).formatToParts(date);
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(date);
     return parts.find(p => p.type === 'timeZoneName')?.value ?? '';
   }
 
   function getLocalHour(date, tz) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, hour: 'numeric', hour12: false
-    }).formatToParts(date);
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).formatToParts(date);
     const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
     return h === 24 ? 0 : h;
   }
 
-  // ── Solar time-of-day calculation ──────────────────────────────────────────
-  // Approximates seasonal sunrise/sunset variation for a mid-latitude location.
-  // Colors reflect the season but not the specific latitude of each city.
+  function getLocalFractionalHour(date, tz) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: false
+    }).formatToParts(date);
+    const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+    const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+    return h + m / 60; // may be 24.0 for exact midnight
+  }
+
+  // ── Solar calculation ──────────────────────────────────────────────────────
   function getSolarTimes() {
     const now = new Date();
     const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86_400_000);
-    // Northern hemisphere: longer days in summer (~day 172), shorter in winter
-    const amplitude = 1.5; // hours of variation from equinox baseline
-    const offset = -amplitude * Math.cos(2 * Math.PI * (dayOfYear - 10) / 365);
-    return {
-      dawn:    5.5 + offset,
-      sunrise: 6.5 + offset,
-      sunset:  17.5 + offset,
-      dusk:    18.5 + offset,
-    };
+    const offset = -1.5 * Math.cos(2 * Math.PI * (dayOfYear - 10) / 365);
+    return { dawn: 5.5 + offset, sunrise: 6.5 + offset, sunset: 17.5 + offset, dusk: 18.5 + offset };
   }
 
-  function getDayPhase(hour, solar) {
-    if (hour < solar.dawn   || hour >= solar.dusk)   return 'night';
-    if (hour < solar.sunrise)                         return 'dawn';
-    if (hour < solar.sunset)                          return 'day';
+  function getDayPhase(hour, s) {
+    if (hour < s.dawn   || hour >= s.dusk)  return 'night';
+    if (hour < s.sunrise)                   return 'dawn';
+    if (hour < s.sunset)                    return 'day';
     return 'dusk';
   }
 
   // ── Dropdown HTML ──────────────────────────────────────────────────────────
   function buildDropdownHTML(slotId, query) {
     const q = query.trim().toLowerCase();
-    let html = '';
-    let lastRegion = null;
-    let count = 0;
+    let html = '', lastRegion = null, count = 0;
 
     CITIES.forEach((c, i) => {
       if (q && !c.city.toLowerCase().includes(q) && !c.sub.toLowerCase().includes(q)) return;
@@ -740,20 +860,15 @@
       count++;
     });
 
-    if (!count) html = `<div class="tz-option no-match">No cities match</div>`;
-    return html;
+    return count ? html : `<div class="tz-option no-match">No cities match</div>`;
   }
 
-  // ── Dropdown open/close ────────────────────────────────────────────────────
+  // ── Dropdown open / close ──────────────────────────────────────────────────
   function openDropdown(slotId, query) {
     openDropdownId = slotId;
     document.querySelectorAll('.tz-dropdown').forEach(d => {
-      if (+d.dataset.slotId === slotId) {
-        d.innerHTML = buildDropdownHTML(slotId, query);
-        d.classList.add('open');
-      } else {
-        d.classList.remove('open');
-      }
+      if (+d.dataset.slotId === slotId) { d.innerHTML = buildDropdownHTML(slotId, query); d.classList.add('open'); }
+      else d.classList.remove('open');
     });
   }
 
@@ -766,94 +881,41 @@
     });
   }
 
-  // ── Render selectors ───────────────────────────────────────────────────────
+  // ── Render selectors (unselected slots only) ───────────────────────────────
   function renderSelectors() {
     const container = document.getElementById('selectors');
     container.innerHTML = '';
 
-    slots.forEach(slot => {
+    slots.filter(s => !s.cityObj).forEach(slot => {
       const wrap = document.createElement('div');
       wrap.className = 'tz-slot';
       wrap.dataset.slotId = slot.id;
-      wrap.draggable = true;
 
       const removable = slots.length > 2;
-      const val = slot.cityObj ? slot.cityObj.city : '';
-
       wrap.innerHTML = `
         <div class="tz-slot-inner">
-          ${removable ? `<button class="remove-btn" data-action="remove" data-slot-id="${slot.id}" title="Remove">✕</button>` : ''}
+          ${removable ? `<button class="remove-btn" data-action="remove-slot" data-slot-id="${slot.id}" title="Remove">✕</button>` : ''}
           <div class="tz-slot-label">City / Timezone</div>
           <input class="tz-input" type="text" placeholder="Search city…"
-            value="${val}" autocomplete="off" spellcheck="false"
-            data-slot-id="${slot.id}">
+            value="" autocomplete="off" spellcheck="false" data-slot-id="${slot.id}">
         </div>
-        <div class="tz-dropdown" data-slot-id="${slot.id}"></div>
-      `;
+        <div class="tz-dropdown" data-slot-id="${slot.id}"></div>`;
 
       container.appendChild(wrap);
 
       const input = wrap.querySelector('.tz-input');
-
-      input.addEventListener('focus', () => {
-        input.select();
-        openDropdown(slot.id, '');
-      });
-
-      input.addEventListener('input', () => {
-        openDropdown(slot.id, input.value);
-      });
-
+      input.addEventListener('focus', () => { input.select(); openDropdown(slot.id, ''); });
+      input.addEventListener('input', () => openDropdown(slot.id, input.value));
       input.addEventListener('blur', () => {
         setTimeout(() => {
-          const s = slots.find(x => x.id === slot.id);
-          if (s && document.activeElement !== input) {
-            input.value = s.cityObj ? s.cityObj.city : '';
+          if (document.activeElement !== input) {
             const dd = wrap.querySelector('.tz-dropdown');
-            if (dd && openDropdownId === slot.id) {
-              dd.classList.remove('open');
-              openDropdownId = null;
-            }
+            if (dd && openDropdownId === slot.id) { dd.classList.remove('open'); openDropdownId = null; }
           }
         }, 180);
       });
-
-      // Drag events — prevent drag if user is interacting with the input
-      wrap.addEventListener('dragstart', e => {
-        if (e.target === input) { e.preventDefault(); return; }
-        dragSrcId = slot.id;
-        wrap.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-      });
-
-      wrap.addEventListener('dragend', () => {
-        wrap.classList.remove('dragging');
-        container.querySelectorAll('.tz-slot').forEach(s => s.classList.remove('drag-over'));
-        dragSrcId = null;
-      });
-
-      wrap.addEventListener('dragover', e => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        if (dragSrcId !== null && dragSrcId !== slot.id) {
-          container.querySelectorAll('.tz-slot').forEach(s => s.classList.remove('drag-over'));
-          wrap.classList.add('drag-over');
-        }
-      });
-
-      wrap.addEventListener('drop', e => {
-        e.preventDefault();
-        if (dragSrcId === null || dragSrcId === slot.id) return;
-        const fromIdx = slots.findIndex(s => s.id === dragSrcId);
-        const toIdx   = slots.findIndex(s => s.id === slot.id);
-        if (fromIdx < 0 || toIdx < 0) return;
-        const moved = slots.splice(fromIdx, 1)[0];
-        slots.splice(toIdx, 0, moved);
-        render();
-      });
     });
 
-    // Add button
     if (slots.length < MAX_SLOTS) {
       const btn = document.createElement('button');
       btn.className = 'add-btn';
@@ -865,7 +927,7 @@
 
   // ── Render table ───────────────────────────────────────────────────────────
   function renderTable() {
-    const wrap = document.getElementById('table-wrap');
+    const wrap  = document.getElementById('table-wrap');
     const active = slots.filter(s => s.cityObj);
 
     if (!active.length) {
@@ -873,101 +935,165 @@
       return;
     }
 
-    const now    = new Date();
-    const start  = currentHourDate();
-    const solar  = getSolarTimes();
-    const hours  = Array.from({ length: 25 }, (_, i) =>
-      new Date(start.getTime() + i * 3_600_000)
-    );
+    const now   = new Date();
+    const start = currentHourDate();
+    const solar = getSolarTimes();
+    const hours = Array.from({ length: 25 }, (_, i) => new Date(start.getTime() + i * 3_600_000));
 
-    // Header — show city + sub label
+    // Header
     let thead = '<tr>';
     active.forEach(col => {
       const abbr    = tzAbbr(now, col.cityObj.tz);
       const subPart = col.cityObj.sub ? ` <span class="th-sub">· ${col.cityObj.sub}</span>` : '';
       thead += `
-        <th>
+        <th draggable="true" data-slot-id="${col.id}">
           <span class="th-city">${col.cityObj.city}${subPart}</span>
           <span class="th-date">${fmtDate(now, col.cityObj.tz)}</span>
           <span class="th-abbr">${abbr}</span>
+          <div class="th-actions">
+            <button class="th-btn" draggable="false" data-action="edit-slot" data-slot-id="${col.id}">edit</button>
+            <button class="th-btn danger" draggable="false" data-action="remove-slot" data-slot-id="${col.id}">remove</button>
+          </div>
         </th>`;
     });
     thead += '</tr>';
 
-    // Track previous day key per column
-    const prevDay = active.map(col => dayKey(hours[0], col.cityObj.tz));
+    // Track state per column
+    const prevDay   = active.map(col => dayKey(hours[0], col.cityObj.tz));
+    const prevPhase = active.map(col => getDayPhase(getLocalHour(hours[0], col.cityObj.tz), solar));
 
     // Body
     let tbody = '';
     hours.forEach((hour, i) => {
-      const isCurrent = i === 0;
-      // For the "now" row use exact current time; other rows use the hour boundary
+      const isCurrent   = i === 0;
       const displayTime = isCurrent ? now : hour;
       tbody += `<tr class="${isCurrent ? 'is-current' : ''}">`;
 
       active.forEach((col, ci) => {
-        const dk = dayKey(hour, col.cityObj.tz);
+        const dk         = dayKey(hour, col.cityObj.tz);
         const dayChanged = i > 0 && dk !== prevDay[ci];
         if (dayChanged) prevDay[ci] = dk;
 
-        // Phase coloring based on local hour in this timezone
         const localHour = getLocalHour(hour, col.cityObj.tz);
+        const fracHour  = getLocalFractionalHour(hour, col.cityObj.tz);
         const phase     = getDayPhase(localHour, solar);
+
+        // Sunrise / sunset / noon / midnight detection
+        let solarMarker = '';
+        if (i > 0) {
+          const prev = prevPhase[ci];
+          if ((prev === 'night' || prev === 'dawn') && phase === 'day') {
+            solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise</span>`;
+          } else if (prev === 'day' && (phase === 'dusk' || phase === 'night')) {
+            solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset</span>`;
+          } else if (localHour === 12 && fracHour === 12) {
+            solarMarker = `<span class="solar-marker noon">${NOON_SVG} noon</span>`;
+          } else if (localHour === 0 && (fracHour === 0 || fracHour === 24)) {
+            solarMarker = `<span class="solar-marker midnight">${MIDNIGHT_SVG} midnight</span>`;
+          }
+        }
+        prevPhase[ci] = phase;
+
+        // Between-rows split border for non-whole-hour TZs (noon/midnight falls mid-row)
+        let splitClass = '';
+        if (i < hours.length - 1) {
+          if (fracHour > 11 && fracHour < 12) splitClass = 'noon-split';
+          else if (fracHour > 23 && fracHour < 24) splitClass = 'midnight-split';
+        }
 
         const timeStr = fmtTime(displayTime, col.cityObj.tz);
         const extra   = isCurrent
           ? `<span class="now-label">now</span>`
-          : dayChanged
-            ? `<span class="day-label">${fmtDate(hour, col.cityObj.tz)}</span>`
-            : '';
+          : dayChanged ? `<span class="day-label">${fmtDate(hour, col.cityObj.tz)}</span>` : '';
 
-        const classes = [
-          dayChanged ? 'day-change' : '',
-          phase !== 'night' ? `phase-${phase}` : '',
-        ].filter(Boolean).join(' ');
+        const classes = [dayChanged ? 'day-change' : '', phase !== 'night' ? `phase-${phase}` : '', splitClass].filter(Boolean).join(' ');
 
-        tbody += `
-          <td class="${classes}">
-            <span class="time-str">${timeStr}</span>
-            ${extra}
-          </td>`;
+        tbody += `<td class="${classes}"><span class="time-str">${timeStr}</span>${solarMarker}${extra}</td>`;
       });
 
       tbody += '</tr>';
     });
 
-    wrap.innerHTML = `
-      <table style="--col-count:${active.length}">
-        <thead>${thead}</thead>
-        <tbody>${tbody}</tbody>
-      </table>`;
+    wrap.innerHTML = `<table style="--col-count:${active.length}"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+
+    // Column drag-to-reorder
+    const ths = wrap.querySelectorAll('thead th[data-slot-id]');
+    ths.forEach(th => {
+      th.addEventListener('dragstart', e => {
+        if (e.target.closest('button')) { e.preventDefault(); return; }
+        colDragSrcId = +th.dataset.slotId;
+        th.classList.add('col-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      th.addEventListener('dragend', () => {
+        th.classList.remove('col-dragging');
+        ths.forEach(t => t.classList.remove('drag-over-col'));
+        colDragSrcId = null;
+      });
+      th.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (colDragSrcId !== null && colDragSrcId !== +th.dataset.slotId) {
+          ths.forEach(t => t.classList.remove('drag-over-col'));
+          th.classList.add('drag-over-col');
+        }
+      });
+      th.addEventListener('dragleave', () => th.classList.remove('drag-over-col'));
+      th.addEventListener('drop', e => {
+        e.preventDefault();
+        const dstId = +th.dataset.slotId;
+        if (!colDragSrcId || colDragSrcId === dstId) return;
+        const fi = slots.findIndex(s => s.id === colDragSrcId);
+        const ti = slots.findIndex(s => s.id === dstId);
+        if (fi < 0 || ti < 0) return;
+        const [moved] = slots.splice(fi, 1);
+        slots.splice(ti, 0, moved);
+        render();
+      });
+    });
+  }
+
+  // ── Sync URL to current selected slots ────────────────────────────────────
+  function syncURL() {
+    const selected = slots.filter(s => s.cityObj);
+    const params = selected.map(s => 'tz=' + encodeURIComponent(s.cityObj.city)).join('&');
+    const url = params ? (location.pathname + '?' + params) : location.pathname;
+    history.replaceState(null, '', url);
   }
 
   // ── Full render ────────────────────────────────────────────────────────────
-  function render() {
-    renderSelectors();
-    renderTable();
-  }
+  function render() { renderSelectors(); renderTable(); syncURL(); }
 
   // ── Event delegation ───────────────────────────────────────────────────────
   document.addEventListener('click', e => {
     const target = e.target.closest('[data-action]');
-
-    if (!target) {
-      if (!e.target.closest('.tz-slot')) closeAllDropdowns();
-      return;
-    }
+    if (!target) { if (!e.target.closest('.tz-slot')) closeAllDropdowns(); return; }
 
     const { action, slotId, idx } = target.dataset;
 
     if (action === 'add') {
       slots.push({ id: nextId++, cityObj: null });
       render();
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('.tz-input');
+        if (inputs.length) { const last = inputs[inputs.length - 1]; last.focus(); openDropdown(+last.dataset.slotId, ''); }
+      }, 0);
     }
 
-    if (action === 'remove') {
+    if (action === 'remove-slot') {
       slots = slots.filter(s => s.id !== +slotId);
+      if (!slots.length) slots = [{ id: nextId++, cityObj: null }];
       render();
+    }
+
+    if (action === 'edit-slot') {
+      const slot = slots.find(s => s.id === +slotId);
+      if (slot) slot.cityObj = null;
+      render();
+      setTimeout(() => {
+        const inp = document.querySelector(`.tz-input[data-slot-id="${slotId}"]`);
+        if (inp) { inp.focus(); openDropdown(+slotId, ''); }
+      }, 0);
     }
 
     if (action === 'select-city') {
@@ -978,14 +1104,18 @@
     }
   });
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeAllDropdowns();
-  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllDropdowns(); });
 
-  // ── Auto-refresh every minute ──────────────────────────────────────────────
-  setInterval(renderTable, 60_000);
+  // Align updates to clock minute boundaries so the table refreshes promptly when the hour turns
+  (function scheduleUpdates() {
+    const now = new Date();
+    const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    setTimeout(() => {
+      renderTable();
+      setInterval(renderTable, 60_000);
+    }, msUntilNextMinute);
+  })();
 
-  // ── Boot ───────────────────────────────────────────────────────────────────
   render();
   </script>
 </body>
