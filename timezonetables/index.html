@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta property="og:title" content="Timezone Tables — peterbrown.space">
+  <meta property="og:description" content="Compare times across timezones at a glance.">
+  <meta property="og:url" content="https://peterbrown.space/timezonetables">
+  <link rel="icon" type="image/png" href="../evolveIcon.png">
+  <title>Timezone Tables</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0e1117;
+      --surface:     #161b22;
+      --surface2:    #1e2530;
+      --border:      #2d333b;
+      --border-soft: rgba(45,51,59,0.6);
+      --text:        #cdd9e5;
+      --muted:       #768390;
+      --bright:      #e6edf3;
+      --accent:      #4d9de0;
+      --accent-dim:  rgba(77,157,224,0.15);
+      --danger:      #e5534b;
+      --day-line:    rgba(77,157,224,0.25);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 2rem 0;
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--bright);
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    /* ── Selectors ───────────────────────────────── */
+    .selectors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .tz-slot {
+      position: relative;
+      width: 195px;
+      flex-shrink: 0;
+      cursor: grab;
+    }
+
+    .tz-slot.dragging {
+      opacity: 0.4;
+    }
+
+    .tz-slot.drag-over .tz-slot-inner {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .tz-slot-inner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 0.75rem 0.65rem;
+    }
+
+    .tz-slot-label {
+      font-size: 0.67rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 0.45rem;
+      padding-right: 18px;
+      user-select: none;
+    }
+
+    .tz-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-size: 0.83rem;
+      padding: 0.4rem 0.6rem;
+      outline: none;
+      transition: border-color 0.12s;
+      cursor: text;
+    }
+
+    .tz-input:focus {
+      border-color: var(--accent);
+    }
+
+    .tz-input::placeholder {
+      color: var(--muted);
+    }
+
+    .tz-dropdown {
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-height: 260px;
+      overflow-y: auto;
+      z-index: 300;
+      display: none;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .tz-dropdown.open { display: block; }
+
+    .tz-group-label {
+      position: sticky;
+      top: 0;
+      padding: 0.35rem 0.65rem 0.2rem;
+      font-size: 0.63rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .tz-option {
+      padding: 0.38rem 0.65rem;
+      cursor: pointer;
+      font-size: 0.81rem;
+      color: var(--text);
+      transition: background 0.08s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tz-option:hover {
+      background: var(--surface2);
+      color: var(--bright);
+    }
+
+    .tz-opt-sub {
+      color: var(--muted);
+      font-size: 0.72rem;
+      flex-shrink: 0;
+    }
+
+    .tz-option.no-match {
+      color: var(--muted);
+      cursor: default;
+      font-style: italic;
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.8rem;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: color 0.1s, background 0.1s;
+    }
+
+    .remove-btn:hover {
+      color: var(--danger);
+      background: rgba(229,83,75,0.1);
+    }
+
+    .add-btn {
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.82rem;
+      padding: 0.7rem 1.1rem;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .add-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Table ───────────────────────────────────── */
+    .table-wrap {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: auto;
+      min-height: 0;
+      padding-bottom: 1rem;
+    }
+
+    .empty-msg {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: calc(var(--col-count, 1) * 280px);
+      margin: 0 auto;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      background: var(--surface);
+      padding: 0.85rem 1.75rem 0.8rem;
+      text-align: center;
+      border-bottom: 2px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    .th-city {
+      display: block;
+      color: var(--bright);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .th-sub {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 400;
+    }
+
+    .th-date {
+      display: block;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 400;
+      margin-top: 0.18rem;
+    }
+
+    .th-abbr {
+      display: inline-block;
+      color: var(--accent);
+      font-size: 0.65rem;
+      font-weight: 400;
+      margin-top: 0.12rem;
+      background: var(--accent-dim);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    tbody tr td {
+      padding: 0.48rem 1.75rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border-soft);
+      white-space: nowrap;
+      vertical-align: middle;
+      transition: background 0.05s;
+    }
+
+    /* Day-phase coloring (per cell) */
+    td.phase-day   { background: rgba(60,130,210,0.07); }
+    td.phase-dawn  { background: rgba(160,110,230,0.08); }
+    td.phase-dusk  { background: rgba(210,120,60,0.09); }
+    /* phase-night: default bg */
+
+    tbody tr:hover td          { background: var(--surface2) !important; }
+    tbody tr.is-current td     { background: var(--accent-dim) !important; }
+    tbody tr.is-current:hover td { background: var(--accent-dim) !important; }
+
+    .time-str {
+      display: block;
+      color: var(--text);
+    }
+
+    tbody tr.is-current .time-str {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .now-label {
+      display: inline-block;
+      font-size: 0.62rem;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--day-line);
+      border-radius: 3px;
+      padding: 1px 5px;
+      margin-top: 0.15rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .day-label {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 0.12rem;
+    }
+
+    td.day-change {
+      border-top: 1px solid var(--day-line);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Timezone Tables</h1>
+    <span class="subtitle">Compare times across timezones at a glance · drag to reorder</span>
+  </header>
+
+  <div class="selectors" id="selectors"></div>
+  <div class="table-wrap" id="table-wrap">
+    <div class="empty-msg">Select a city above to get started.</div>
+  </div>
+
+  <script>
+  // ── City data ──────────────────────────────────────────────────────────────
+  // sub = state (US) or country label shown next to the name in the dropdown
+  const CITIES = [
+    // Countries — single timezone only
+    { city: "United Kingdom",    sub: "",              tz: "Europe/London",                  region: "Countries" },
+    { city: "Ireland",           sub: "",              tz: "Europe/Dublin",                  region: "Countries" },
+    { city: "Portugal",          sub: "",              tz: "Europe/Lisbon",                  region: "Countries" },
+    { city: "Spain",             sub: "",              tz: "Europe/Madrid",                  region: "Countries" },
+    { city: "France",            sub: "",              tz: "Europe/Paris",                   region: "Countries" },
+    { city: "Netherlands",       sub: "",              tz: "Europe/Amsterdam",               region: "Countries" },
+    { city: "Belgium",           sub: "",              tz: "Europe/Brussels",                region: "Countries" },
+    { city: "Germany",           sub: "",              tz: "Europe/Berlin",                  region: "Countries" },
+    { city: "Switzerland",       sub: "",              tz: "Europe/Zurich",                  region: "Countries" },
+    { city: "Austria",           sub: "",              tz: "Europe/Vienna",                  region: "Countries" },
+    { city: "Italy",             sub: "",              tz: "Europe/Rome",                    region: "Countries" },
+    { city: "Sweden",            sub: "",              tz: "Europe/Stockholm",               region: "Countries" },
+    { city: "Norway",            sub: "",              tz: "Europe/Oslo",                    region: "Countries" },
+    { city: "Denmark",           sub: "",              tz: "Europe/Copenhagen",              region: "Countries" },
+    { city: "Finland",           sub: "",              tz: "Europe/Helsinki",                region: "Countries" },
+    { city: "Poland",            sub: "",              tz: "Europe/Warsaw",                  region: "Countries" },
+    { city: "Czech Republic",    sub: "",              tz: "Europe/Prague",                  region: "Countries" },
+    { city: "Hungary",           sub: "",              tz: "Europe/Budapest",                region: "Countries" },
+    { city: "Romania",           sub: "",              tz: "Europe/Bucharest",               region: "Countries" },
+    { city: "Greece",            sub: "",              tz: "Europe/Athens",                  region: "Countries" },
+    { city: "Turkey",            sub: "",              tz: "Europe/Istanbul",                region: "Countries" },
+    { city: "Ukraine",           sub: "",              tz: "Europe/Kiev",                    region: "Countries" },
+    { city: "Israel",            sub: "",              tz: "Asia/Jerusalem",                 region: "Countries" },
+    { city: "Lebanon",           sub: "",              tz: "Asia/Beirut",                    region: "Countries" },
+    { city: "Jordan",            sub: "",              tz: "Asia/Amman",                     region: "Countries" },
+    { city: "Saudi Arabia",      sub: "",              tz: "Asia/Riyadh",                    region: "Countries" },
+    { city: "UAE",               sub: "",              tz: "Asia/Dubai",                     region: "Countries" },
+    { city: "Qatar",             sub: "",              tz: "Asia/Qatar",                     region: "Countries" },
+    { city: "Kuwait",            sub: "",              tz: "Asia/Kuwait",                    region: "Countries" },
+    { city: "Egypt",             sub: "",              tz: "Africa/Cairo",                   region: "Countries" },
+    { city: "Nigeria",           sub: "",              tz: "Africa/Lagos",                   region: "Countries" },
+    { city: "Kenya",             sub: "",              tz: "Africa/Nairobi",                 region: "Countries" },
+    { city: "South Africa",      sub: "",              tz: "Africa/Johannesburg",            region: "Countries" },
+    { city: "Morocco",           sub: "",              tz: "Africa/Casablanca",              region: "Countries" },
+    { city: "Ethiopia",          sub: "",              tz: "Africa/Addis_Ababa",             region: "Countries" },
+    { city: "Ghana",             sub: "",              tz: "Africa/Accra",                   region: "Countries" },
+    { city: "Djibouti",          sub: "",              tz: "Africa/Djibouti",                region: "Countries" },
+    { city: "Iran",              sub: "",              tz: "Asia/Tehran",                    region: "Countries" },
+    { city: "Pakistan",          sub: "",              tz: "Asia/Karachi",                   region: "Countries" },
+    { city: "India",             sub: "",              tz: "Asia/Kolkata",                   region: "Countries" },
+    { city: "Bangladesh",        sub: "",              tz: "Asia/Dhaka",                     region: "Countries" },
+    { city: "Sri Lanka",         sub: "",              tz: "Asia/Colombo",                   region: "Countries" },
+    { city: "Thailand",          sub: "",              tz: "Asia/Bangkok",                   region: "Countries" },
+    { city: "Vietnam",           sub: "",              tz: "Asia/Ho_Chi_Minh",               region: "Countries" },
+    { city: "Malaysia",          sub: "",              tz: "Asia/Kuala_Lumpur",              region: "Countries" },
+    { city: "Singapore",         sub: "",              tz: "Asia/Singapore",                 region: "Countries" },
+    { city: "Philippines",       sub: "",              tz: "Asia/Manila",                    region: "Countries" },
+    { city: "South Korea",       sub: "",              tz: "Asia/Seoul",                     region: "Countries" },
+    { city: "Japan",             sub: "",              tz: "Asia/Tokyo",                     region: "Countries" },
+    { city: "China",             sub: "",              tz: "Asia/Shanghai",                  region: "Countries" },
+    { city: "New Zealand",       sub: "",              tz: "Pacific/Auckland",               region: "Countries" },
+    { city: "Guam",              sub: "",              tz: "Pacific/Guam",                   region: "Countries" },
+    { city: "Colombia",          sub: "",              tz: "America/Bogota",                 region: "Countries" },
+    { city: "Peru",              sub: "",              tz: "America/Lima",                   region: "Countries" },
+    { city: "Venezuela",         sub: "",              tz: "America/Caracas",                region: "Countries" },
+    { city: "Uruguay",           sub: "",              tz: "America/Montevideo",             region: "Countries" },
+    { city: "Argentina",         sub: "",              tz: "America/Argentina/Buenos_Aires", region: "Countries" },
+    { city: "Panama",            sub: "",              tz: "America/Panama",                 region: "Countries" },
+
+    // Americas
+    { city: "New York",          sub: "NY",            tz: "America/New_York",               region: "Americas" },
+    { city: "Boston",            sub: "MA",            tz: "America/New_York",               region: "Americas" },
+    { city: "Washington DC",     sub: "DC",            tz: "America/New_York",               region: "Americas" },
+    { city: "Miami",             sub: "FL",            tz: "America/New_York",               region: "Americas" },
+    { city: "Atlanta",           sub: "GA",            tz: "America/New_York",               region: "Americas" },
+    { city: "Detroit",           sub: "MI",            tz: "America/New_York",               region: "Americas" },
+    { city: "Chicago",           sub: "IL",            tz: "America/Chicago",                region: "Americas" },
+    { city: "Dallas",            sub: "TX",            tz: "America/Chicago",                region: "Americas" },
+    { city: "Houston",           sub: "TX",            tz: "America/Chicago",                region: "Americas" },
+    { city: "Minneapolis",       sub: "MN",            tz: "America/Chicago",                region: "Americas" },
+    { city: "Denver",            sub: "CO",            tz: "America/Denver",                 region: "Americas" },
+    { city: "Salt Lake City",    sub: "UT",            tz: "America/Denver",                 region: "Americas" },
+    { city: "Phoenix",           sub: "AZ",            tz: "America/Phoenix",                region: "Americas" },
+    { city: "Los Angeles",       sub: "CA",            tz: "America/Los_Angeles",            region: "Americas" },
+    { city: "San Francisco",     sub: "CA",            tz: "America/Los_Angeles",            region: "Americas" },
+    { city: "Seattle",           sub: "WA",            tz: "America/Los_Angeles",            region: "Americas" },
+    { city: "Las Vegas",         sub: "NV",            tz: "America/Los_Angeles",            region: "Americas" },
+    { city: "Portland",          sub: "OR",            tz: "America/Los_Angeles",            region: "Americas" },
+    { city: "Anchorage",         sub: "AK",            tz: "America/Anchorage",              region: "Americas" },
+    { city: "Honolulu",          sub: "HI",            tz: "Pacific/Honolulu",               region: "Americas" },
+    { city: "Toronto",           sub: "Canada",        tz: "America/Toronto",                region: "Americas" },
+    { city: "Montreal",          sub: "Canada",        tz: "America/Toronto",                region: "Americas" },
+    { city: "Ottawa",            sub: "Canada",        tz: "America/Toronto",                region: "Americas" },
+    { city: "Vancouver",         sub: "Canada",        tz: "America/Vancouver",              region: "Americas" },
+    { city: "Calgary",           sub: "Canada",        tz: "America/Edmonton",               region: "Americas" },
+    { city: "Edmonton",          sub: "Canada",        tz: "America/Edmonton",               region: "Americas" },
+    { city: "Winnipeg",          sub: "Canada",        tz: "America/Winnipeg",               region: "Americas" },
+    { city: "Halifax",           sub: "Canada",        tz: "America/Halifax",                region: "Americas" },
+    { city: "Mexico City",       sub: "Mexico",        tz: "America/Mexico_City",            region: "Americas" },
+    { city: "Guadalajara",       sub: "Mexico",        tz: "America/Mexico_City",            region: "Americas" },
+    { city: "Panama City",       sub: "Panama",        tz: "America/Panama",                 region: "Americas" },
+    { city: "Bogotá",            sub: "Colombia",      tz: "America/Bogota",                 region: "Americas" },
+    { city: "Lima",              sub: "Peru",          tz: "America/Lima",                   region: "Americas" },
+    { city: "Caracas",           sub: "Venezuela",     tz: "America/Caracas",                region: "Americas" },
+    { city: "Santiago",          sub: "Chile",         tz: "America/Santiago",               region: "Americas" },
+    { city: "Buenos Aires",      sub: "Argentina",     tz: "America/Argentina/Buenos_Aires", region: "Americas" },
+    { city: "São Paulo",         sub: "Brazil",        tz: "America/Sao_Paulo",              region: "Americas" },
+    { city: "Rio de Janeiro",    sub: "Brazil",        tz: "America/Sao_Paulo",              region: "Americas" },
+    { city: "Montevideo",        sub: "Uruguay",       tz: "America/Montevideo",             region: "Americas" },
+
+    // Europe
+    { city: "London",            sub: "UK",            tz: "Europe/London",                  region: "Europe" },
+    { city: "Dublin",            sub: "Ireland",       tz: "Europe/Dublin",                  region: "Europe" },
+    { city: "Reykjavik",         sub: "Iceland",       tz: "Atlantic/Reykjavik",             region: "Europe" },
+    { city: "Lisbon",            sub: "Portugal",      tz: "Europe/Lisbon",                  region: "Europe" },
+    { city: "Madrid",            sub: "Spain",         tz: "Europe/Madrid",                  region: "Europe" },
+    { city: "Barcelona",         sub: "Spain",         tz: "Europe/Madrid",                  region: "Europe" },
+    { city: "Paris",             sub: "France",        tz: "Europe/Paris",                   region: "Europe" },
+    { city: "Amsterdam",         sub: "Netherlands",   tz: "Europe/Amsterdam",               region: "Europe" },
+    { city: "Brussels",          sub: "Belgium",       tz: "Europe/Brussels",                region: "Europe" },
+    { city: "Berlin",            sub: "Germany",       tz: "Europe/Berlin",                  region: "Europe" },
+    { city: "Frankfurt",         sub: "Germany",       tz: "Europe/Berlin",                  region: "Europe" },
+    { city: "Hamburg",           sub: "Germany",       tz: "Europe/Berlin",                  region: "Europe" },
+    { city: "Munich",            sub: "Germany",       tz: "Europe/Berlin",                  region: "Europe" },
+    { city: "Zurich",            sub: "Switzerland",   tz: "Europe/Zurich",                  region: "Europe" },
+    { city: "Geneva",            sub: "Switzerland",   tz: "Europe/Zurich",                  region: "Europe" },
+    { city: "Vienna",            sub: "Austria",       tz: "Europe/Vienna",                  region: "Europe" },
+    { city: "Rome",              sub: "Italy",         tz: "Europe/Rome",                    region: "Europe" },
+    { city: "Milan",             sub: "Italy",         tz: "Europe/Rome",                    region: "Europe" },
+    { city: "Stockholm",         sub: "Sweden",        tz: "Europe/Stockholm",               region: "Europe" },
+    { city: "Oslo",              sub: "Norway",        tz: "Europe/Oslo",                    region: "Europe" },
+    { city: "Copenhagen",        sub: "Denmark",       tz: "Europe/Copenhagen",              region: "Europe" },
+    { city: "Helsinki",          sub: "Finland",       tz: "Europe/Helsinki",                region: "Europe" },
+    { city: "Warsaw",            sub: "Poland",        tz: "Europe/Warsaw",                  region: "Europe" },
+    { city: "Prague",            sub: "Czech Republic",tz: "Europe/Prague",                  region: "Europe" },
+    { city: "Budapest",          sub: "Hungary",       tz: "Europe/Budapest",                region: "Europe" },
+    { city: "Bucharest",         sub: "Romania",       tz: "Europe/Bucharest",               region: "Europe" },
+    { city: "Athens",            sub: "Greece",        tz: "Europe/Athens",                  region: "Europe" },
+    { city: "Istanbul",          sub: "Turkey",        tz: "Europe/Istanbul",                region: "Europe" },
+    { city: "Kyiv",              sub: "Ukraine",       tz: "Europe/Kiev",                    region: "Europe" },
+    { city: "Moscow",            sub: "Russia",        tz: "Europe/Moscow",                  region: "Europe" },
+    { city: "St. Petersburg",    sub: "Russia",        tz: "Europe/Moscow",                  region: "Europe" },
+
+    // Africa & Middle East
+    { city: "Casablanca",        sub: "Morocco",       tz: "Africa/Casablanca",              region: "Africa & Middle East" },
+    { city: "Accra",             sub: "Ghana",         tz: "Africa/Accra",                   region: "Africa & Middle East" },
+    { city: "Lagos",             sub: "Nigeria",       tz: "Africa/Lagos",                   region: "Africa & Middle East" },
+    { city: "Cairo",             sub: "Egypt",         tz: "Africa/Cairo",                   region: "Africa & Middle East" },
+    { city: "Nairobi",           sub: "Kenya",         tz: "Africa/Nairobi",                 region: "Africa & Middle East" },
+    { city: "Addis Ababa",       sub: "Ethiopia",      tz: "Africa/Addis_Ababa",             region: "Africa & Middle East" },
+    { city: "Khartoum",          sub: "Sudan",         tz: "Africa/Khartoum",                region: "Africa & Middle East" },
+    { city: "Johannesburg",      sub: "South Africa",  tz: "Africa/Johannesburg",            region: "Africa & Middle East" },
+    { city: "Cape Town",         sub: "South Africa",  tz: "Africa/Johannesburg",            region: "Africa & Middle East" },
+    { city: "Beirut",            sub: "Lebanon",       tz: "Asia/Beirut",                    region: "Africa & Middle East" },
+    { city: "Tel Aviv",          sub: "Israel",        tz: "Asia/Jerusalem",                 region: "Africa & Middle East" },
+    { city: "Amman",             sub: "Jordan",        tz: "Asia/Amman",                     region: "Africa & Middle East" },
+    { city: "Baghdad",           sub: "Iraq",          tz: "Asia/Baghdad",                   region: "Africa & Middle East" },
+    { city: "Kuwait City",       sub: "Kuwait",        tz: "Asia/Kuwait",                    region: "Africa & Middle East" },
+    { city: "Riyadh",            sub: "Saudi Arabia",  tz: "Asia/Riyadh",                    region: "Africa & Middle East" },
+    { city: "Doha",              sub: "Qatar",         tz: "Asia/Qatar",                     region: "Africa & Middle East" },
+    { city: "Abu Dhabi",         sub: "UAE",           tz: "Asia/Dubai",                     region: "Africa & Middle East" },
+    { city: "Dubai",             sub: "UAE",           tz: "Asia/Dubai",                     region: "Africa & Middle East" },
+    { city: "Muscat",            sub: "Oman",          tz: "Asia/Muscat",                    region: "Africa & Middle East" },
+    { city: "Tehran",            sub: "Iran",          tz: "Asia/Tehran",                    region: "Africa & Middle East" },
+
+    // Asia & Pacific
+    { city: "Kabul",             sub: "Afghanistan",   tz: "Asia/Kabul",                     region: "Asia & Pacific" },
+    { city: "Karachi",           sub: "Pakistan",      tz: "Asia/Karachi",                   region: "Asia & Pacific" },
+    { city: "Lahore",            sub: "Pakistan",      tz: "Asia/Karachi",                   region: "Asia & Pacific" },
+    { city: "Tashkent",          sub: "Uzbekistan",    tz: "Asia/Tashkent",                  region: "Asia & Pacific" },
+    { city: "Almaty",            sub: "Kazakhstan",    tz: "Asia/Almaty",                    region: "Asia & Pacific" },
+    { city: "Mumbai",            sub: "India",         tz: "Asia/Kolkata",                   region: "Asia & Pacific" },
+    { city: "Delhi",             sub: "India",         tz: "Asia/Kolkata",                   region: "Asia & Pacific" },
+    { city: "Bangalore",         sub: "India",         tz: "Asia/Kolkata",                   region: "Asia & Pacific" },
+    { city: "Chennai",           sub: "India",         tz: "Asia/Kolkata",                   region: "Asia & Pacific" },
+    { city: "Kolkata",           sub: "India",         tz: "Asia/Kolkata",                   region: "Asia & Pacific" },
+    { city: "Kathmandu",         sub: "Nepal",         tz: "Asia/Kathmandu",                 region: "Asia & Pacific" },
+    { city: "Dhaka",             sub: "Bangladesh",    tz: "Asia/Dhaka",                     region: "Asia & Pacific" },
+    { city: "Colombo",           sub: "Sri Lanka",     tz: "Asia/Colombo",                   region: "Asia & Pacific" },
+    { city: "Yangon",            sub: "Myanmar",       tz: "Asia/Rangoon",                   region: "Asia & Pacific" },
+    { city: "Bangkok",           sub: "Thailand",      tz: "Asia/Bangkok",                   region: "Asia & Pacific" },
+    { city: "Hanoi",             sub: "Vietnam",       tz: "Asia/Bangkok",                   region: "Asia & Pacific" },
+    { city: "Ho Chi Minh City",  sub: "Vietnam",       tz: "Asia/Ho_Chi_Minh",               region: "Asia & Pacific" },
+    { city: "Jakarta",           sub: "Indonesia",     tz: "Asia/Jakarta",                   region: "Asia & Pacific" },
+    { city: "Kuala Lumpur",      sub: "Malaysia",      tz: "Asia/Kuala_Lumpur",              region: "Asia & Pacific" },
+    { city: "Singapore",         sub: "Singapore",     tz: "Asia/Singapore",                 region: "Asia & Pacific" },
+    { city: "Manila",            sub: "Philippines",   tz: "Asia/Manila",                    region: "Asia & Pacific" },
+    { city: "Hong Kong",         sub: "China",         tz: "Asia/Hong_Kong",                 region: "Asia & Pacific" },
+    { city: "Taipei",            sub: "Taiwan",        tz: "Asia/Taipei",                    region: "Asia & Pacific" },
+    { city: "Shanghai",          sub: "China",         tz: "Asia/Shanghai",                  region: "Asia & Pacific" },
+    { city: "Beijing",           sub: "China",         tz: "Asia/Shanghai",                  region: "Asia & Pacific" },
+    { city: "Seoul",             sub: "South Korea",   tz: "Asia/Seoul",                     region: "Asia & Pacific" },
+    { city: "Tokyo",             sub: "Japan",         tz: "Asia/Tokyo",                     region: "Asia & Pacific" },
+    { city: "Osaka",             sub: "Japan",         tz: "Asia/Tokyo",                     region: "Asia & Pacific" },
+    { city: "Perth",             sub: "Australia",     tz: "Australia/Perth",                region: "Asia & Pacific" },
+    { city: "Adelaide",          sub: "Australia",     tz: "Australia/Adelaide",             region: "Asia & Pacific" },
+    { city: "Brisbane",          sub: "Australia",     tz: "Australia/Brisbane",             region: "Asia & Pacific" },
+    { city: "Sydney",            sub: "Australia",     tz: "Australia/Sydney",               region: "Asia & Pacific" },
+    { city: "Melbourne",         sub: "Australia",     tz: "Australia/Melbourne",            region: "Asia & Pacific" },
+    { city: "Auckland",          sub: "New Zealand",   tz: "Pacific/Auckland",               region: "Asia & Pacific" },
+    { city: "Fiji",              sub: "Fiji",          tz: "Pacific/Fiji",                   region: "Asia & Pacific" },
+
+    // AF & Space Force Bases — CONUS East
+    { city: "Dover AFB",                       sub: "DE",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "JB McGuire-Dix-Lakehurst",        sub: "NJ",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Westover ARB",                    sub: "MA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Niagara Falls ARS",               sub: "NY",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Stewart ANGB",                    sub: "NY",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Selfridge ANGB",                  sub: "MI",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Wright-Patterson AFB",            sub: "OH",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "JB Langley-Eustis",               sub: "VA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "JB Andrews",                      sub: "MD",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "JB Anacostia-Bolling",            sub: "DC",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Seymour Johnson AFB",             sub: "NC",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Shaw AFB",                        sub: "SC",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Robins AFB",                      sub: "GA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Moody AFB",                       sub: "GA",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Patrick Space Force Base",        sub: "FL",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "Cape Canaveral SFS",              sub: "FL",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    { city: "MacDill AFB",                     sub: "FL",            tz: "America/New_York",             region: "AF & Space Force Bases" },
+    // AF & Space Force Bases — CONUS Central
+    { city: "Maxwell AFB",                     sub: "AL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Keesler AFB",                     sub: "MS",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Columbus AFB",                    sub: "MS",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Tyndall AFB",                     sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Eglin AFB",                       sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Hurlburt Field",                  sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Duke Field",                      sub: "FL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Little Rock AFB",                 sub: "AR",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Barksdale AFB",                   sub: "LA",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Scott AFB",                       sub: "IL",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Grissom ARB",                     sub: "IN",            tz: "America/Indiana/Indianapolis", region: "AF & Space Force Bases" },
+    { city: "Whiteman AFB",                    sub: "MO",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Offutt AFB",                      sub: "NE",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Cavalier SFS",                    sub: "ND",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Vance AFB",                       sub: "OK",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Tinker AFB",                      sub: "OK",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Altus AFB",                       sub: "OK",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Sheppard AFB",                    sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Dyess AFB",                       sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Goodfellow AFB",                  sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Laughlin AFB",                    sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "JB San Antonio (Lackland)",       sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "JB San Antonio (Randolph)",       sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    { city: "Ellington Field",                 sub: "TX",            tz: "America/Chicago",              region: "AF & Space Force Bases" },
+    // AF & Space Force Bases — CONUS Mountain & Pacific
+    { city: "USAF Academy",                    sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Peterson Space Force Base",       sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Schriever Space Force Base",      sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Buckley Space Force Base",        sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Cheyenne Mountain SFS",           sub: "CO",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "F.E. Warren AFB",                 sub: "WY",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Malmstrom AFB",                   sub: "MT",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Mountain Home AFB",               sub: "ID",            tz: "America/Boise",                region: "AF & Space Force Bases" },
+    { city: "Cannon AFB",                      sub: "NM",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Holloman AFB",                    sub: "NM",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Kirtland AFB",                    sub: "NM",            tz: "America/Denver",               region: "AF & Space Force Bases" },
+    { city: "Luke AFB",                        sub: "AZ",            tz: "America/Phoenix",              region: "AF & Space Force Bases" },
+    { city: "Davis-Monthan AFB",               sub: "AZ",            tz: "America/Phoenix",              region: "AF & Space Force Bases" },
+    { city: "Travis AFB",                      sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    { city: "Beale AFB",                       sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    { city: "Edwards AFB",                     sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    { city: "March ARB",                       sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    { city: "Los Angeles AFB",                 sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    { city: "Vandenberg Space Force Base",     sub: "CA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    { city: "Fairchild AFB",                   sub: "WA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    { city: "JB Lewis-McChord",                sub: "WA",            tz: "America/Los_Angeles",          region: "AF & Space Force Bases" },
+    // AF & Space Force Bases — Alaska & Hawaii
+    { city: "JB Elmendorf-Richardson",         sub: "AK",            tz: "America/Anchorage",            region: "AF & Space Force Bases" },
+    { city: "Eielson AFB",                     sub: "AK",            tz: "America/Anchorage",            region: "AF & Space Force Bases" },
+    { city: "Clear Space Force Station",       sub: "AK",            tz: "America/Anchorage",            region: "AF & Space Force Bases" },
+    { city: "JB Pearl Harbor-Hickam",          sub: "HI",            tz: "Pacific/Honolulu",             region: "AF & Space Force Bases" },
+    { city: "Kaena Point SFS",                 sub: "HI",            tz: "Pacific/Honolulu",             region: "AF & Space Force Bases" },
+    // AF & Space Force Bases — Europe
+    { city: "Ramstein AB",                     sub: "Germany",       tz: "Europe/Berlin",                region: "AF & Space Force Bases" },
+    { city: "Spangdahlem AB",                  sub: "Germany",       tz: "Europe/Berlin",                region: "AF & Space Force Bases" },
+    { city: "Grafenwöhr",                      sub: "Germany",       tz: "Europe/Berlin",                region: "AF & Space Force Bases" },
+    { city: "Aviano AB",                       sub: "Italy",         tz: "Europe/Rome",                  region: "AF & Space Force Bases" },
+    { city: "NAS Sigonella",                   sub: "Italy",         tz: "Europe/Rome",                  region: "AF & Space Force Bases" },
+    { city: "RAF Lakenheath",                  sub: "UK",            tz: "Europe/London",                region: "AF & Space Force Bases" },
+    { city: "RAF Mildenhall",                  sub: "UK",            tz: "Europe/London",                region: "AF & Space Force Bases" },
+    { city: "RAF Fairford",                    sub: "UK",            tz: "Europe/London",                region: "AF & Space Force Bases" },
+    { city: "Incirlik AB",                     sub: "Turkey",        tz: "Europe/Istanbul",              region: "AF & Space Force Bases" },
+    { city: "Morón AB",                        sub: "Spain",         tz: "Europe/Madrid",                region: "AF & Space Force Bases" },
+    { city: "Lajes Field",                     sub: "Azores",        tz: "Atlantic/Azores",              region: "AF & Space Force Bases" },
+    { city: "Pituffik Space Base",             sub: "Greenland",     tz: "America/Thule",                region: "AF & Space Force Bases" },
+    // AF & Space Force Bases — Middle East & Africa
+    { city: "Al Udeid AB",                     sub: "Qatar",         tz: "Asia/Qatar",                   region: "AF & Space Force Bases" },
+    { city: "Al Dhafra AB",                    sub: "UAE",           tz: "Asia/Dubai",                   region: "AF & Space Force Bases" },
+    { city: "Prince Sultan AB",                sub: "Saudi Arabia",  tz: "Asia/Riyadh",                  region: "AF & Space Force Bases" },
+    { city: "Ali Al Salem AB",                 sub: "Kuwait",        tz: "Asia/Kuwait",                  region: "AF & Space Force Bases" },
+    { city: "Camp Lemonnier",                  sub: "Djibouti",      tz: "Africa/Djibouti",              region: "AF & Space Force Bases" },
+    // AF & Space Force Bases — Pacific & Indo-Pacific
+    { city: "Kadena AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "AF & Space Force Bases" },
+    { city: "Misawa AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "AF & Space Force Bases" },
+    { city: "Yokota AB",                       sub: "Japan",         tz: "Asia/Tokyo",                   region: "AF & Space Force Bases" },
+    { city: "Osan AB",                         sub: "South Korea",   tz: "Asia/Seoul",                   region: "AF & Space Force Bases" },
+    { city: "Kunsan AB",                       sub: "South Korea",   tz: "Asia/Seoul",                   region: "AF & Space Force Bases" },
+    { city: "Andersen AFB",                    sub: "Guam",          tz: "Pacific/Guam",                 region: "AF & Space Force Bases" },
+    { city: "Diego Garcia",                    sub: "BIOT",          tz: "Indian/Chagos",                region: "AF & Space Force Bases" },
+  ];
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let slots = [
+    { id: 1, cityObj: null },
+    { id: 2, cityObj: null },
+  ];
+  let nextId = 3;
+  let openDropdownId = null;
+  const MAX_SLOTS = 6;
+
+  // Drag state
+  let dragSrcId = null;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function currentHourDate() {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+  }
+
+  function fmt(date, tz, opts) {
+    return new Intl.DateTimeFormat('en-US', { timeZone: tz, ...opts }).format(date);
+  }
+
+  function fmtTime(date, tz) {
+    return fmt(date, tz, { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+
+  function fmtDate(date, tz) {
+    return fmt(date, tz, { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  function dayKey(date, tz) {
+    return fmt(date, tz, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }
+
+  function tzAbbr(date, tz) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, timeZoneName: 'short'
+    }).formatToParts(date);
+    return parts.find(p => p.type === 'timeZoneName')?.value ?? '';
+  }
+
+  function getLocalHour(date, tz) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hour: 'numeric', hour12: false
+    }).formatToParts(date);
+    const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+    return h === 24 ? 0 : h;
+  }
+
+  // ── Solar time-of-day calculation ──────────────────────────────────────────
+  // Approximates seasonal sunrise/sunset variation for a mid-latitude location.
+  // Colors reflect the season but not the specific latitude of each city.
+  function getSolarTimes() {
+    const now = new Date();
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86_400_000);
+    // Northern hemisphere: longer days in summer (~day 172), shorter in winter
+    const amplitude = 1.5; // hours of variation from equinox baseline
+    const offset = -amplitude * Math.cos(2 * Math.PI * (dayOfYear - 10) / 365);
+    return {
+      dawn:    5.5 + offset,
+      sunrise: 6.5 + offset,
+      sunset:  17.5 + offset,
+      dusk:    18.5 + offset,
+    };
+  }
+
+  function getDayPhase(hour, solar) {
+    if (hour < solar.dawn   || hour >= solar.dusk)   return 'night';
+    if (hour < solar.sunrise)                         return 'dawn';
+    if (hour < solar.sunset)                          return 'day';
+    return 'dusk';
+  }
+
+  // ── Dropdown HTML ──────────────────────────────────────────────────────────
+  function buildDropdownHTML(slotId, query) {
+    const q = query.trim().toLowerCase();
+    let html = '';
+    let lastRegion = null;
+    let count = 0;
+
+    CITIES.forEach((c, i) => {
+      if (q && !c.city.toLowerCase().includes(q) && !c.sub.toLowerCase().includes(q)) return;
+      if (c.region !== lastRegion) {
+        html += `<div class="tz-group-label">${c.region}</div>`;
+        lastRegion = c.region;
+      }
+      const subHTML = c.sub ? `<span class="tz-opt-sub">${c.sub}</span>` : '';
+      html += `<div class="tz-option" data-action="select-city" data-slot-id="${slotId}" data-idx="${i}">${c.city}${subHTML}</div>`;
+      count++;
+    });
+
+    if (!count) html = `<div class="tz-option no-match">No cities match</div>`;
+    return html;
+  }
+
+  // ── Dropdown open/close ────────────────────────────────────────────────────
+  function openDropdown(slotId, query) {
+    openDropdownId = slotId;
+    document.querySelectorAll('.tz-dropdown').forEach(d => {
+      if (+d.dataset.slotId === slotId) {
+        d.innerHTML = buildDropdownHTML(slotId, query);
+        d.classList.add('open');
+      } else {
+        d.classList.remove('open');
+      }
+    });
+  }
+
+  function closeAllDropdowns() {
+    openDropdownId = null;
+    document.querySelectorAll('.tz-dropdown').forEach(d => d.classList.remove('open'));
+    slots.forEach(s => {
+      const inp = document.querySelector(`.tz-input[data-slot-id="${s.id}"]`);
+      if (inp) inp.value = s.cityObj ? s.cityObj.city : '';
+    });
+  }
+
+  // ── Render selectors ───────────────────────────────────────────────────────
+  function renderSelectors() {
+    const container = document.getElementById('selectors');
+    container.innerHTML = '';
+
+    slots.forEach(slot => {
+      const wrap = document.createElement('div');
+      wrap.className = 'tz-slot';
+      wrap.dataset.slotId = slot.id;
+      wrap.draggable = true;
+
+      const removable = slots.length > 2;
+      const val = slot.cityObj ? slot.cityObj.city : '';
+
+      wrap.innerHTML = `
+        <div class="tz-slot-inner">
+          ${removable ? `<button class="remove-btn" data-action="remove" data-slot-id="${slot.id}" title="Remove">✕</button>` : ''}
+          <div class="tz-slot-label">City / Timezone</div>
+          <input class="tz-input" type="text" placeholder="Search city…"
+            value="${val}" autocomplete="off" spellcheck="false"
+            data-slot-id="${slot.id}">
+        </div>
+        <div class="tz-dropdown" data-slot-id="${slot.id}"></div>
+      `;
+
+      container.appendChild(wrap);
+
+      const input = wrap.querySelector('.tz-input');
+
+      input.addEventListener('focus', () => {
+        input.select();
+        openDropdown(slot.id, '');
+      });
+
+      input.addEventListener('input', () => {
+        openDropdown(slot.id, input.value);
+      });
+
+      input.addEventListener('blur', () => {
+        setTimeout(() => {
+          const s = slots.find(x => x.id === slot.id);
+          if (s && document.activeElement !== input) {
+            input.value = s.cityObj ? s.cityObj.city : '';
+            const dd = wrap.querySelector('.tz-dropdown');
+            if (dd && openDropdownId === slot.id) {
+              dd.classList.remove('open');
+              openDropdownId = null;
+            }
+          }
+        }, 180);
+      });
+
+      // Drag events — prevent drag if user is interacting with the input
+      wrap.addEventListener('dragstart', e => {
+        if (e.target === input) { e.preventDefault(); return; }
+        dragSrcId = slot.id;
+        wrap.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      wrap.addEventListener('dragend', () => {
+        wrap.classList.remove('dragging');
+        container.querySelectorAll('.tz-slot').forEach(s => s.classList.remove('drag-over'));
+        dragSrcId = null;
+      });
+
+      wrap.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragSrcId !== null && dragSrcId !== slot.id) {
+          container.querySelectorAll('.tz-slot').forEach(s => s.classList.remove('drag-over'));
+          wrap.classList.add('drag-over');
+        }
+      });
+
+      wrap.addEventListener('drop', e => {
+        e.preventDefault();
+        if (dragSrcId === null || dragSrcId === slot.id) return;
+        const fromIdx = slots.findIndex(s => s.id === dragSrcId);
+        const toIdx   = slots.findIndex(s => s.id === slot.id);
+        if (fromIdx < 0 || toIdx < 0) return;
+        const moved = slots.splice(fromIdx, 1)[0];
+        slots.splice(toIdx, 0, moved);
+        render();
+      });
+    });
+
+    // Add button
+    if (slots.length < MAX_SLOTS) {
+      const btn = document.createElement('button');
+      btn.className = 'add-btn';
+      btn.dataset.action = 'add';
+      btn.textContent = '+ Add timezone';
+      container.appendChild(btn);
+    }
+  }
+
+  // ── Render table ───────────────────────────────────────────────────────────
+  function renderTable() {
+    const wrap = document.getElementById('table-wrap');
+    const active = slots.filter(s => s.cityObj);
+
+    if (!active.length) {
+      wrap.innerHTML = '<div class="empty-msg">Select a city above to get started.</div>';
+      return;
+    }
+
+    const now    = new Date();
+    const start  = currentHourDate();
+    const solar  = getSolarTimes();
+    const hours  = Array.from({ length: 25 }, (_, i) =>
+      new Date(start.getTime() + i * 3_600_000)
+    );
+
+    // Header — show city + sub label
+    let thead = '<tr>';
+    active.forEach(col => {
+      const abbr    = tzAbbr(now, col.cityObj.tz);
+      const subPart = col.cityObj.sub ? ` <span class="th-sub">· ${col.cityObj.sub}</span>` : '';
+      thead += `
+        <th>
+          <span class="th-city">${col.cityObj.city}${subPart}</span>
+          <span class="th-date">${fmtDate(now, col.cityObj.tz)}</span>
+          <span class="th-abbr">${abbr}</span>
+        </th>`;
+    });
+    thead += '</tr>';
+
+    // Track previous day key per column
+    const prevDay = active.map(col => dayKey(hours[0], col.cityObj.tz));
+
+    // Body
+    let tbody = '';
+    hours.forEach((hour, i) => {
+      const isCurrent = i === 0;
+      // For the "now" row use exact current time; other rows use the hour boundary
+      const displayTime = isCurrent ? now : hour;
+      tbody += `<tr class="${isCurrent ? 'is-current' : ''}">`;
+
+      active.forEach((col, ci) => {
+        const dk = dayKey(hour, col.cityObj.tz);
+        const dayChanged = i > 0 && dk !== prevDay[ci];
+        if (dayChanged) prevDay[ci] = dk;
+
+        // Phase coloring based on local hour in this timezone
+        const localHour = getLocalHour(hour, col.cityObj.tz);
+        const phase     = getDayPhase(localHour, solar);
+
+        const timeStr = fmtTime(displayTime, col.cityObj.tz);
+        const extra   = isCurrent
+          ? `<span class="now-label">now</span>`
+          : dayChanged
+            ? `<span class="day-label">${fmtDate(hour, col.cityObj.tz)}</span>`
+            : '';
+
+        const classes = [
+          dayChanged ? 'day-change' : '',
+          phase !== 'night' ? `phase-${phase}` : '',
+        ].filter(Boolean).join(' ');
+
+        tbody += `
+          <td class="${classes}">
+            <span class="time-str">${timeStr}</span>
+            ${extra}
+          </td>`;
+      });
+
+      tbody += '</tr>';
+    });
+
+    wrap.innerHTML = `
+      <table style="--col-count:${active.length}">
+        <thead>${thead}</thead>
+        <tbody>${tbody}</tbody>
+      </table>`;
+  }
+
+  // ── Full render ────────────────────────────────────────────────────────────
+  function render() {
+    renderSelectors();
+    renderTable();
+  }
+
+  // ── Event delegation ───────────────────────────────────────────────────────
+  document.addEventListener('click', e => {
+    const target = e.target.closest('[data-action]');
+
+    if (!target) {
+      if (!e.target.closest('.tz-slot')) closeAllDropdowns();
+      return;
+    }
+
+    const { action, slotId, idx } = target.dataset;
+
+    if (action === 'add') {
+      slots.push({ id: nextId++, cityObj: null });
+      render();
+    }
+
+    if (action === 'remove') {
+      slots = slots.filter(s => s.id !== +slotId);
+      render();
+    }
+
+    if (action === 'select-city') {
+      const slot = slots.find(s => s.id === +slotId);
+      if (slot) slot.cityObj = CITIES[+idx];
+      closeAllDropdowns();
+      render();
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeAllDropdowns();
+  });
+
+  // ── Auto-refresh every minute ──────────────────────────────────────────────
+  setInterval(renderTable, 60_000);
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  render();
+  </script>
+</body>
+</html>
