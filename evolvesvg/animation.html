@@ -1789,7 +1789,7 @@ document.addEventListener('pointermove', e => {
     if (!_drag) return;
     const dx = e.clientX - _drag.startX;
     const range = _drag.max - _drag.min;
-    const sensitivity = range / (_drag.el.getBoundingClientRect().width || 200);
+    const sensitivity = range / _drag.width;
     let newVal = _drag.startVal + dx * sensitivity;
     newVal = Math.round(newVal / _drag.step) * _drag.step;
     newVal = Math.max(_drag.min, Math.min(_drag.max, newVal));
@@ -1809,7 +1809,7 @@ document.addEventListener('pointerup', e => {
     const dx = e.clientX - startX;
     if (dx !== 0) {
         const range = max - min;
-        const sensitivity = range / (el.getBoundingClientRect().width || 200);
+        const sensitivity = range / _drag.width;
         let finalVal = Math.round((startVal + dx * sensitivity) / step) * step;
         finalVal = Math.max(min, Math.min(max, finalVal));
         const decimals = step < 0.01 ? 4 : step < 1 ? 3 : 1;
@@ -1879,6 +1879,7 @@ document.getElementById('paramTree').addEventListener('pointerdown', e => {
         min: parseFloat(row.dataset.min),
         max: parseFloat(row.dataset.max),
         step: parseFloat(row.dataset.step),
+        width: row.getBoundingClientRect().width || 200,
     };
     document.body.style.cursor = 'ew-resize';
 });
