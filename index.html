@@ -157,7 +157,7 @@
 	<img id="bg-img" aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;pointer-events:none;">
 	<script>
 		const bgs = [
-			"backgrounds/bg.svg",
+			"backgrounds/bg1.svg",
 			"backgrounds/bg2.svg",
 			"backgrounds/bg3.svg",
 		];
@@ -188,7 +188,13 @@
 		localStorage.setItem("bg_queue", JSON.stringify(queue));
 		localStorage.setItem("bg_last", chosen);
 
-		document.getElementById("bg-img").src = chosen + '?v=' + Date.now();
+		const isFirefox = navigator.userAgent.includes("Firefox");
+		const isHighDPI = window.devicePixelRatio >= 2;
+		if (isFirefox && isHighDPI) {
+			document.getElementById("bg-img").src = "backgrounds/bg0.svg";
+		} else {
+			document.getElementById("bg-img").src = chosen + '?v=' + Date.now();
+		}
 	</script>
 	<div aria-hidden="true" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:-1;pointer-events:none;"></div>
 	<div class="page-wrapper">
