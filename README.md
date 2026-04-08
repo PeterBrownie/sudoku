@@ -48,6 +48,20 @@ A personalized dark-mode Sudoku player tuned to my personal playing experience. 
 - Puzzle import/export in standard 81-digit format
 - Background puzzle pre-generation so the next puzzle is always ready
 
+### Timezone Tables
+
+A timezone comparison tool for looking up and comparing local times across multiple locations simultaneously. Built with a focus on US Air Force and Space Force bases worldwide.
+
+- 25-hour scrollable table showing current and upcoming hours across all selected locations
+- Pre-loaded with 60+ US Air Force and Space Force bases (Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, Peterson SFB, Vandenberg SFB, and more)
+- World cities and countries as additional location options
+- Searchable city/timezone selector; add as many columns as needed
+- Drag columns to reorder; remove any column individually
+- Day/night phase shading with sunrise and sunset markers per location
+- Day boundary labels when the date rolls over mid-table
+- Shareable URLs: selected locations are encoded in query params for easy linking
+- Automatic daylight saving time handling
+
 ### KenKen
 
 A math-based cage puzzle game with configurable grid sizes from 4×4 to 8×8. It's kinda like sudoku in some ways. This is a minor project.

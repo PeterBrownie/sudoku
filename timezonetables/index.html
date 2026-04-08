@@ -345,11 +345,14 @@
       pointer-events: none;
     }
 
+    .solar-marker.sunrise,
+    .solar-marker.sunset   { position: static; display: flex; justify-content: center; transform: none; margin-top: 0.15rem; }
     .solar-marker.sunrise  { color: #c98a45; }
     .solar-marker.sunset   { color: #9070c0; }
     .solar-marker.noon     { color: #b5a030; }
     .solar-marker.midnight { color: #5580aa; }
     .solar-marker svg { flex-shrink: 0; }
+    .solar-time { opacity: 0.65; }
 
     td.noon-split     { border-bottom: 1px solid rgba(181,160,48,0.3) !important; }
     td.midnight-split { border-bottom: 1px solid rgba(85,128,170,0.3) !important; }
@@ -765,6 +768,345 @@
     { city: "Diego Garcia",                    sub: "BIOT",          tz: "Indian/Chagos",                region: "USAF Bases" },
   ];
 
+  // ── Coordinates for solar calculations ────────────────────────────────────
+  // Key format: "tz:city"  →  [lat, lon] in decimal degrees (S/W are negative).
+  // Countries: representative/capital city.  US States: state capital.
+  // USAF Bases — approximate, TODO: verify against official sources.
+  const _COORDS = {
+    // Countries
+    "Europe/London:United Kingdom":                    [ 51.51,   -0.13],
+    "Europe/Dublin:Ireland":                           [ 53.33,   -6.25],
+    "Europe/Lisbon:Portugal":                          [ 38.72,   -9.14],
+    "Europe/Madrid:Spain":                             [ 40.42,   -3.70],
+    "Europe/Paris:France":                             [ 48.85,    2.35],
+    "Europe/Amsterdam:Netherlands":                    [ 52.37,    4.90],
+    "Europe/Brussels:Belgium":                         [ 50.85,    4.35],
+    "Europe/Berlin:Germany":                           [ 52.52,   13.41],
+    "Europe/Zurich:Switzerland":                       [ 47.38,    8.54],
+    "Europe/Vienna:Austria":                           [ 48.21,   16.37],
+    "Europe/Rome:Italy":                               [ 41.90,   12.50],
+    "Europe/Stockholm:Sweden":                         [ 59.33,   18.07],
+    "Europe/Oslo:Norway":                              [ 59.91,   10.75],
+    "Europe/Copenhagen:Denmark":                       [ 55.68,   12.57],
+    "Europe/Helsinki:Finland":                         [ 60.17,   24.94],
+    "Europe/Warsaw:Poland":                            [ 52.23,   21.01],
+    "Europe/Prague:Czech Republic":                    [ 50.08,   14.44],
+    "Europe/Budapest:Hungary":                         [ 47.50,   19.04],
+    "Europe/Bucharest:Romania":                        [ 44.43,   26.10],
+    "Europe/Athens:Greece":                            [ 37.98,   23.73],
+    "Europe/Istanbul:Turkey":                          [ 41.01,   28.95],
+    "Europe/Kiev:Ukraine":                             [ 50.45,   30.52],
+    "Asia/Jerusalem:Israel":                           [ 31.77,   35.21],
+    "Asia/Beirut:Lebanon":                             [ 33.89,   35.50],
+    "Asia/Amman:Jordan":                               [ 31.96,   35.95],
+    "Asia/Riyadh:Saudi Arabia":                        [ 24.69,   46.72],
+    "Asia/Dubai:UAE":                                  [ 25.20,   55.27],
+    "Asia/Qatar:Qatar":                                [ 25.29,   51.53],
+    "Asia/Kuwait:Kuwait":                              [ 29.37,   47.98],
+    "Africa/Cairo:Egypt":                              [ 30.06,   31.25],
+    "Africa/Lagos:Nigeria":                            [  6.45,    3.39],
+    "Africa/Nairobi:Kenya":                            [ -1.29,   36.82],
+    "Africa/Johannesburg:South Africa":                [-26.20,   28.04],
+    "Africa/Casablanca:Morocco":                       [ 33.59,   -7.62],
+    "Africa/Addis_Ababa:Ethiopia":                     [  9.03,   38.74],
+    "Africa/Accra:Ghana":                              [  5.56,   -0.20],
+    "Africa/Djibouti:Djibouti":                        [ 11.59,   43.15],
+    "Asia/Tehran:Iran":                                [ 35.69,   51.39],
+    "Asia/Karachi:Pakistan":                           [ 24.86,   67.01],
+    "Asia/Kolkata:India":                              [ 28.64,   77.22],
+    "Asia/Dhaka:Bangladesh":                           [ 23.72,   90.41],
+    "Asia/Colombo:Sri Lanka":                          [  6.93,   79.86],
+    "Asia/Bangkok:Thailand":                           [ 13.75,  100.52],
+    "Asia/Ho_Chi_Minh:Vietnam":                        [ 10.82,  106.63],
+    "Asia/Kuala_Lumpur:Malaysia":                      [  3.14,  101.69],
+    "Asia/Singapore:Singapore":                        [  1.35,  103.82],
+    "Asia/Manila:Philippines":                         [ 14.60,  120.98],
+    "Asia/Seoul:South Korea":                          [ 37.57,  126.98],
+    "Asia/Tokyo:Japan":                                [ 35.69,  139.69],
+    "Asia/Shanghai:China":                             [ 31.23,  121.47],
+    "Pacific/Auckland:New Zealand":                    [-36.86,  174.77],
+    "Pacific/Guam:Guam":                               [ 13.44,  144.79],
+    "America/Bogota:Colombia":                         [  4.71,  -74.07],
+    "America/Lima:Peru":                               [-12.06,  -77.04],
+    "America/Caracas:Venezuela":                       [ 10.48,  -66.88],
+    "America/Montevideo:Uruguay":                      [-34.90,  -56.19],
+    "America/Argentina/Buenos_Aires:Argentina":        [-34.60,  -58.38],
+    "America/Panama:Panama":                           [  8.99,  -79.52],
+    // Americas cities
+    "America/New_York:New York":                       [ 40.71,  -74.01],
+    "America/New_York:Boston":                         [ 42.36,  -71.06],
+    "America/New_York:Washington DC":                  [ 38.91,  -77.04],
+    "America/New_York:Miami":                          [ 25.77,  -80.19],
+    "America/New_York:Atlanta":                        [ 33.75,  -84.39],
+    "America/New_York:Detroit":                        [ 42.33,  -83.05],
+    "America/Chicago:Chicago":                         [ 41.88,  -87.63],
+    "America/Chicago:Dallas":                          [ 32.78,  -96.80],
+    "America/Chicago:Houston":                         [ 29.76,  -95.37],
+    "America/Chicago:Minneapolis":                     [ 44.98,  -93.27],
+    "America/Denver:Denver":                           [ 39.74, -104.98],
+    "America/Denver:Salt Lake City":                   [ 40.76, -111.89],
+    "America/Phoenix:Phoenix":                         [ 33.45, -112.07],
+    "America/Los_Angeles:Los Angeles":                 [ 34.05, -118.24],
+    "America/Los_Angeles:San Francisco":               [ 37.77, -122.42],
+    "America/Los_Angeles:Seattle":                     [ 47.61, -122.33],
+    "America/Los_Angeles:Las Vegas":                   [ 36.17, -115.14],
+    "America/Los_Angeles:Portland":                    [ 45.52, -122.68],
+    "America/Anchorage:Anchorage":                     [ 61.22, -149.90],
+    "Pacific/Honolulu:Honolulu":                       [ 21.31, -157.86],
+    "America/Toronto:Toronto":                         [ 43.65,  -79.38],
+    "America/Toronto:Montreal":                        [ 45.50,  -73.57],
+    "America/Toronto:Ottawa":                          [ 45.42,  -75.69],
+    "America/Vancouver:Vancouver":                     [ 49.25, -123.12],
+    "America/Edmonton:Calgary":                        [ 51.05, -114.07],
+    "America/Edmonton:Edmonton":                       [ 53.55, -113.47],
+    "America/Winnipeg:Winnipeg":                       [ 49.90,  -97.14],
+    "America/Halifax:Halifax":                         [ 44.65,  -63.57],
+    "America/Mexico_City:Mexico City":                 [ 19.43,  -99.13],
+    "America/Mexico_City:Guadalajara":                 [ 20.66, -103.35],
+    "America/Panama:Panama City":                      [  8.99,  -79.52],
+    "America/Bogota:Bogotá":                           [  4.71,  -74.07],
+    "America/Lima:Lima":                               [-12.06,  -77.04],
+    "America/Caracas:Caracas":                         [ 10.48,  -66.88],
+    "America/Santiago:Santiago":                       [-33.46,  -70.65],
+    "America/Argentina/Buenos_Aires:Buenos Aires":     [-34.60,  -58.38],
+    "America/Sao_Paulo:São Paulo":                     [-23.55,  -46.63],
+    "America/Sao_Paulo:Rio de Janeiro":                [-22.91,  -43.17],
+    "America/Montevideo:Montevideo":                   [-34.90,  -56.19],
+    // US States (state capital coords)
+    "America/Chicago:Alabama":                         [ 32.36,  -86.30],
+    "America/Anchorage:Alaska":                        [ 58.30, -134.42],
+    "America/Phoenix:Arizona":                         [ 33.45, -112.07],
+    "America/Chicago:Arkansas":                        [ 34.75,  -92.29],
+    "America/Los_Angeles:California":                  [ 38.58, -121.49],
+    "America/Denver:Colorado":                         [ 39.74, -104.98],
+    "America/New_York:Connecticut":                    [ 41.76,  -72.68],
+    "America/New_York:Delaware":                       [ 39.16,  -75.52],
+    "America/New_York:Florida":                        [ 30.44,  -84.28],
+    "America/New_York:Georgia":                        [ 33.75,  -84.39],
+    "Pacific/Honolulu:Hawaii":                         [ 21.31, -157.86],
+    "America/Boise:Idaho":                             [ 43.62, -116.20],
+    "America/Chicago:Illinois":                        [ 39.80,  -89.65],
+    "America/Indiana/Indianapolis:Indiana":            [ 39.77,  -86.16],
+    "America/Chicago:Iowa":                            [ 41.60,  -93.61],
+    "America/Chicago:Kansas":                          [ 39.05,  -95.69],
+    "America/New_York:Kentucky":                       [ 38.20,  -84.87],
+    "America/Chicago:Louisiana":                       [ 30.45,  -91.15],
+    "America/New_York:Maine":                          [ 44.32,  -69.77],
+    "America/New_York:Maryland":                       [ 38.98,  -76.49],
+    "America/New_York:Massachusetts":                  [ 42.36,  -71.06],
+    "America/New_York:Michigan":                       [ 42.73,  -84.56],
+    "America/Chicago:Minnesota":                       [ 44.95,  -93.09],
+    "America/Chicago:Mississippi":                     [ 32.30,  -90.18],
+    "America/Chicago:Missouri":                        [ 38.58,  -92.17],
+    "America/Denver:Montana":                          [ 46.60, -112.03],
+    "America/Chicago:Nebraska":                        [ 40.81,  -96.68],
+    "America/Los_Angeles:Nevada":                      [ 39.16, -119.77],
+    "America/New_York:New Hampshire":                  [ 43.21,  -71.54],
+    "America/New_York:New Jersey":                     [ 40.22,  -74.76],
+    "America/Denver:New Mexico":                       [ 35.69, -105.94],
+    "America/New_York:North Carolina":                 [ 35.78,  -78.64],
+    "America/Chicago:North Dakota":                    [ 46.81, -100.78],
+    "America/New_York:Ohio":                           [ 39.96,  -83.00],
+    "America/Chicago:Oklahoma":                        [ 35.47,  -97.52],
+    "America/Los_Angeles:Oregon":                      [ 44.94, -123.03],
+    "America/New_York:Pennsylvania":                   [ 40.27,  -76.88],
+    "America/New_York:Rhode Island":                   [ 41.82,  -71.42],
+    "America/New_York:South Carolina":                 [ 34.00,  -81.03],
+    "America/Chicago:South Dakota":                    [ 44.37, -100.35],
+    "America/Chicago:Tennessee":                       [ 36.17,  -86.78],
+    "America/Chicago:Texas":                           [ 30.27,  -97.74],
+    "America/Denver:Utah":                             [ 40.76, -111.89],
+    "America/New_York:Vermont":                        [ 44.26,  -72.58],
+    "America/New_York:Virginia":                       [ 37.54,  -77.44],
+    "America/Los_Angeles:Washington":                  [ 47.04, -122.90],
+    "America/New_York:West Virginia":                  [ 38.36,  -81.63],
+    "America/Chicago:Wisconsin":                       [ 43.07,  -89.39],
+    "America/Denver:Wyoming":                          [ 41.14, -104.82],
+    // Europe cities
+    "Europe/London:London":                            [ 51.51,   -0.13],
+    "Europe/Dublin:Dublin":                            [ 53.33,   -6.25],
+    "Atlantic/Reykjavik:Reykjavik":                    [ 64.13,  -21.95],
+    "Europe/Lisbon:Lisbon":                            [ 38.72,   -9.14],
+    "Europe/Madrid:Madrid":                            [ 40.42,   -3.70],
+    "Europe/Madrid:Barcelona":                         [ 41.39,    2.15],
+    "Europe/Paris:Paris":                              [ 48.85,    2.35],
+    "Europe/Amsterdam:Amsterdam":                      [ 52.37,    4.90],
+    "Europe/Brussels:Brussels":                        [ 50.85,    4.35],
+    "Europe/Berlin:Berlin":                            [ 52.52,   13.41],
+    "Europe/Berlin:Frankfurt":                         [ 50.11,    8.68],
+    "Europe/Berlin:Hamburg":                           [ 53.55,   10.00],
+    "Europe/Berlin:Munich":                            [ 48.14,   11.58],
+    "Europe/Zurich:Zurich":                            [ 47.38,    8.54],
+    "Europe/Zurich:Geneva":                            [ 46.20,    6.15],
+    "Europe/Vienna:Vienna":                            [ 48.21,   16.37],
+    "Europe/Rome:Rome":                                [ 41.90,   12.50],
+    "Europe/Rome:Milan":                               [ 45.47,    9.19],
+    "Europe/Stockholm:Stockholm":                      [ 59.33,   18.07],
+    "Europe/Oslo:Oslo":                                [ 59.91,   10.75],
+    "Europe/Copenhagen:Copenhagen":                    [ 55.68,   12.57],
+    "Europe/Helsinki:Helsinki":                        [ 60.17,   24.94],
+    "Europe/Warsaw:Warsaw":                            [ 52.23,   21.01],
+    "Europe/Prague:Prague":                            [ 50.08,   14.44],
+    "Europe/Budapest:Budapest":                        [ 47.50,   19.04],
+    "Europe/Bucharest:Bucharest":                      [ 44.43,   26.10],
+    "Europe/Athens:Athens":                            [ 37.98,   23.73],
+    "Europe/Istanbul:Istanbul":                        [ 41.01,   28.95],
+    "Europe/Kiev:Kyiv":                                [ 50.45,   30.52],
+    "Europe/Moscow:Moscow":                            [ 55.75,   37.62],
+    "Europe/Moscow:St. Petersburg":                    [ 59.93,   30.32],
+    // Africa & Middle East
+    "Africa/Casablanca:Casablanca":                    [ 33.59,   -7.62],
+    "Africa/Accra:Accra":                              [  5.56,   -0.20],
+    "Africa/Lagos:Lagos":                              [  6.45,    3.39],
+    "Africa/Cairo:Cairo":                              [ 30.06,   31.25],
+    "Africa/Nairobi:Nairobi":                          [ -1.29,   36.82],
+    "Africa/Addis_Ababa:Addis Ababa":                  [  9.03,   38.74],
+    "Africa/Khartoum:Khartoum":                        [ 15.55,   32.53],
+    "Africa/Johannesburg:Johannesburg":                [-26.20,   28.04],
+    "Africa/Johannesburg:Cape Town":                   [-33.93,   18.42],
+    "Asia/Beirut:Beirut":                              [ 33.89,   35.50],
+    "Asia/Jerusalem:Tel Aviv":                         [ 32.08,   34.78],
+    "Asia/Amman:Amman":                                [ 31.96,   35.95],
+    "Asia/Baghdad:Baghdad":                            [ 33.34,   44.40],
+    "Asia/Kuwait:Kuwait City":                         [ 29.37,   47.98],
+    "Asia/Riyadh:Riyadh":                              [ 24.69,   46.72],
+    "Asia/Qatar:Doha":                                 [ 25.29,   51.53],
+    "Asia/Dubai:Abu Dhabi":                            [ 24.47,   54.37],
+    "Asia/Dubai:Dubai":                                [ 25.20,   55.27],
+    "Asia/Muscat:Muscat":                              [ 23.61,   58.59],
+    "Asia/Tehran:Tehran":                              [ 35.69,   51.39],
+    // Asia & Pacific
+    "Asia/Kabul:Kabul":                                [ 34.53,   69.17],
+    "Asia/Karachi:Karachi":                            [ 24.86,   67.01],
+    "Asia/Karachi:Lahore":                             [ 31.55,   74.34],
+    "Asia/Tashkent:Tashkent":                          [ 41.30,   69.25],
+    "Asia/Almaty:Almaty":                              [ 43.23,   76.92],
+    "Asia/Kolkata:Mumbai":                             [ 19.08,   72.88],
+    "Asia/Kolkata:Delhi":                              [ 28.64,   77.22],
+    "Asia/Kolkata:Bangalore":                          [ 12.97,   77.59],
+    "Asia/Kolkata:Chennai":                            [ 13.08,   80.27],
+    "Asia/Kolkata:Kolkata":                            [ 22.57,   88.36],
+    "Asia/Kathmandu:Kathmandu":                        [ 27.71,   85.32],
+    "Asia/Dhaka:Dhaka":                                [ 23.72,   90.41],
+    "Asia/Colombo:Colombo":                            [  6.93,   79.86],
+    "Asia/Rangoon:Yangon":                             [ 16.87,   96.19],
+    "Asia/Bangkok:Bangkok":                            [ 13.75,  100.52],
+    "Asia/Bangkok:Hanoi":                              [ 21.03,  105.85],
+    "Asia/Ho_Chi_Minh:Ho Chi Minh City":               [ 10.82,  106.63],
+    "Asia/Jakarta:Jakarta":                            [ -6.21,  106.85],
+    "Asia/Kuala_Lumpur:Kuala Lumpur":                  [  3.14,  101.69],
+    "Asia/Singapore:Singapore":                        [  1.35,  103.82],
+    "Asia/Manila:Manila":                              [ 14.60,  120.98],
+    "Asia/Hong_Kong:Hong Kong":                        [ 22.32,  114.17],
+    "Asia/Taipei:Taipei":                              [ 25.05,  121.56],
+    "Asia/Shanghai:Shanghai":                          [ 31.23,  121.47],
+    "Asia/Shanghai:Beijing":                           [ 39.91,  116.39],
+    "Asia/Seoul:Seoul":                                [ 37.57,  126.98],
+    "Asia/Tokyo:Tokyo":                                [ 35.69,  139.69],
+    "Asia/Tokyo:Osaka":                                [ 34.69,  135.50],
+    "Australia/Perth:Perth":                           [-31.95,  115.86],
+    "Australia/Adelaide:Adelaide":                     [-34.93,  138.60],
+    "Australia/Brisbane:Brisbane":                     [-27.47,  153.03],
+    "Australia/Sydney:Sydney":                         [-33.87,  151.21],
+    "Australia/Melbourne:Melbourne":                   [-37.81,  144.96],
+    "Pacific/Auckland:Auckland":                       [-36.86,  174.77],
+    "Pacific/Fiji:Fiji":                               [-18.14,  178.44],
+    // Verified bases
+    "America/New_York:Dover AFB":                      [ 39.13,  -75.47], 
+    "America/New_York:JB McGuire-Dix-Lakehurst":       [ 40.01,  -74.59],
+    "America/New_York:Westover ARB":                   [ 42.20,  -72.53],
+    "America/New_York:Niagara Falls ARS":              [ 43.11,  -78.95],
+    "America/New_York:Stewart ANGB":                   [ 41.50,  -74.10],
+    "America/New_York:Selfridge ANGB":                 [ 42.61,  -82.83],
+    "America/New_York:Wright-Patterson AFB":           [ 39.83,  -84.05],
+    "America/New_York:JB Langley-Eustis":              [ 37.08,  -76.36],
+    // USAF Bases — approximate, TODO: verify against official sources
+    "America/New_York:JB Andrews":                     [ 38.81,  -76.87],
+    "America/New_York:JB Anacostia-Bolling":           [ 38.84,  -77.02],
+    "America/New_York:Seymour Johnson AFB":            [ 35.34,  -77.96],
+    "America/New_York:Shaw AFB":                       [ 33.97,  -80.47],
+    "America/New_York:Robins AFB":                     [ 32.64,  -83.59],
+    "America/New_York:Moody AFB":                      [ 30.97,  -83.19],
+    "America/New_York:Patrick Space Force Base":       [ 28.23,  -80.61],
+    "America/New_York:Cape Canaveral SFS":             [ 28.49,  -80.58],
+    "America/New_York:MacDill AFB":                    [ 27.85,  -82.52],
+    "America/Chicago:Maxwell AFB":                     [ 32.38,  -86.36],
+    "America/Chicago:Keesler AFB":                     [ 30.41,  -88.92],
+    "America/Chicago:Columbus AFB":                    [ 33.65,  -88.44],
+    "America/Chicago:Tyndall AFB":                     [ 30.07,  -85.58],
+    "America/Chicago:Eglin AFB":                       [ 30.48,  -86.53],
+    "America/Chicago:Hurlburt Field":                  [ 30.43,  -86.69],
+    "America/Chicago:Duke Field":                      [ 30.65,  -86.52],
+    "America/Chicago:Little Rock AFB":                 [ 34.92,  -92.15],
+    "America/Chicago:Barksdale AFB":                   [ 32.50,  -93.67],
+    "America/Chicago:Scott AFB":                       [ 38.55,  -89.85],
+    "America/Indiana/Indianapolis:Grissom ARB":        [ 40.65,  -86.15],
+    "America/Chicago:Whiteman AFB":                    [ 38.73,  -93.55],
+    "America/Chicago:Offutt AFB":                      [ 41.12,  -95.91],
+    "America/Chicago:Cavalier SFS":                    [ 48.72,  -97.89],
+    "America/Chicago:Vance AFB":                       [ 36.34,  -97.92],
+    "America/Chicago:Tinker AFB":                      [ 35.42,  -97.39],
+    "America/Chicago:Altus AFB":                       [ 34.66,  -99.27],
+    "America/Chicago:Sheppard AFB":                    [ 33.98,  -98.50],
+    "America/Chicago:Dyess AFB":                       [ 32.42,  -99.85],
+    "America/Chicago:Goodfellow AFB":                  [ 31.43, -100.40],
+    "America/Chicago:Laughlin AFB":                    [ 29.36, -100.78],
+    "America/Chicago:JB San Antonio (Lackland)":       [ 29.38,  -98.62],
+    "America/Chicago:JB San Antonio (Randolph)":       [ 29.53,  -98.28],
+    "America/Chicago:Ellington Field":                 [ 29.61,  -95.16],
+    "America/Denver:USAF Academy":                     [ 39.00, -104.87],
+    "America/Denver:Peterson Space Force Base":        [ 38.82, -104.70],
+    "America/Denver:Schriever Space Force Base":       [ 38.80, -104.53],
+    "America/Denver:Buckley Space Force Base":         [ 39.71, -104.75],
+    "America/Denver:Cheyenne Mountain SFS":            [ 38.74, -104.85],
+    "America/Denver:F.E. Warren AFB":                  [ 41.14, -104.86],
+    "America/Denver:Malmstrom AFB":                    [ 47.51, -111.18],
+    "America/Boise:Mountain Home AFB":                 [ 43.04, -115.87],
+    "America/Denver:Cannon AFB":                       [ 34.39, -103.32],
+    "America/Denver:Holloman AFB":                     [ 32.85, -106.10],
+    "America/Denver:Kirtland AFB":                     [ 35.05, -106.60],
+    "America/Phoenix:Luke AFB":                        [ 33.53, -112.38],
+    "America/Phoenix:Davis-Monthan AFB":               [ 32.17, -110.88],
+    "America/Los_Angeles:Travis AFB":                  [ 38.27, -121.93],
+    "America/Los_Angeles:Beale AFB":                   [ 39.13, -121.44],
+    "America/Los_Angeles:Edwards AFB":                 [ 34.90, -117.88],
+    "America/Los_Angeles:March ARB":                   [ 33.88, -117.26],
+    "America/Los_Angeles:Los Angeles AFB":             [ 33.92, -118.39],
+    "America/Los_Angeles:Vandenberg Space Force Base": [ 34.74, -120.57],
+    "America/Los_Angeles:Fairchild AFB":               [ 47.62, -117.66],
+    "America/Los_Angeles:JB Lewis-McChord":            [ 47.12, -122.58],
+    "America/Anchorage:JB Elmendorf-Richardson":       [ 61.25, -149.80],
+    "America/Anchorage:Eielson AFB":                   [ 64.66, -147.10],
+    "America/Anchorage:Clear Space Force Station":     [ 64.29, -149.19],
+    "Pacific/Honolulu:JB Pearl Harbor-Hickam":         [ 21.35, -157.97],
+    "Pacific/Honolulu:Kaena Point SFS":                [ 21.57, -158.24],
+    "Europe/Berlin:Ramstein AB":                       [ 49.44,    7.60],
+    "Europe/Berlin:Spangdahlem AB":                    [ 49.97,    6.69],
+    "Europe/Berlin:Grafenwöhr":                        [ 49.69,   11.93],
+    "Europe/Rome:Aviano AB":                           [ 46.03,   12.60],
+    "Europe/Rome:NAS Sigonella":                       [ 37.40,   14.92],
+    "Europe/London:RAF Lakenheath":                    [ 52.41,    0.56],
+    "Europe/London:RAF Mildenhall":                    [ 52.36,    0.49],
+    "Europe/London:RAF Fairford":                      [ 51.68,   -1.79],
+    "Europe/Istanbul:Incirlik AB":                     [ 37.00,   35.43],
+    "Europe/Madrid:Morón AB":                          [ 37.17,   -5.62],
+    "Atlantic/Azores:Lajes Field":                     [ 38.76,  -27.09],
+    "America/Thule:Pituffik Space Base":               [ 76.54,  -68.75],
+    "Asia/Qatar:Al Udeid AB":                          [ 25.12,   51.31],
+    "Asia/Dubai:Al Dhafra AB":                         [ 24.24,   54.55],
+    "Asia/Riyadh:Prince Sultan AB":                    [ 24.06,   47.58],
+    "Asia/Kuwait:Ali Al Salem AB":                     [ 29.35,   47.52],
+    "Africa/Djibouti:Camp Lemonnier":                  [ 11.55,   43.15],
+    "Asia/Tokyo:Kadena AB":                            [ 26.36,  127.77],
+    "Asia/Tokyo:Misawa AB":                            [ 40.70,  141.37],
+    "Asia/Tokyo:Yokota AB":                            [ 35.75,  139.35],
+    "Asia/Seoul:Osan AB":                              [ 37.09,  127.03],
+    "Asia/Seoul:Kunsan AB":                            [ 35.90,  126.62],
+    "Pacific/Guam:Andersen AFB":                       [ 13.58,  144.93],
+    "Indian/Chagos:Diego Garcia":                      [ -7.31,   72.41],
+  };
+  CITIES.forEach(c => { const p = _COORDS[c.tz + ':' + c.city]; if (p) { c.lat = p[0]; c.lon = p[1]; } });
+
   // ── State ──────────────────────────────────────────────────────────────────
   const MAX_SLOTS = 6;
   const _localTz   = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -842,6 +1184,55 @@
     if (hour < s.sunrise)                   return 'dawn';
     if (hour < s.sunset)                    return 'day';
     return 'dusk';
+  }
+
+  // ── Accurate solar position (NOAA simplified algorithm) ──────────────────
+  // dateUTCNoon: Date at 12:00 UTC on the target calendar day.
+  // Returns { sunrise, sunset, polar } where sunrise/sunset are Date objects
+  // (UTC) and polar is 'day' (midnight sun), 'night' (polar night), or null.
+  function calcSunriseSunset(lat, lon, dateUTCNoon) {
+    const R  = Math.PI / 180;
+    const JD = dateUTCNoon.getTime() / 86400000 + 2440587.5;
+    const T  = (JD - 2451545.0) / 36525.0;
+
+    const L0 = (280.46646 + T * (36000.76983 + T * 0.0003032)) % 360;
+    const M  =  357.52911 + T * (35999.05029 - T * 0.0001537);
+    const Mr = M * R;
+    const C  = (1.914602 - T * (0.004817 + 0.000014 * T)) * Math.sin(Mr)
+             + (0.019993 - 0.000101 * T) * Math.sin(2 * Mr)
+             + 0.000289 * Math.sin(3 * Mr);
+
+    const omega  = (125.04 - 1934.136 * T) * R;
+    const lambda = (L0 + C - 0.00569 - 0.00478 * Math.sin(omega)) * R;
+    const eps0   = 23.0 + 26.0 / 60 + 21.448 / 3600
+                 - T * (46.815 / 3600 + T * (0.00059 / 3600 - T * 0.001813 / 3600));
+    const eps    = (eps0 + 0.00256 * Math.cos(omega)) * R;
+    const decl   = Math.asin(Math.sin(eps) * Math.sin(lambda));
+
+    const L0r = L0 * R;
+    const e   = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+    const y   = Math.tan(eps / 2) ** 2;
+    const EqT = 4 / R * (y * Math.sin(2 * L0r)
+              - 2 * e * Math.sin(Mr)
+              + 4 * e * y * Math.sin(Mr) * Math.cos(2 * L0r)
+              - 0.5 * y * y * Math.sin(4 * L0r)
+              - 1.25 * e * e * Math.sin(2 * Mr));
+
+    const cosHA = (Math.cos(90.833 * R) - Math.sin(lat * R) * Math.sin(decl))
+                / (Math.cos(lat * R) * Math.cos(decl));
+    if (cosHA >=  1) return { sunrise: null, sunset: null, polar: 'night' };
+    if (cosHA <= -1) return { sunrise: null, sunset: null, polar: 'day'   };
+
+    const HA       = Math.acos(cosHA) / R;
+    const noonMin  = 720 - 4 * lon - EqT;
+    const dayStart = new Date(Date.UTC(
+      dateUTCNoon.getUTCFullYear(), dateUTCNoon.getUTCMonth(), dateUTCNoon.getUTCDate()
+    ));
+    return {
+      sunrise: new Date(dayStart.getTime() + (noonMin - 4 * HA) * 60000),
+      sunset:  new Date(dayStart.getTime() + (noonMin + 4 * HA) * 60000),
+      polar:   null,
+    };
   }
 
   // ── Dropdown HTML ──────────────────────────────────────────────────────────
@@ -937,8 +1328,43 @@
 
     const now   = new Date();
     const start = currentHourDate();
-    const solar = getSolarTimes();
     const hours = Array.from({ length: 25 }, (_, i) => new Date(start.getTime() + i * 3_600_000));
+
+    // Pre-compute accurate solar events per column (requires lat/lon on cityObj)
+    const colSolar = active.map(col => {
+      if (col.cityObj.lat == null) return null;
+      const { lat, lon, tz } = col.cityObj;
+      const seen = new Set();
+      const byDay = {};
+      hours.forEach(h => {
+        const dk = dayKey(h, tz);
+        if (seen.has(dk)) return;
+        seen.add(dk);
+        const p  = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz, year: 'numeric', month: 'numeric', day: 'numeric'
+        }).formatToParts(h);
+        const yr = +p.find(x => x.type === 'year').value;
+        const mo = +p.find(x => x.type === 'month').value - 1;
+        const dy = +p.find(x => x.type === 'day').value;
+        byDay[dk] = calcSunriseSunset(lat, lon, new Date(Date.UTC(yr, mo, dy, 12)));
+      });
+      return byDay;
+    });
+
+    const approxSolar = getSolarTimes();
+    const colPhase = (date, ci) => {
+      const tz = active[ci].cityObj.tz;
+      const se = colSolar[ci]?.[dayKey(date, tz)];
+      if (!se) return getDayPhase(getLocalHour(date, tz), approxSolar);
+      if (se.polar) return se.polar === 'day' ? 'day' : 'night';
+      const DUSK = 45 * 60000;
+      const t = date.getTime();
+      if (se.sunrise && t < se.sunrise.getTime() - DUSK) return 'night';
+      if (se.sunrise && t < se.sunrise.getTime())        return 'dawn';
+      if (se.sunset  && t < se.sunset.getTime())         return 'day';
+      if (se.sunset  && t < se.sunset.getTime() + DUSK)  return 'dusk';
+      return 'night';
+    };
 
     // Header
     let thead = '<tr>';
@@ -960,7 +1386,7 @@
 
     // Track state per column
     const prevDay   = active.map(col => dayKey(hours[0], col.cityObj.tz));
-    const prevPhase = active.map(col => getDayPhase(getLocalHour(hours[0], col.cityObj.tz), solar));
+    const prevPhase = active.map((_, ci) => colPhase(hours[0], ci));
 
     // Body
     let tbody = '';
@@ -976,20 +1402,34 @@
 
         const localHour = getLocalHour(hour, col.cityObj.tz);
         const fracHour  = getLocalFractionalHour(hour, col.cityObj.tz);
-        const phase     = getDayPhase(localHour, solar);
+        const phase     = colPhase(hour, ci);
 
         // Sunrise / sunset / noon / midnight detection
         let solarMarker = '';
         if (i > 0) {
-          const prev = prevPhase[ci];
-          if ((prev === 'night' || prev === 'dawn') && phase === 'day') {
-            solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise</span>`;
-          } else if (prev === 'day' && (phase === 'dusk' || phase === 'night')) {
-            solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset</span>`;
-          } else if (localHour === 12 && fracHour === 12) {
-            solarMarker = `<span class="solar-marker noon">${NOON_SVG} noon</span>`;
-          } else if (localHour === 0 && (fracHour === 0 || fracHour === 24)) {
-            solarMarker = `<span class="solar-marker midnight">${MIDNIGHT_SVG} midnight</span>`;
+          const nextHour = new Date(hour.getTime() + 3_600_000);
+          const se = colSolar[ci]?.[dk];
+          if (se && !se.polar) {
+            if (se.sunrise && se.sunrise >= hour && se.sunrise < nextHour) {
+              solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise <span class="solar-time">${fmtTime(se.sunrise, col.cityObj.tz)}</span></span>`;
+            } else if (se.sunset && se.sunset >= hour && se.sunset < nextHour) {
+              solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset <span class="solar-time">${fmtTime(se.sunset, col.cityObj.tz)}</span></span>`;
+            }
+          } else if (!colSolar[ci]) {
+            // Fallback for locations without coordinates: approximate phase transition
+            const prev = prevPhase[ci];
+            if ((prev === 'night' || prev === 'dawn') && phase === 'day') {
+              solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise</span>`;
+            } else if (prev === 'day' && (phase === 'dusk' || phase === 'night')) {
+              solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset</span>`;
+            }
+          }
+          if (!solarMarker) {
+            if (localHour === 12 && fracHour === 12) {
+              solarMarker = `<span class="solar-marker noon">${NOON_SVG} noon</span>`;
+            } else if (localHour === 0 && (fracHour === 0 || fracHour === 24)) {
+              solarMarker = `<span class="solar-marker midnight">${MIDNIGHT_SVG} midnight</span>`;
+            }
           }
         }
         prevPhase[ci] = phase;
