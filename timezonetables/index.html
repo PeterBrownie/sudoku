@@ -302,8 +302,8 @@
     }
 
     td.phase-day  { background: rgba(60,130,210,0.07); }
-    td.phase-dawn { background: rgba(160,110,230,0.08); }
-    td.phase-dusk { background: rgba(210,120,60,0.09); }
+    td.phase-dawn { background: rgba(210,120,60,0.09); }
+    td.phase-dusk { background: rgba(160,110,230,0.08);}
 
     tbody tr:hover td            { background: var(--surface2) !important; }
     tbody tr.is-current td       { background: var(--accent-dim) !important; }
@@ -1357,12 +1357,9 @@
       const se = colSolar[ci]?.[dayKey(date, tz)];
       if (!se) return getDayPhase(getLocalHour(date, tz), approxSolar);
       if (se.polar) return se.polar === 'day' ? 'day' : 'night';
-      const DUSK = 45 * 60000;
       const t = date.getTime();
-      if (se.sunrise && t < se.sunrise.getTime() - DUSK) return 'night';
-      if (se.sunrise && t < se.sunrise.getTime())        return 'dawn';
-      if (se.sunset  && t < se.sunset.getTime())         return 'day';
-      if (se.sunset  && t < se.sunset.getTime() + DUSK)  return 'dusk';
+      if (se.sunrise && t < se.sunrise.getTime()) return 'night';
+      if (se.sunset  && t < se.sunset.getTime())  return 'day';
       return 'night';
     };
 
@@ -1402,34 +1399,34 @@
 
         const localHour = getLocalHour(hour, col.cityObj.tz);
         const fracHour  = getLocalFractionalHour(hour, col.cityObj.tz);
-        const phase     = colPhase(hour, ci);
-
-        // Sunrise / sunset / noon / midnight detection
+        // Use bracket detection for marker placement and override phase to match,
+        // so the label and the coloured row are always the same row.
+        let phase = colPhase(hour, ci);
         let solarMarker = '';
-        if (i > 0) {
-          const nextHour = new Date(hour.getTime() + 3_600_000);
-          const se = colSolar[ci]?.[dk];
-          if (se && !se.polar) {
-            if (se.sunrise && se.sunrise >= hour && se.sunrise < nextHour) {
-              solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise <span class="solar-time">${fmtTime(se.sunrise, col.cityObj.tz)}</span></span>`;
-            } else if (se.sunset && se.sunset >= hour && se.sunset < nextHour) {
-              solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset <span class="solar-time">${fmtTime(se.sunset, col.cityObj.tz)}</span></span>`;
-            }
-          } else if (!colSolar[ci]) {
-            // Fallback for locations without coordinates: approximate phase transition
-            const prev = prevPhase[ci];
-            if ((prev === 'night' || prev === 'dawn') && phase === 'day') {
-              solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise</span>`;
-            } else if (prev === 'day' && (phase === 'dusk' || phase === 'night')) {
-              solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset</span>`;
-            }
+        const nextHour = new Date(hour.getTime() + 3_600_000);
+        const se = colSolar[ci]?.[dk];
+        if (se && !se.polar) {
+          if (se.sunrise && se.sunrise >= hour && se.sunrise < nextHour) {
+            phase = 'dawn';
+            if (i > 0) solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise <span class="solar-time">${fmtTime(se.sunrise, col.cityObj.tz)}</span></span>`;
+          } else if (se.sunset && se.sunset >= hour && se.sunset < nextHour) {
+            phase = 'dusk';
+            if (i > 0) solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset <span class="solar-time">${fmtTime(se.sunset, col.cityObj.tz)}</span></span>`;
           }
-          if (!solarMarker) {
-            if (localHour === 12 && fracHour === 12) {
-              solarMarker = `<span class="solar-marker noon">${NOON_SVG} noon</span>`;
-            } else if (localHour === 0 && (fracHour === 0 || fracHour === 24)) {
-              solarMarker = `<span class="solar-marker midnight">${MIDNIGHT_SVG} midnight</span>`;
-            }
+        } else if (!colSolar[ci] && i > 0) {
+          // Fallback for locations without coordinates: phase transitions
+          const prev = prevPhase[ci];
+          if ((prev === 'night' || prev === 'dawn') && phase === 'day') {
+            solarMarker = `<span class="solar-marker sunrise">${SUNRISE_SVG} sunrise</span>`;
+          } else if (prev === 'day' && (phase === 'dusk' || phase === 'night')) {
+            solarMarker = `<span class="solar-marker sunset">${SUNSET_SVG} sunset</span>`;
+          }
+        }
+        if (i > 0 && !solarMarker) {
+          if (localHour === 12 && fracHour === 12) {
+            solarMarker = `<span class="solar-marker noon">${NOON_SVG} noon</span>`;
+          } else if (localHour === 0 && (fracHour === 0 || fracHour === 24)) {
+            solarMarker = `<span class="solar-marker midnight">${MIDNIGHT_SVG} midnight</span>`;
           }
         }
         prevPhase[ci] = phase;
