@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Compare current times across US Air Force bases, Space Force stations, and cities worldwide. Instant timezone converter for Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, and hundreds more locations.">
-  <meta property="og:title" content="Timezone Tables — Compare Times Across Air Force Bases & Cities">
+  <meta name="description" content="Compare current times across cities worldwide, including US Air Force bases. Instant timezone converter for Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, and hundreds more locations.">
+  <meta property="og:title" content="Timezone Tables — Easily Compare Times">
   <meta property="og:description" content="Compare current times across US Air Force bases, Space Force stations, and cities worldwide. Instant timezone converter for Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, and hundreds more.">
   <meta property="og:url" content="https://peterbrown.space/timezone-converter">
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
@@ -179,20 +179,17 @@
 
     .remove-btn:hover { color: var(--danger); background: rgba(229,83,75,0.1); }
 
-    .add-btn {
-      background: transparent;
-      border: 1px dashed var(--border);
-      border-radius: 8px;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 0.82rem;
-      padding: 0.7rem 1.1rem;
-      transition: border-color 0.15s, color 0.15s;
-      white-space: nowrap;
-      flex-shrink: 0;
+    .add-th {
+      cursor: default !important;
+      border-left: 1px dashed var(--border) !important;
+      vertical-align: middle;
+      min-width: 160px;
     }
 
-    .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .add-th .tz-input {
+      width: 100%;
+      font-size: 0.78rem;
+    }
 
     /* ── Table ───────────────────────────────────── */
     .table-wrap {
@@ -377,7 +374,7 @@
 
     .byline {
       position: fixed;
-      top: 1rem;
+      top: 2rem;
       right: 1.25rem;
       font-size: 0.72rem;
       color: #444;
@@ -772,7 +769,7 @@
   // ── Coordinates for solar calculations ────────────────────────────────────
   // Key format: "tz:city"  →  [lat, lon] in decimal degrees (S/W are negative).
   // Countries: representative/capital city.  US States: state capital.
-  // USAF Bases — approximate, TODO: verify against official sources.
+  // All coordinates are AI generated; Scrape at your own risk.
   const _COORDS = {
     // Countries
     "Europe/London:United Kingdom":                    [ 51.51,   -0.13],
@@ -1021,7 +1018,6 @@
     "America/New_York:Selfridge ANGB":                 [ 42.61,  -82.83],
     "America/New_York:Wright-Patterson AFB":           [ 39.83,  -84.05],
     "America/New_York:JB Langley-Eustis":              [ 37.08,  -76.36],
-    // USAF Bases — approximate, TODO: verify against official sources
     "America/New_York:JB Andrews":                     [ 38.81,  -76.87],
     "America/New_York:JB Anacostia-Bolling":           [ 38.84,  -77.02],
     "America/New_York:Seymour Johnson AFB":            [ 35.34,  -77.96],
@@ -1259,7 +1255,7 @@
   function openDropdown(slotId, query) {
     openDropdownId = slotId;
     document.querySelectorAll('.tz-dropdown').forEach(d => {
-      if (+d.dataset.slotId === slotId) { d.innerHTML = buildDropdownHTML(slotId, query); d.classList.add('open'); }
+      if (d.dataset.slotId === String(slotId)) { d.innerHTML = buildDropdownHTML(slotId, query); d.classList.add('open'); }
       else d.classList.remove('open');
     });
   }
@@ -1271,6 +1267,8 @@
       const inp = document.querySelector(`.tz-input[data-slot-id="${s.id}"]`);
       if (inp) inp.value = s.cityObj ? s.cityObj.city : '';
     });
+    const addInput = document.querySelector('.tz-input[data-slot-id="add"]');
+    if (addInput) addInput.value = '';
   }
 
   // ── Render selectors (unselected slots only) ───────────────────────────────
@@ -1308,13 +1306,6 @@
       });
     });
 
-    if (slots.length < MAX_SLOTS) {
-      const btn = document.createElement('button');
-      btn.className = 'add-btn';
-      btn.dataset.action = 'add';
-      btn.textContent = '+ Add timezone';
-      container.appendChild(btn);
-    }
   }
 
   // ── Render table ───────────────────────────────────────────────────────────
@@ -1380,6 +1371,14 @@
           </div>
         </th>`;
     });
+    if (slots.length < MAX_SLOTS) {
+      thead += `
+        <th class="add-th">
+          <input class="tz-input" type="text" placeholder="+ Add timezone"
+            autocomplete="off" spellcheck="false" data-slot-id="add">
+          <div class="tz-dropdown" data-slot-id="add"></div>
+        </th>`;
+    }
     thead += '</tr>';
 
     // Track state per column
@@ -1454,6 +1453,22 @@
 
     wrap.innerHTML = `<table style="--col-count:${active.length}"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 
+    // Add-timezone column input
+    const addInput = wrap.querySelector('.add-th .tz-input');
+    if (addInput) {
+      addInput.addEventListener('focus', () => { addInput.select(); openDropdown('add', ''); });
+      addInput.addEventListener('input', () => openDropdown('add', addInput.value));
+      addInput.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (document.activeElement !== addInput) {
+            const dd = wrap.querySelector('.tz-dropdown[data-slot-id="add"]');
+            if (dd && openDropdownId === 'add') { dd.classList.remove('open'); openDropdownId = null; }
+            addInput.value = '';
+          }
+        }, 180);
+      });
+    }
+
     // Column drag-to-reorder
     const ths = wrap.querySelectorAll('thead th[data-slot-id]');
     ths.forEach(th => {
@@ -1505,18 +1520,9 @@
   // ── Event delegation ───────────────────────────────────────────────────────
   document.addEventListener('click', e => {
     const target = e.target.closest('[data-action]');
-    if (!target) { if (!e.target.closest('.tz-slot')) closeAllDropdowns(); return; }
+    if (!target) { if (!e.target.closest('.tz-slot') && !e.target.closest('.add-th')) closeAllDropdowns(); return; }
 
     const { action, slotId, idx } = target.dataset;
-
-    if (action === 'add') {
-      slots.push({ id: nextId++, cityObj: null });
-      render();
-      setTimeout(() => {
-        const inputs = document.querySelectorAll('.tz-input');
-        if (inputs.length) { const last = inputs[inputs.length - 1]; last.focus(); openDropdown(+last.dataset.slotId, ''); }
-      }, 0);
-    }
 
     if (action === 'remove-slot') {
       slots = slots.filter(s => s.id !== +slotId);
@@ -1535,8 +1541,12 @@
     }
 
     if (action === 'select-city') {
-      const slot = slots.find(s => s.id === +slotId);
-      if (slot) slot.cityObj = CITIES[+idx];
+      if (slotId === 'add') {
+        slots.push({ id: nextId++, cityObj: CITIES[+idx] });
+      } else {
+        const slot = slots.find(s => s.id === +slotId);
+        if (slot) slot.cityObj = CITIES[+idx];
+      }
       closeAllDropdowns();
       render();
     }
