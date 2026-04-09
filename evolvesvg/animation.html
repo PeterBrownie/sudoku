@@ -830,7 +830,7 @@
 
 // ─── Rendering helpers (adapted from evolveSVG index.html) ─────────────────
 
-const TILING_TYPES = new Set(['dots_grid','stripes','crosshatch','checkerboard','waves','zigzag','hexgrid']);
+const TILING_TYPES = new Set(['dots_grid','stripes','crosshatch','checkerboard','waves','zigzag','hexgrid','iso_cube']);
 
 function colorString(c, alpha = 1) {
     return `hsla(${c.h.toFixed(1)},${c.s.toFixed(1)}%,${c.l.toFixed(1)}%,${alpha.toFixed(3)})`;
@@ -965,6 +965,34 @@ function smilTransform(type, fromVal, toVal, spec) {
 }
 
 // ─── Polygon point helper ──────────────────────────────────────────────────
+
+function buildBlobPath(anchors) {
+    const N = anchors.length;
+    if (N < 2) return '';
+    const pts = anchors.map(a => ({ x: a[0], y: a[1] }));
+    const handles = pts.map((pt, i) => {
+        const prev = pts[(i - 1 + N) % N];
+        const next = pts[(i + 1) % N];
+        const tx = next.x - prev.x, ty = next.y - prev.y;
+        const tLen = Math.sqrt(tx * tx + ty * ty) || 1;
+        const nx = tx / tLen, ny = ty / tLen;
+        const dPrev = Math.sqrt((pt.x - prev.x) ** 2 + (pt.y - prev.y) ** 2);
+        const dNext = Math.sqrt((pt.x - next.x) ** 2 + (pt.y - next.y) ** 2);
+        const k = 0.35;
+        return {
+            h0: { x: pt.x - nx * dPrev * k, y: pt.y - ny * dPrev * k },
+            h1: { x: pt.x + nx * dNext * k, y: pt.y + ny * dNext * k }
+        };
+    });
+    let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < N; i++) {
+        const c1 = handles[i].h1;
+        const nx = pts[(i + 1) % N];
+        const c2 = handles[(i + 1) % N].h0;
+        d += ` C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)},${c2.x.toFixed(1)} ${c2.y.toFixed(1)},${nx.x.toFixed(1)} ${nx.y.toFixed(1)}`;
+    }
+    return d + ' Z';
+}
 
 function polygonPoints(sides, r, W) {
     const pts = [];
@@ -1165,6 +1193,37 @@ function renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, 
             result = `<g>${hexes.join('')}</g>`;
             break;
         }
+        case 'iso_cube': {
+            const size = Math.max(p.size, 2);
+            const cw = size * Math.sqrt(3);
+            const fh = size;
+            const sh = size;
+            const dx = cw, dy = fh;
+            const lw = p.lineWidth || 0;
+            const strokeAttr = lw > 0.05
+                ? ` stroke="${color}" stroke-width="${lw.toFixed(2)}" stroke-linejoin="round"`
+                : '';
+            const startRow = -2, endRow = Math.ceil((H + sh * 2) / dy) + 2;
+            const startCol = -2, endCol = Math.ceil((W + cw) / dx) + 2;
+            const cubes = [];
+            for (let row = startRow; row <= endRow; row++) {
+                const xOff = (((row % 2) + 2) % 2 !== 0) ? cw / 2 : 0;
+                const cy2 = row * dy;
+                for (let col = startCol; col <= endCol; col++) {
+                    const cx2 = col * dx + xOff;
+                    const topPts  = `${cx2.toFixed(1)},${cy2.toFixed(1)} ${(cx2+cw/2).toFixed(1)},${(cy2+fh/2).toFixed(1)} ${cx2.toFixed(1)},${(cy2+fh).toFixed(1)} ${(cx2-cw/2).toFixed(1)},${(cy2+fh/2).toFixed(1)}`;
+                    const leftPts = `${(cx2-cw/2).toFixed(1)},${(cy2+fh/2).toFixed(1)} ${cx2.toFixed(1)},${(cy2+fh).toFixed(1)} ${cx2.toFixed(1)},${(cy2+fh+sh).toFixed(1)} ${(cx2-cw/2).toFixed(1)},${(cy2+fh/2+sh).toFixed(1)}`;
+                    const rightPts= `${cx2.toFixed(1)},${(cy2+fh).toFixed(1)} ${(cx2+cw/2).toFixed(1)},${(cy2+fh/2).toFixed(1)} ${(cx2+cw/2).toFixed(1)},${(cy2+fh/2+sh).toFixed(1)} ${cx2.toFixed(1)},${(cy2+fh+sh).toFixed(1)}`;
+                    cubes.push(`<polygon points="${leftPts}"  fill="${color}"${strokeAttr}/>`);
+                    cubes.push(`<polygon points="${leftPts}"  fill="black" fill-opacity="0.30"/>`);
+                    cubes.push(`<polygon points="${rightPts}" fill="${color}"${strokeAttr}/>`);
+                    cubes.push(`<polygon points="${rightPts}" fill="black" fill-opacity="0.48"/>`);
+                    cubes.push(`<polygon points="${topPts}"   fill="${color}"${strokeAttr}/>`);
+                }
+            }
+            result = `<g>${cubes.join('')}</g>`;
+            break;
+        }
         default: return '';
     }
 
@@ -1209,6 +1268,21 @@ function buildShape(type, params, W, shapeAnims) {
             let d = `M ${scaled[0][0].toFixed(1)} ${scaled[0][1].toFixed(1)}`;
             for (let i=1;i<scaled.length;i++) d += ` L ${scaled[i][0].toFixed(1)} ${scaled[i][1].toFixed(1)}`;
             return `<path d="${d} Z"/>`;
+        }
+        case 'blob': {
+            const r = params.r * W;
+            const jitter = params.jitter || 0.3;
+            const N = Math.max(3, Math.round(params.points) || 6);
+            const seed = params.seed || 0;
+            const anchors = [];
+            for (let i = 0; i < N; i++) {
+                const angle = (i / N) * 2 * Math.PI - Math.PI / 2;
+                const rScale = 1 + (pseudoRand(seed * 17 + i * 7) * 2 - 1) * jitter;
+                const ri = r * Math.max(0.1, rScale);
+                anchors.push([ri * Math.cos(angle), ri * Math.sin(angle)]);
+            }
+            const d = buildBlobPath(anchors);
+            return anims ? `<path d="${d}">${anims}</path>` : `<path d="${d}"/>`;
         }
         default: return '';
     }
