@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="evolve.png">
+    <link rel="icon" type="image/png" href="../evolveIcon.png">
     <title>Animation — evolveSVG</title>
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
     <style>
@@ -612,6 +612,46 @@
         .btn-icon.accent { border-color: var(--accent); color: var(--accent); }
         .btn-icon.accent:hover { background: #0d1e30; }
 
+        /* ── Save options menu ──────────────────────────────────────── */
+        #anim-save-menu {
+            display: none;
+            position: fixed;
+            background: rgba(18,18,18,0.97);
+            border: 1px solid #555;
+            border-radius: 7px;
+            padding: 6px 0;
+            min-width: 190px;
+            z-index: 9999;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+        #anim-save-menu.open { display: block; }
+        .anim-save-menu-title {
+            font-size: 10px;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 2px 12px 6px;
+            border-bottom: 1px solid #2e2e2e;
+            margin-bottom: 2px;
+        }
+        .anim-save-menu-item {
+            display: flex;
+            align-items: center;
+            padding: 7px 12px;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 13px;
+            gap: 12px;
+            transition: background 0.1s;
+        }
+        .anim-save-menu-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+        .anim-save-menu-divider {
+            height: 1px;
+            background: #2e2e2e;
+            margin: 4px 0;
+        }
+
         .size-field {
             display: flex;
             align-items: center;
@@ -806,9 +846,8 @@
                             </span>
                         </div>
                         <div class="action-sep"></div>
-                        <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Save SVG</button>
+                        <button class="btn-icon accent" id="saveOptionsBtn" onclick="toggleSaveMenu(event)"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Save Options ▾</button>
                         <button class="btn-icon" id="copyBtn" onclick="copySVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z"/></svg>Copy SVG</button>
-                        <button class="btn-icon" id="webmBtn" onclick="exportWebM()" style="display:none">&#9654; Export WebM</button>
                     </div>
                     <div class="kf-list-header">
                         <span>Keyframes</span>
@@ -823,6 +862,15 @@
         </div>
     </div>
 
+</div>
+
+<div id="anim-save-menu">
+    <div class="anim-save-menu-title">Save as SVG</div>
+    <div class="anim-save-menu-item" id="anim-menu-copy-svg">Copy SVG Code</div>
+    <div class="anim-save-menu-item" id="anim-menu-download-svg">Download SVG</div>
+    <div class="anim-save-menu-divider"></div>
+    <div class="anim-save-menu-title">Save as PNG</div>
+    <div class="anim-save-menu-item" id="anim-menu-png">Download PNG</div>
 </div>
 
 <script>
@@ -2399,9 +2447,8 @@ function showOutputButtons(animating) {
     document.getElementById('previewBtn').disabled = !hasSpecs;
     document.getElementById('stopBtn').style.display = animating ? '' : 'none';
     document.getElementById('previewBtn').style.display = animating ? 'none' : '';
-    document.getElementById('exportBtn').style.display = '';
+    document.getElementById('saveOptionsBtn').style.display = '';
     document.getElementById('copyBtn').style.display = '';
-    document.getElementById('webmBtn').style.display = 'none';
 }
 
 function getOrBuildAnimatedSVG() {
@@ -2471,7 +2518,9 @@ function exportSVG() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `evolvesvg-${label}${animSpecs.length ? '-animated' : ''}.svg`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
@@ -2486,140 +2535,85 @@ function copySVG() {
     });
 }
 
-// ─── WebM Export ────────────────────────────────────────────────────────────
+// ─── PNG Export ─────────────────────────────────────────────────────────────
 
-// Solve cubic bezier: given x (progress along time axis), find y (eased value).
-// Uses binary search since there's no closed-form inverse.
-function solveCubicBezier(x, x1, y1, x2, y2) {
-    let lo = 0, hi = 1;
-    for (let i = 0; i < 24; i++) {
-        const mid = (lo + hi) * 0.5;
-        const cx = 3*x1*mid*(1-mid)*(1-mid) + 3*x2*mid*mid*(1-mid) + mid*mid*mid;
-        if (cx < x) lo = mid; else hi = mid;
-    }
-    const t = (lo + hi) * 0.5;
-    return 3*y1*t*(1-t)*(1-t) + 3*y2*t*t*(1-t) + t*t*t;
-}
+async function exportPNG() {
+    if (!currentGenome) return;
+    const menuItem = document.getElementById('anim-menu-png');
+    const origLabel = menuItem.textContent;
+    menuItem.textContent = 'Rendering…';
 
-function applyEasing(progress, easing, customSpline) {
-    if (easing === 'linear') return progress;
-    const splineStr = EASING_SPLINES[easing] || (easing === 'custom' ? customSpline : null);
-    if (!splineStr) return progress;
-    const [x1, y1, x2, y2] = splineStr.split(/\s+/).map(Number);
-    return solveCubicBezier(progress, x1, y1, x2, y2);
-}
-
-function applySpecValue(genome, spec, value) {
-    if (spec.target === 'palette') {
-        const pi = spec.paletteIdx;
-        if      (spec.param === 'paletteH') genome.palette[pi].h = value;
-        else if (spec.param === 'paletteS') genome.palette[pi].s = value;
-        else if (spec.param === 'paletteL') genome.palette[pi].l = value;
-    } else {
-        const li = spec.layerIdx;
-        const layer = genome.layers[li];
-        if      (spec.param === 'opacity')       layer.opacity = value;
-        else if (spec.param === 'cx')            layer.cx = value;
-        else if (spec.param === 'cy')            layer.cy = value;
-        else if (spec.param === 'rotate')        { if (!layer.transform) layer.transform = {}; layer.transform.rotate = value; }
-        else if (spec.param === 'scaleX')        { if (!layer.transform) layer.transform = {}; layer.transform.scaleX = value; }
-        else if (spec.param === 'scaleY')        { if (!layer.transform) layer.transform = {}; layer.transform.scaleY = value; }
-        else if (['r','rx','ry','w','h'].includes(spec.param)) layer.params[spec.param] = value;
-        else if (spec.param === 'fillAlpha')     layer.fill.alpha = value;
-        else if (spec.param === 'blur')          layer.blur = value;
-        else if (spec.param === 'displaceScale') layer.displace.scale = value;
-        else if (spec.param === 'hueRotate')     layer.colorShift.hueRotate = value;
-    }
-}
-
-function buildFrameGenome(tSeconds) {
-    const g = JSON.parse(JSON.stringify(currentGenome));
-    for (const spec of animSpecs) {
-        const dur = spec.dur;
-        let cycleT = (tSeconds % dur) / dur;            // 0-1 within one cycle
-        const cycleIdx = Math.floor(tSeconds / dur);
-        if (spec.direction === 'alternate' && cycleIdx % 2 === 1) cycleT = 1 - cycleT;
-        const eased = applyEasing(cycleT, spec.easing, spec.customSpline);
-        applySpecValue(g, spec, spec.fromVal + (spec.toVal - spec.fromVal) * eased);
-    }
-    return g;
-}
-
-function drawFrameToCanvas(ctx, outW, outH, tSeconds, vpConfig) {
-    return new Promise(resolve => {
-        const g = buildFrameGenome(tSeconds);
-        const opts = { viewBox: vpConfig.viewBox, outW: vpConfig.outW, outH: vpConfig.outH };
-        const svg = genomeToSVGAnimated(g, null, vpConfig.W, vpConfig.H, 'webm', opts);
-        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const url  = URL.createObjectURL(blob);
-        const img  = new Image();
-        img.onload = () => {
-            ctx.clearRect(0, 0, outW, outH);
-            ctx.drawImage(img, 0, 0, outW, outH);
-            URL.revokeObjectURL(url);
-            resolve();
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-        img.src = url;
-    });
-}
-
-let _webmAbort = false;
-
-async function exportWebM() {
-    if (!animSpecs.length) return;
-
-    const FPS = 30;
-    const maxDur = Math.max(...animSpecs.map(s => s.dur));
-    const totalSeconds = maxDur;
-    const totalFrames  = Math.ceil(totalSeconds * FPS);
-    const vpConfig = getViewportConfig();
-    const { outW: W, outH: H } = vpConfig;
-
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9'
-        : 'video/webm';
-
-    // Set up canvas + stream + recorder
-    const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    const ctx    = canvas.getContext('2d');
-    const stream = canvas.captureStream(0); // manual frame push
-    const track  = stream.getVideoTracks()[0];
-    const chunks = [];
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
-    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-
-    const btn = document.getElementById('webmBtn');
-    const origLabel = btn.innerHTML;
-    _webmAbort = false;
-
-    const finished = new Promise(resolve => { recorder.onstop = resolve; });
-    recorder.start();
-
-    for (let f = 0; f < totalFrames && !_webmAbort; f++) {
-        await drawFrameToCanvas(ctx, W, H, f / FPS, vpConfig);
-        track.requestFrame();
-        // Yield to keep UI responsive and maintain correct frame timing
-        await new Promise(r => setTimeout(r, 1000 / FPS));
-        const pct = Math.round((f + 1) / totalFrames * 100);
-        btn.innerHTML = `Encoding… ${pct}%`;
-    }
-
-    recorder.stop();
-    await finished;
-
-    btn.innerHTML = origLabel;
-    if (_webmAbort) return;
-
-    const blob = new Blob(chunks, { type: 'video/webm' });
+    const { W, H, outW, outH, viewBox } = getViewportConfig();
+    const scale = 3; // 3× base → 3840×2160 for 16:9 (4K)
+    const pngW = outW * scale, pngH = outH * scale;
+    const svg = genomeToSVGAnimated(currentGenome, null, W, H, 'anim', { viewBox, outW: pngW, outH: pngH });
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = `evolvesvg-animated.webm`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const i = new Image();
+            i.onload = () => resolve(i);
+            i.onerror = reject;
+            i.src = url;
+        });
+        URL.revokeObjectURL(url);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = pngW; canvas.height = pngH;
+        canvas.getContext('2d').drawImage(img, 0, 0, pngW, pngH);
+
+        const pngBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        if (!pngBlob) throw new Error('canvas.toBlob returned null');
+        const pngUrl  = URL.createObjectURL(pngBlob);
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = `evolvesvg-${pngW}x${pngH}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(pngUrl), 2000);
+    } catch (err) {
+        console.error('PNG export failed:', err);
+        URL.revokeObjectURL(url);
+    } finally {
+        menuItem.textContent = origLabel;
+        closeSaveMenu();
+    }
 }
+
+// ─── Save options menu ──────────────────────────────────────────────────────
+
+function toggleSaveMenu(e) {
+    const menu = document.getElementById('anim-save-menu');
+    if (menu.classList.contains('open')) { closeSaveMenu(); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+    menu.classList.add('open');
+}
+
+function closeSaveMenu() {
+    document.getElementById('anim-save-menu').classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+    const menu = document.getElementById('anim-save-menu');
+    if (!menu.classList.contains('open')) return;
+    if (!menu.contains(e.target) && e.target.id !== 'saveOptionsBtn' && !e.target.closest('#saveOptionsBtn')) {
+        closeSaveMenu();
+    }
+});
+
+document.getElementById('anim-menu-copy-svg').addEventListener('click', () => {
+    closeSaveMenu(); copySVG();
+});
+document.getElementById('anim-menu-download-svg').addEventListener('click', () => {
+    closeSaveMenu(); exportSVG();
+});
+document.getElementById('anim-menu-png').addEventListener('click', () => {
+    exportPNG();
+});
 
 // ─── Templates ─────────────────────────────────────────────────────────────
 
