@@ -154,7 +154,7 @@
 	</style>
 </head>
 <body>
-	<img id="bg-img" aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;pointer-events:none;">
+	<img id="bg-img" aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;pointer-events:none;opacity:0;transition:opacity 1s ease;">
 	<script>
 		const bgs = [
 			"backgrounds/bg1.svg",
@@ -190,10 +190,12 @@
 
 		const isFirefox = navigator.userAgent.includes("Firefox");
 		const isHighDPI = window.devicePixelRatio >= 2;
+		const bgImg = document.getElementById("bg-img");
+		bgImg.onload = () => setTimeout(() => bgImg.style.opacity = "1", 500);
 		if (isFirefox && isHighDPI) {
-			document.getElementById("bg-img").src = "backgrounds/bg0.svg";
+			bgImg.src = "backgrounds/bg0.svg";
 		} else {
-			document.getElementById("bg-img").src = chosen + '?v=' + Date.now();
+			bgImg.src = chosen + '?v=' + Date.now();
 		}
 	</script>
 	<div aria-hidden="true" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:-1;pointer-events:none;"></div>
