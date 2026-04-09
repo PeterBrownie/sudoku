@@ -6,13 +6,13 @@
 
 A browser-based timezone comparison tool. Given a set of locations, it displays a 24-hour rolling table of local times side by side, with day-phase coloring, sunrise/sunset markers, and noon/midnight indicators.
 
-**Base URL:** https://peterbrown.space/timezonetables
+**Base URL:** https://peterbrown.space/timezone-converter
 
 **URL parameters:** Use one or more `tz` query params to pre-load specific locations:
 ```
-https://peterbrown.space/timezonetables?tz=Ramstein+AB&tz=Eglin+AFB
-https://peterbrown.space/timezonetables?tz=New+York&tz=London&tz=Tokyo
-https://peterbrown.space/timezonetables?tz=Al+Udeid+AB&tz=Peterson+Space+Force+Base&tz=Kadena+AB
+https://peterbrown.space/timezone-converter?tz=Ramstein+AB&tz=Eglin+AFB
+https://peterbrown.space/timezone-converter?tz=New+York&tz=London&tz=Tokyo
+https://peterbrown.space/timezone-converter?tz=Al+Udeid+AB&tz=Peterson+Space+Force+Base&tz=Kadena+AB
 ```
 
 Location names are matched case-insensitively against a built-in database of ~350 locations including:
