@@ -10,7 +10,7 @@
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
   <meta property="og:type" content="website">
   <link rel="icon" type="image/png" href="../evolveIcon.png">
-  <title>Timezone Tables — Country, State, & Cities Time Converter</title>
+  <title>Timezone Comparison Table — Country, State, & City Times</title>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -190,6 +190,121 @@
       width: 100%;
       font-size: 0.78rem;
     }
+
+    /* ── Table meta bar ─────────────────────────── */
+    #table-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+      flex-shrink: 0;
+      min-height: 1.75rem;
+    }
+
+    .meta-change-info {
+      font-size: 0.74rem;
+      color: var(--muted);
+    }
+
+    .meta-change-info a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .meta-change-info a:hover { text-decoration: underline; }
+
+    .meta-date-picker {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.25rem;
+      font-size: 0.74rem;
+      color: var(--muted);
+    }
+
+    .date-field {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.06rem;
+    }
+
+    .date-field-label {
+      font-size: 0.52rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      opacity: 0.5;
+      user-select: none;
+      line-height: 1;
+    }
+
+    .date-sep { padding-bottom: 0.22rem; }
+
+    .meta-date-picker input[type="number"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 0.74rem;
+      padding: 0.18rem 0.3rem;
+      width: 2.8em;
+      text-align: center;
+      flex-shrink: 0;
+      -moz-appearance: textfield;
+    }
+
+    .meta-date-picker input[type="number"].year-input { width: 3.8em; }
+
+    .meta-date-picker input[type="number"]::-webkit-outer-spin-button,
+    .meta-date-picker input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    .meta-date-picker input[type="number"]:focus { border-color: var(--accent); outline: none; }
+
+    .date-arrow {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.6rem;
+      padding: 0 0.1rem 0.22rem;
+      line-height: 1;
+    }
+
+    .date-arrow:hover { color: var(--text); }
+
+    #table-meta.viewing-other .meta-date-picker { color: #c98a45; }
+    #table-meta.viewing-other .meta-date-picker input[type="number"] {
+      border-color: #c98a45;
+      color: #c98a45;
+    }
+    #table-meta.viewing-other .date-arrow { color: #c98a45; }
+    #table-meta.viewing-other .date-arrow:hover { color: var(--bright); }
+
+    .meta-today-btn {
+      font-size: 0.72rem;
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 0.12rem 0.5rem;
+      cursor: pointer;
+    }
+
+    .meta-today-btn:hover { background: var(--accent-dim); }
+
+    /* ── DST transition markers ──────────────────── */
+    .dst-marker {
+      display: block;
+      font-size: 0.6rem;
+      letter-spacing: 0.03em;
+      margin-top: 0.2rem;
+      padding: 1px 5px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
+    .dst-marker.spring { color: #7db87a; background: rgba(125,184,122,0.1); }
+    .dst-marker.fall   { color: #c98a45; background: rgba(201,138,69,0.1);  }
 
     /* ── Table ───────────────────────────────────── */
     .table-wrap {
@@ -397,6 +512,7 @@
   </header>
 
   <div class="selectors" id="selectors"></div>
+  <div id="table-meta"></div>
   <div class="table-wrap" id="table-wrap">
     <div class="empty-msg">Select a city above to get started.</div>
   </div>
@@ -1126,8 +1242,31 @@
   let openDropdownId = null;
   let colDragSrcId = null;
 
+  // ── Locale date field order (e.g. ['month','day','year'] for en-US) ────────
+  const _dateFieldOrder = (() => {
+    try {
+      return new Intl.DateTimeFormat(navigator.language, { year: 'numeric', month: '2-digit', day: '2-digit' })
+        .formatToParts(new Date(2013, 10, 5))
+        .filter(p => p.type === 'year' || p.type === 'month' || p.type === 'day')
+        .map(p => p.type);
+    } catch (_) { return ['month', 'day', 'year']; }
+  })();
+
+  // ── View date (null = today) ───────────────────────────────────────────────
+  let viewDate = null;
+  const _dp = new URLSearchParams(location.search).get('date');
+  if (_dp) {
+    const [_y, _m, _d] = _dp.split('-').map(Number);
+    if (_y && _m && _d) viewDate = new Date(_y, _m - 1, _d);
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
   function currentHourDate() {
+    if (viewDate) {
+      // Anchor to UTC midnight so early-UTC transitions (e.g. EU at 01:00 UTC)
+      // always fall within the 25-hour window regardless of the user's timezone.
+      return new Date(Date.UTC(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(), 0, 0, 0));
+    }
     const n = new Date();
     return new Date(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours(), 0, 0, 0);
   }
@@ -1166,6 +1305,64 @@
     const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
     const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
     return h + m / 60; // may be 24.0 for exact midnight
+  }
+
+  // ── UTC offset & DST change detection ─────────────────────────────────────
+  function getUTCOffset(tz, date) {
+    const str = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' }).format(date);
+    const m = str.match(/GMT([+-])(\d{2}):(\d{2})/);
+    if (!m) return 0;
+    return (m[1] === '+' ? 1 : -1) * (+m[2] * 60 + +m[3]);
+  }
+
+  function findNextChange(tzList, fromDate) {
+    if (tzList.length < 2) return null;
+    const base = tzList.map(tz => getUTCOffset(tz, fromDate));
+    const baseRel = base.slice(1).map((o, i) => o - base[0]);
+    const week = 7 * 24 * 3_600_000;
+    const limit = fromDate.getTime() + 366 * 24 * 3_600_000;
+    let lo = fromDate;
+    let probe = new Date(fromDate.getTime() + week);
+    while (probe.getTime() <= limit) {
+      const offs = tzList.map(tz => getUTCOffset(tz, probe));
+      const rel = offs.slice(1).map((o, i) => o - offs[0]);
+      if (rel.some((r, i) => r !== baseRel[i])) {
+        return narrowToDay(tzList, baseRel, lo, probe);
+      }
+      lo = probe;
+      probe = new Date(probe.getTime() + week);
+    }
+    return null;
+  }
+
+  function narrowToDay(tzList, baseRel, lo, hi) {
+    const hour = 3_600_000;
+    while (hi - lo > hour) {
+      const mid = new Date((lo.getTime() + hi.getTime()) / 2);
+      const offs = tzList.map(tz => getUTCOffset(tz, mid));
+      const rel = offs.slice(1).map((o, i) => o - offs[0]);
+      rel.some((r, i) => r !== baseRel[i]) ? (hi = mid) : (lo = mid);
+    }
+    return hi;
+  }
+
+  function fmtChangeDate(date) {
+    const today = new Date();
+    const sameYear = date.getUTCFullYear() === today.getFullYear();
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      month: 'short', day: 'numeric',
+      ...(sameYear ? {} : { year: 'numeric' })
+    }).format(date);
+  }
+
+  function setViewDate(date) {
+    const t = new Date();
+    const isToday = date.getFullYear() === t.getFullYear() &&
+                    date.getMonth()    === t.getMonth()    &&
+                    date.getDate()     === t.getDate();
+    viewDate = isToday ? null : date;
+    render();
   }
 
   // ── Solar calculation ──────────────────────────────────────────────────────
@@ -1322,6 +1519,18 @@
     const start = currentHourDate();
     const hours = Array.from({ length: 25 }, (_, i) => new Date(start.getTime() + i * 3_600_000));
 
+    // Pre-compute DST transitions per column
+    const colDST = active.map(col => {
+      const tz = col.cityObj.tz;
+      const result = {};
+      for (let i = 1; i < hours.length; i++) {
+        const prev = getUTCOffset(tz, hours[i - 1]);
+        const curr = getUTCOffset(tz, hours[i]);
+        if (prev !== curr) result[i] = curr > prev ? 'spring' : 'fall';
+      }
+      return result;
+    });
+
     // Pre-compute accurate solar events per column (requires lat/lon on cityObj)
     const colSolar = active.map(col => {
       if (col.cityObj.lat == null) return null;
@@ -1388,7 +1597,7 @@
     // Body
     let tbody = '';
     hours.forEach((hour, i) => {
-      const isCurrent   = i === 0;
+      const isCurrent   = !viewDate && i === 0;
       const displayTime = isCurrent ? now : hour;
       tbody += `<tr class="${isCurrent ? 'is-current' : ''}">`;
 
@@ -1445,7 +1654,13 @@
 
         const classes = [dayChanged ? 'day-change' : '', phase !== 'night' ? `phase-${phase}` : '', splitClass].filter(Boolean).join(' ');
 
-        tbody += `<td class="${classes}"><span class="time-str">${timeStr}</span>${solarMarker}${extra}</td>`;
+        const dstType = colDST[ci][i];
+        const dstMarker = dstType === 'spring'
+          ? `<span class="dst-marker spring">Hour skipped — clocks spring forward</span>`
+          : dstType === 'fall'
+            ? `<span class="dst-marker fall">Hour repeated — clocks fall back</span>`
+            : '';
+        tbody += `<td class="${classes}"><span class="time-str">${timeStr}</span>${solarMarker}${extra}${dstMarker}</td>`;
       });
 
       tbody += '</tr>';
@@ -1510,13 +1725,80 @@
   // ── Sync URL to current selected slots ────────────────────────────────────
   function syncURL() {
     const selected = slots.filter(s => s.cityObj);
-    const params = selected.map(s => 'tz=' + encodeURIComponent(s.cityObj.city)).join('&');
-    const url = params ? (location.pathname + '?' + params) : location.pathname;
+    const parts = selected.map(s => 'tz=' + encodeURIComponent(s.cityObj.city));
+    if (viewDate) {
+      const y = viewDate.getFullYear();
+      const m = String(viewDate.getMonth() + 1).padStart(2, '0');
+      const d = String(viewDate.getDate()).padStart(2, '0');
+      parts.push(`date=${y}-${m}-${d}`);
+    }
+    const url = parts.length ? (location.pathname + '?' + parts.join('&')) : location.pathname;
     history.replaceState(null, '', url);
   }
 
+  // ── Table meta bar (change info + date picker) ────────────────────────────
+  function renderTableMeta() {
+    const meta = document.getElementById('table-meta');
+    const active = slots.filter(s => s.cityObj);
+    const vd = viewDate || new Date();
+    const isToday = !viewDate;
+
+    let changeHtml = '';
+    if (active.length >= 2) {
+      const tzList = active.map(s => s.cityObj.tz);
+      // When viewing a specific date, start scanning from the next day so we
+      // don't re-detect a transition that occurs on the currently viewed date.
+      const fromDate = new Date(vd.getFullYear(), vd.getMonth(), vd.getDate() + (viewDate ? 1 : 0));
+      const changeDate = findNextChange(tzList, fromDate);
+      if (!changeDate) {
+        changeHtml = `<span class="meta-change-info">This comparison is accurate year&#8209;round.</span>`;
+      } else {
+        const label = fmtChangeDate(changeDate);
+        const iso   = `${changeDate.getUTCFullYear()}-${String(changeDate.getUTCMonth()+1).padStart(2,'0')}-${String(changeDate.getUTCDate()).padStart(2,'0')}`;
+        changeHtml  = `<span class="meta-change-info">This comparison changes on ${label}. <a href="#" data-action="view-date" data-date="${iso}">View on ${label}</a></span>`;
+      }
+    }
+
+    const todayBtn = isToday ? '' : `<button class="meta-today-btn" data-action="view-today">← Today</button>`;
+
+    const fieldHTML = { month: 'month', day: 'day', year: 'year' };
+    const fieldInputs = {
+      month: `<div class="date-field"><span class="date-field-label">M</span><input type="number" id="meta-m" min="1" max="12" value="${vd.getMonth()+1}"></div>`,
+      day:   `<div class="date-field"><span class="date-field-label">D</span><input type="number" id="meta-d" min="1" max="31" value="${vd.getDate()}"></div>`,
+      year:  `<div class="date-field"><span class="date-field-label">Y</span><input type="number" id="meta-y" min="2000" max="2099" value="${vd.getFullYear()}" class="year-input"></div>`,
+    };
+    const pickerHTML = _dateFieldOrder
+      .map((f, i) => fieldInputs[f] + (i < 2 ? '<span class="date-sep">/</span>' : ''))
+      .join('');
+
+    meta.className = isToday ? '' : 'viewing-other';
+    meta.innerHTML = `
+      <div style="display:flex;align-items:center;gap:0.65rem">
+        ${todayBtn}${changeHtml}
+      </div>
+      <div class="meta-date-picker">
+        <button class="date-arrow" data-action="prev-day">&#9664;</button>
+        ${pickerHTML}
+        <button class="date-arrow" data-action="next-day">&#9654;</button>
+      </div>`;
+
+    function applyDate() {
+      const m = +document.getElementById('meta-m').value;
+      const d = +document.getElementById('meta-d').value;
+      const y = +document.getElementById('meta-y').value;
+      if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 2000 && y <= 2099) {
+        setViewDate(new Date(y, m - 1, d));
+      }
+    }
+    ['meta-m', 'meta-d', 'meta-y'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('change', applyDate);
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') applyDate(); });
+    });
+  }
+
   // ── Full render ────────────────────────────────────────────────────────────
-  function render() { renderSelectors(); renderTable(); syncURL(); }
+  function render() { renderSelectors(); renderTable(); renderTableMeta(); syncURL(); }
 
   // ── Event delegation ───────────────────────────────────────────────────────
   document.addEventListener('click', e => {
@@ -1524,6 +1806,23 @@
     if (!target) { if (!e.target.closest('.tz-slot') && !e.target.closest('.add-th')) closeAllDropdowns(); return; }
 
     const { action, slotId, idx } = target.dataset;
+
+    if (action === 'view-date') {
+      e.preventDefault();
+      const [y, m, d] = target.dataset.date.split('-').map(Number);
+      setViewDate(new Date(y, m - 1, d));
+    }
+
+    if (action === 'view-today') {
+      viewDate = null;
+      render();
+    }
+
+    if (action === 'prev-day' || action === 'next-day') {
+      const base = viewDate ? new Date(viewDate) : new Date();
+      base.setDate(base.getDate() + (action === 'next-day' ? 1 : -1));
+      setViewDate(base);
+    }
 
     if (action === 'remove-slot') {
       slots = slots.filter(s => s.id !== +slotId);
