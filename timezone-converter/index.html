@@ -191,6 +191,20 @@
       font-size: 0.78rem;
     }
 
+    .remove-all-btn {
+      display: block;
+      margin: 0.4rem auto 0;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 0.65rem;
+      cursor: pointer;
+      opacity: 0.5;
+      padding: 0;
+    }
+
+    .remove-all-btn:hover { opacity: 1; color: var(--danger); }
+
     /* ── Table meta bar ─────────────────────────── */
     #table-meta {
       display: flex;
@@ -1586,6 +1600,7 @@
           <input class="tz-input" type="text" placeholder="+ Add timezone"
             autocomplete="off" spellcheck="false" data-slot-id="add">
           <div class="tz-dropdown" data-slot-id="add"></div>
+          <button class="remove-all-btn" data-action="remove-all">remove all</button>
         </th>`;
     }
     thead += '</tr>';
@@ -1822,6 +1837,11 @@
       const base = viewDate ? new Date(viewDate) : new Date();
       base.setDate(base.getDate() + (action === 'next-day' ? 1 : -1));
       setViewDate(base);
+    }
+
+    if (action === 'remove-all') {
+      slots = [{ id: nextId++, cityObj: null }];
+      render();
     }
 
     if (action === 'remove-slot') {
