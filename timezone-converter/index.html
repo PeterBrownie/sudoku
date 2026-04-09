@@ -183,7 +183,7 @@
       cursor: default !important;
       border-left: 1px dashed var(--border) !important;
       vertical-align: middle;
-      min-width: 160px;
+      width: 170px;
     }
 
     .add-th .tz-input {
@@ -210,7 +210,7 @@
     table {
       border-collapse: collapse;
       width: 100%;
-      max-width: calc(var(--col-count, 1) * 280px);
+      max-width: var(--table-max-width, none);
       margin: 0 auto;
       font-size: 0.875rem;
     }
@@ -1451,7 +1451,8 @@
       tbody += '</tr>';
     });
 
-    wrap.innerHTML = `<table style="--col-count:${active.length}"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+    const tableMaxWidth = active.length * 280 + (slots.length < MAX_SLOTS ? 170 : 0);
+    wrap.innerHTML = `<table style="--table-max-width:${tableMaxWidth}px"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 
     // Add-timezone column input
     const addInput = wrap.querySelector('.add-th .tz-input');
