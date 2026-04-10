@@ -871,6 +871,8 @@
     <div class="anim-save-menu-divider"></div>
     <div class="anim-save-menu-title">Save as PNG</div>
     <div class="anim-save-menu-item" id="anim-menu-png">Download PNG</div>
+    <div class="anim-save-menu-divider"></div>
+    <div class="anim-save-menu-item" id="anim-menu-load-in-app">Load in evolveSVG</div>
 </div>
 
 <script>
@@ -2613,6 +2615,13 @@ document.getElementById('anim-menu-download-svg').addEventListener('click', () =
 });
 document.getElementById('anim-menu-png').addEventListener('click', () => {
     exportPNG();
+});
+document.getElementById('anim-menu-load-in-app').addEventListener('click', () => {
+    closeSaveMenu();
+    if (!currentGenome) return;
+    const svg = getOrBuildAnimatedSVG();
+    localStorage.setItem('evolvesvg_load_from_anim', svg);
+    window.open('index.html', '_blank');
 });
 
 // ─── Templates ─────────────────────────────────────────────────────────────

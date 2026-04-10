@@ -5721,6 +5721,15 @@ if (/Firefox/i.test(navigator.userAgent)) {
     document.getElementById('firefox-notice').style.display = 'block';
 }
 
+// ── Load SVG passed from animation page ───────────────────────────────────
+(function() {
+    const svgFromAnim = localStorage.getItem('evolvesvg_load_from_anim');
+    if (svgFromAnim) {
+        localStorage.removeItem('evolvesvg_load_from_anim');
+        handleLoadedSVGText(svgFromAnim);
+    }
+})();
+
 </script>
 </body>
 </html>
