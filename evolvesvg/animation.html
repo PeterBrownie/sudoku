@@ -318,7 +318,9 @@
             justify-content: center;
             padding: 16px;
         }
-        #svgPreviewWrap svg {
+        #svgPreviewWrap svg,
+        #svgPreviewWrap img,
+        #svgPreviewWrap canvas {
             max-width: 100%;
             max-height: 100%;
             width: auto;
@@ -685,6 +687,70 @@
         .size-field input[type=number]::-webkit-inner-spin-button,
         .size-field input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .size-sep { color: var(--text-faint); font-size: 11px; }
+
+        /* ── Trim modal ───────────────────────────────────────────────── */
+        .trim-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .trim-overlay.open { display: flex; }
+        .trim-modal {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            width: 360px;
+            max-height: 480px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        .trim-modal-header {
+            padding: 14px 16px 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .trim-modal-close {
+            background: none; border: none; color: var(--text-dim);
+            font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1;
+        }
+        .trim-modal-close:hover { color: var(--text); }
+        .trim-modal-body {
+            flex: 1; overflow-y: auto; padding: 10px 14px;
+        }
+        .trim-modal-body::-webkit-scrollbar { width: 4px; }
+        .trim-modal-body::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .trim-none {
+            color: var(--text-faint); font-size: 13px;
+            text-align: center; padding: 16px 0; line-height: 1.7;
+        }
+        .trim-layer-item {
+            display: flex; align-items: center; gap: 9px;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .trim-layer-item:last-child { border-bottom: none; }
+        .trim-layer-item input { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .trim-layer-label { flex: 1; color: var(--text); }
+        .trim-layer-badge {
+            font-size: 10px; color: var(--text-faint);
+            background: var(--surface2); border: 1px solid var(--border2);
+            border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
+        }
+        .trim-modal-footer {
+            padding: 10px 14px;
+            border-top: 1px solid var(--border);
+            display: flex; gap: 8px; justify-content: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -845,6 +911,7 @@
                                 <input type="number" id="customH" value="720" min="100" max="4096" step="1" onchange="onCustomSizeChange()">
                             </span>
                         </div>
+                        <button class="btn-icon" id="trimBtn" onclick="openTrimModal()" title="Detect layers that fall entirely outside the current viewport">Trim Invisible</button>
                         <div class="action-sep"></div>
                         <button class="btn-icon accent" id="saveOptionsBtn" onclick="toggleSaveMenu(event)"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Save Options ▾</button>
                         <button class="btn-icon" id="copyBtn" onclick="copySVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z"/></svg>Copy SVG</button>
@@ -862,6 +929,23 @@
         </div>
     </div>
 
+</div>
+
+<!-- Trim invisible layers modal -->
+<div class="trim-overlay" id="trimOverlay" onclick="if(event.target===this)closeTrimModal()">
+    <div class="trim-modal">
+        <div class="trim-modal-header">
+            <span>Layers Outside Viewport</span>
+            <button class="trim-modal-close" onclick="closeTrimModal()">✕</button>
+        </div>
+        <div class="trim-modal-body" id="trimModalBody">
+            <div class="trim-none">Analyzing…</div>
+        </div>
+        <div class="trim-modal-footer">
+            <button class="btn-secondary" onclick="closeTrimModal()">Cancel</button>
+            <button class="btn-primary" id="trimApplyBtn" onclick="applyTrim()" disabled>Hide Selected</button>
+        </div>
+    </div>
 </div>
 
 <div id="anim-save-menu">
@@ -1280,7 +1364,7 @@ function renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, 
     const filterAnims = myAnims.filter(s => s.param === 'blur' || s.param === 'displaceScale' || s.param === 'hueRotate');
     const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, filterAnims);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
-    return `<g opacity="${fromOpacity.toFixed(3)}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${opacityAnimEl}${result}</g>`;
+    return `<g data-layer="${layerIdx}" opacity="${fromOpacity.toFixed(3)}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${opacityAnimEl}${result}</g>`;
 }
 
 // ─── Shape element builder with optional SMIL ──────────────────────────────
@@ -1523,7 +1607,7 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
     });
 
     const inner = parts.join('');
-    return (filterAttr || maskAttr) ? `<g ${filterAttr} ${maskAttr}>${inner}</g>` : inner;
+    return (filterAttr || maskAttr) ? `<g data-layer="${layerIdx}" ${filterAttr} ${maskAttr}>${inner}</g>` : `<g data-layer="${layerIdx}">${inner}</g>`;
 }
 
 // ─── Main SVG generator ────────────────────────────────────────────────────
@@ -1545,7 +1629,8 @@ function genomeToSVGAnimated(genome, animSpecsInput, W=1280, H=720, prefix='anim
         const layer = genome.layers[i];
         if (layer.hidden) continue;
         const layerAnims = allSpecs.filter(s => (s.target === 'layer' && s.layerIdx === i) || s.target === 'palette');
-        bodyParts.push(renderLayerAnim(layer, i, genome.palette, W, H, defs, makeGradientId, W, layerAnims));
+        const layerContent = renderLayerAnim(layer, i, genome.palette, W, H, defs, makeGradientId, W, layerAnims);
+        bodyParts.push(layerContent || '');
     }
 
     const defsBlock = defs.length ? `<defs>${defs.join('')}</defs>` : '';
@@ -1555,7 +1640,18 @@ function genomeToSVGAnimated(genome, animSpecsInput, W=1280, H=720, prefix='anim
     const viewBox  = opts.viewBox || `0 0 ${W} ${H}`;
     const outW     = opts.outW   || W;
     const outH     = opts.outH   || H;
-    return `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" width="${outW}" height="${outH}" preserveAspectRatio="xMidYMid meet"${renderingAttrs}>${defsBlock}${bodyParts.join('')}</svg>`;
+
+    // Viewport animation: animate the SVG root's viewBox attribute
+    const vpAnimSpecs = allSpecs.filter(s => s.target === 'viewport');
+    let vpAnimEl = '';
+    if (vpAnimSpecs.length > 0) {
+        const vpAnim = vpAnimSpecs[0]; // one viewBox animation at a time
+        const fromVb = computeViewBoxAtVpParam(vpAnim.param, vpAnim.fromVal);
+        const toVb   = computeViewBoxAtVpParam(vpAnim.param, vpAnim.toVal);
+        vpAnimEl = smilAnimate('viewBox', fromVb, toVb, vpAnim);
+    }
+
+    return `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" width="${outW}" height="${outH}" preserveAspectRatio="xMidYMid slice"${renderingAttrs}>${defsBlock}${vpAnimEl}${bodyParts.join('')}</svg>`;
 }
 
 // ─── Genome extraction ─────────────────────────────────────────────────────
@@ -1586,14 +1682,27 @@ function embedAllMeta(svgStr, genome, specs) {
     const ns = 'xmlns:evolvesvg="https://evolvesvg"';
     const genomTag = `<evolvesvg:genome ${ns}>${encodeMetaJSON(genome)}</evolvesvg:genome>`;
     const animTag  = `<evolvesvg:animation ${ns}>${encodeMetaJSON(specs)}</evolvesvg:animation>`;
-    const block    = `<metadata>${genomTag}${animTag}</metadata>`;
+    const vpTag    = `<evolvesvg:viewport ${ns}>${encodeMetaJSON({ panX: vpPanX, panY: vpPanY, zoom: vpZoom })}</evolvesvg:viewport>`;
+    const block    = `<metadata>${genomTag}${animTag}${vpTag}</metadata>`;
     return svgStr.replace('</svg>', block + '</svg>');
+}
+
+function extractViewportFromSVG(svgText) {
+    const match = svgText.match(/<evolvesvg:viewport[^>]*>([\s\S]*?)<\/evolvesvg:viewport>/);
+    if (!match) return null;
+    return decodeMetaJSON(match[1]);
 }
 
 // ─── Parameter tree ────────────────────────────────────────────────────────
 
 function getParamRows(genome) {
     const rows = [];
+
+    // Viewport (pan/zoom — animatable via viewBox SMIL)
+    rows.push({ type: 'section', label: 'Viewport', sectionId: 'viewport' });
+    rows.push({ type: 'param', label: 'Pan X', target: 'viewport', param: 'vpPanX', current: vpPanX, min: -1, max: 1, step: 0.01, unit: '', sectionId: 'viewport' });
+    rows.push({ type: 'param', label: 'Pan Y', target: 'viewport', param: 'vpPanY', current: vpPanY, min: -1, max: 1, step: 0.01, unit: '', sectionId: 'viewport' });
+    rows.push({ type: 'param', label: 'Zoom', target: 'viewport', param: 'vpZoom', current: vpZoom, min: 0.25, max: 4, step: 0.05, unit: '×', sectionId: 'viewport' });
 
     // Palette
     genome.palette.forEach((color, i) => {
@@ -1700,7 +1809,13 @@ function refreshParamTree() {
 function applyParamToGenome(genome, el, value) {
     const target = el.dataset.target;
     const param  = el.dataset.param;
-    if (target === 'palette') {
+    if (target === 'viewport') {
+        // Viewport params live in global state, not the genome
+        if (param === 'vpPanX') vpPanX = value;
+        else if (param === 'vpPanY') vpPanY = value;
+        else if (param === 'vpZoom') vpZoom = value;
+        currentAnimatedSVG = null;
+    } else if (target === 'palette') {
         const pi = parseInt(el.dataset.paletteIdx);
         if (param === 'paletteH') genome.palette[pi].h = value;
         else if (param === 'paletteS') genome.palette[pi].s = value;
@@ -1810,15 +1925,18 @@ function showTransitionPreview(el, fromVal, toVal, dur = 0.25) {
     const baseGenome = JSON.parse(JSON.stringify(currentGenome));
     applyParamToGenome(baseGenome, el, fromVal);
     const spec = buildTransitionSpec(el, fromVal, toVal, dur);
-    const { W: _W, H: _H, outW: _oW, outH: _oH, viewBox: _vb } = getViewportConfig();
-    const _vpOpts = { viewBox: _vb, outW: _oW, outH: _oH };
-    const animSvg = genomeToSVGAnimated(baseGenome, [spec], _W, _H, 'anim', _vpOpts);
+    const { W: _W, H: _H, outW: _oW, outH: _oH, viewBox: _vbFrom } = getViewportConfig();
+    const _vpFromOpts = { viewBox: _vbFrom, outW: _oW, outH: _oH };
+    const animSvg = genomeToSVGAnimated(baseGenome, [spec], _W, _H, 'anim', _vpFromOpts);
     // Snapshot the end-state static SVG NOW (genome at toVal) so that when the
     // animation finishes we always display the frame we animated TO — not whatever
     // the slider has moved to in the meantime.
     const endGenome = JSON.parse(JSON.stringify(baseGenome));
     applyParamToGenome(endGenome, el, toVal);
-    const endSvg = genomeToSVGAnimated(endGenome, null, _W, _H, 'anim', _vpOpts);
+    // For viewport params the viewBox changes but not the genome — recompute it
+    const { viewBox: _vbTo } = getViewportConfig();
+    const _vpToOpts = { viewBox: _vbTo, outW: _oW, outH: _oH };
+    const endSvg = genomeToSVGAnimated(endGenome, null, _W, _H, 'anim', _vpToOpts);
     const wrap = document.getElementById('svgPreviewWrap');
     wrap.innerHTML = animSvg;
     // Firefox inherits the page's SMIL timeline for dynamically inserted SVGs,
@@ -1832,7 +1950,7 @@ function showTransitionPreview(el, fromVal, toVal, dur = 0.25) {
     // Only swap in the static end-frame when not actively dragging.
     // During drag, SMIL fill="freeze" already holds the end state visually;
     // swapping here would cause a jump before the next interval chunk fires.
-    _previewTimer = setTimeout(() => { if (!_drag) wrap.innerHTML = endSvg; }, spec.dur * 1000 + 20);
+    _previewTimer = setTimeout(() => { if (!_drag) setPreviewImg(wrap, endSvg); }, spec.dur * 1000 + 20);
 }
 
 // ─── Preview animation chain ──────────────────────────────────────────────
@@ -1979,6 +2097,9 @@ let currentAnimatedSVG = null;
 let animDirection = 'forward';
 let animEasing = 'linear';
 
+// Viewport pan/zoom (applied on top of the aspect-ratio viewBox)
+let vpPanX = 0, vpPanY = 0, vpZoom = 1;
+
 // ─── UI: Load SVG ──────────────────────────────────────────────────────────
 
 document.getElementById('loadBtn').addEventListener('click', loadSVG);
@@ -2030,6 +2151,12 @@ function loadSVG() {
     currentGenome = genome;
     collapseSVGInput();
 
+    // Restore or reset viewport state (must happen before param tree + preview)
+    const savedVp = extractViewportFromSVG(text);
+    vpPanX = savedVp?.panX ?? 0;
+    vpPanY = savedVp?.panY ?? 0;
+    vpZoom = savedVp?.zoom ?? 1;
+
     // Show static preview
     showStaticPreview();
 
@@ -2068,6 +2195,7 @@ document.getElementById('clearBtn').addEventListener('click', () => {
     selectedParamEl = null;
     currentAnimatedSVG = null;
     currentGenome = null;
+    vpPanX = 0; vpPanY = 0; vpZoom = 1;
 });
 
 function setStatus(msg, cls) {
@@ -2076,11 +2204,46 @@ function setStatus(msg, cls) {
     el.className = cls;
 }
 
+// Render SVG to a canvas via an off-DOM image, matching index.html's exact
+// rendering pipeline. The off-DOM img has no CSS constraints, so Chrome
+// rasterizes it at the SVG's natural dimensions (1280×720). Filter effects
+// (feTurbulence, feDisplacementMap) are always computed at that resolution,
+// which is identical to how index.html renders. In-DOM images with max-width/
+// max-height CSS cause Chrome to rasterize at the container's display size
+// instead, producing different filter output at different window sizes.
+function setPreviewImg(wrap, svgStr) {
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    let canvas = wrap.querySelector('canvas.svg-static-canvas');
+    if (!canvas) {
+        wrap.innerHTML = '';
+        canvas = document.createElement('canvas');
+        canvas.className = 'svg-static-canvas';
+        wrap.appendChild(canvas);
+    }
+
+    // Off-DOM image — no CSS size constraints — Chrome uses SVG natural dimensions
+    const img = new Image();
+    img.onload = () => {
+        // Pixel dimensions: SVG natural size, scaled by DPR for sharp display
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.round((img.naturalWidth  || BASE_W) * dpr);
+        const h = Math.round((img.naturalHeight || BASE_H) * dpr);
+        canvas.width  = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+}
+
 function showStaticPreview() {
     const { W, H, outW, outH, viewBox } = getViewportConfig();
     const svg = genomeToSVGAnimated(currentGenome, null, W, H, 'anim', { viewBox, outW, outH });
     const wrap = document.getElementById('svgPreviewWrap');
-    wrap.innerHTML = svg;
+    setPreviewImg(wrap, svg);
     wrap.style.display = 'flex';
     document.getElementById('previewEmpty').style.display = 'none';
 }
@@ -2125,6 +2288,7 @@ function selectParam(el) {
     const target = el.dataset.target;
     let path = '';
     if (target === 'palette') path = `Color ${parseInt(el.dataset.paletteIdx)+1} › ${el.querySelector('.param-label').textContent}`;
+    else if (target === 'viewport') path = `Viewport › ${el.querySelector('.param-label').textContent}`;
     else path = `Layer ${parseInt(el.dataset.layerIdx)+1} › ${el.querySelector('.param-label').textContent}`;
     document.getElementById('controlsSelected').innerHTML = `<strong>${path}</strong> <span style="color:var(--text-faint)">(${unit || 'value'})</span>`;
 
@@ -2248,6 +2412,9 @@ function setDirection(dir) {
 function specLabel(spec) {
     if (spec.target === 'palette') {
         return `Color ${spec.paletteIdx + 1} › ${{paletteH:'Hue',paletteS:'Saturation',paletteL:'Lightness'}[spec.param] || spec.param}`;
+    }
+    if (spec.target === 'viewport') {
+        return `Viewport › ${{vpPanX:'Pan X',vpPanY:'Pan Y',vpZoom:'Zoom'}[spec.param] || spec.param}`;
     }
     const paramNames = { cx:'Position X', cy:'Position Y', rotate:'Rotation', scaleX:'Scale X', scaleY:'Scale Y', opacity:'Opacity', fillAlpha:'Fill Opacity', r:'Radius', rx:'Radius X', ry:'Radius Y', w:'Width', h:'Height', blur:'Blur', displaceScale:'Displacement', hueRotate:'Hue Shift' };
     return `Layer ${spec.layerIdx + 1} › ${paramNames[spec.param] || spec.param}`;
@@ -2426,10 +2593,27 @@ function getViewportConfig() {
         vbH = BASE_H; vbW = BASE_H * ar;
         vbX = (BASE_W - vbW) / 2; vbY = 0;
     }
+    // Apply zoom and pan on top of the aspect-ratio crop
+    const zoomedW = vbW / vpZoom;
+    const zoomedH = vbH / vpZoom;
+    const finalX  = vbX + (vbW - zoomedW) / 2 + vpPanX * zoomedW;
+    const finalY  = vbY + (vbH - zoomedH) / 2 + vpPanY * zoomedH;
+
     return {
         W: BASE_W, H: BASE_H, outW, outH,
-        viewBox: `${vbX.toFixed(2)} ${vbY.toFixed(2)} ${vbW.toFixed(2)} ${vbH.toFixed(2)}`
+        viewBox: `${finalX.toFixed(2)} ${finalY.toFixed(2)} ${zoomedW.toFixed(2)} ${zoomedH.toFixed(2)}`
     };
+}
+
+// Compute viewBox string as if vpPanX/Y/Zoom had a specific value, without mutating global state
+function computeViewBoxAtVpParam(param, value) {
+    const savedX = vpPanX, savedY = vpPanY, savedZ = vpZoom;
+    if (param === 'vpPanX') vpPanX = value;
+    else if (param === 'vpPanY') vpPanY = value;
+    else if (param === 'vpZoom') vpZoom = value;
+    const { viewBox } = getViewportConfig();
+    vpPanX = savedX; vpPanY = savedY; vpZoom = savedZ;
+    return viewBox;
 }
 
 function onAspectChange() {
@@ -2463,6 +2647,98 @@ function getOrBuildAnimatedSVG() {
     Object.assign(opts, { viewBox, outW, outH });
     const svg = genomeToSVGAnimated(currentGenome, animSpecs, W, H, 'anim', opts);
     return embedAllMeta(svg, currentGenome, animSpecs);
+}
+
+// ─── Trim invisible layers ─────────────────────────────────────────────────
+
+function detectInvisibleLayers() {
+    if (!currentGenome) return [];
+    const { W, H, viewBox } = getViewportConfig();
+    const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
+
+    // Render at full canvas (no viewBox crop) so getBBox() reports real coordinates
+    const svgStr = genomeToSVGAnimated(currentGenome, null, W, H, 'trim-detect', {
+        viewBox: `0 0 ${W} ${H}`, outW: W, outH: H
+    });
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgStr, 'image/svg+xml');
+    const svgEl = doc.documentElement;
+
+    // Mount off-screen so the browser computes layout / getBBox
+    svgEl.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden';
+    svgEl.setAttribute('width', `${W}`);
+    svgEl.setAttribute('height', `${H}`);
+    document.body.appendChild(svgEl);
+
+    const invisible = [];
+    for (let i = 0; i < currentGenome.layers.length; i++) {
+        if (currentGenome.layers[i].hidden) continue;
+        const g = svgEl.querySelector(`[data-layer="${i}"]`);
+        if (!g) continue;
+        try {
+            const bb = g.getBBox();
+            if (bb.width === 0 && bb.height === 0) continue; // empty element
+            const intersects =
+                bb.x < vbX + vbW && bb.x + bb.width  > vbX &&
+                bb.y < vbY + vbH && bb.y + bb.height > vbY;
+            if (!intersects) invisible.push(i);
+        } catch(e) {}
+    }
+
+    document.body.removeChild(svgEl);
+    return invisible;
+}
+
+function openTrimModal() {
+    if (!currentGenome) return;
+    const overlay = document.getElementById('trimOverlay');
+    const body    = document.getElementById('trimModalBody');
+    const applyBtn = document.getElementById('trimApplyBtn');
+    overlay.classList.add('open');
+    body.innerHTML = '<div class="trim-none">Analyzing…</div>';
+    applyBtn.disabled = true;
+
+    // Run detection after paint so the "Analyzing…" text shows first
+    requestAnimationFrame(() => {
+        const invisible = detectInvisibleLayers();
+        if (invisible.length === 0) {
+            body.innerHTML = '<div class="trim-none">All layers are visible within the current viewport.<br>No trimming needed.</div>';
+            return;
+        }
+        body.innerHTML = invisible.map(i => {
+            const layer = currentGenome.layers[i];
+            return `<label class="trim-layer-item">
+                <input type="checkbox" class="trim-check" data-layer-idx="${i}" checked>
+                <span class="trim-layer-label">Layer ${i + 1}</span>
+                <span class="trim-layer-badge">${layer.type}</span>
+            </label>`;
+        }).join('');
+        applyBtn.disabled = false;
+
+        body.querySelectorAll('.trim-check').forEach(cb =>
+            cb.addEventListener('change', () => {
+                applyBtn.disabled = !body.querySelector('.trim-check:checked');
+            })
+        );
+    });
+}
+
+function closeTrimModal() {
+    document.getElementById('trimOverlay').classList.remove('open');
+}
+
+function applyTrim() {
+    const checked = document.querySelectorAll('.trim-check:checked');
+    checked.forEach(cb => {
+        const idx = parseInt(cb.dataset.layerIdx);
+        currentGenome.layers[idx].hidden = true;
+    });
+    currentAnimatedSVG = null;
+    currentParamRows = getParamRows(currentGenome);
+    document.getElementById('paramTree').innerHTML = renderParamTree(currentParamRows);
+    showStaticPreview();
+    renderKeyframeList();
+    closeTrimModal();
 }
 
 // ─── UI: Preview / Stop / Export ──────────────────────────────────────────
