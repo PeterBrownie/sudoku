@@ -1061,6 +1061,25 @@ const EASING_SPLINES = {
     easeInOut: '0.42 0 0.58 1',
 };
 
+// Evaluate CSS cubic-bezier(x1,y1,x2,y2) at input t ∈ [0,1].
+// Uses Newton's method to find the bezier parameter u where x(u)=t, then
+// returns y(u). Identical to browser CSS animation easing computation.
+function applyBezierEasing(easingName, customSpline, t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    const spline = EASING_SPLINES[easingName] || customSpline;
+    if (!spline) return t; // linear
+    const [x1, y1, x2, y2] = spline.split(' ').map(Number);
+    let u = t;
+    for (let i = 0; i < 8; i++) {
+        const xu = ((1 - 3*x2 + 3*x1)*u*u + (3*x2 - 6*x1)*u + 3*x1)*u - t;
+        const dxu = (3*(1 - 3*x2 + 3*x1)*u + 2*(3*x2 - 6*x1))*u + 3*x1;
+        if (Math.abs(dxu) < 1e-6) break;
+        u = Math.max(0, Math.min(1, u - xu / dxu));
+    }
+    return ((1 - 3*y2 + 3*y1)*u*u + (3*y2 - 6*y1)*u + 3*y1)*u;
+}
+
 // Returns the animate tag attributes (without element wrapper)
 function smilAttrs(attrName, fromVal, toVal, spec) {
     const alt = spec.direction === 'alternate';
@@ -1899,58 +1918,122 @@ function resetParamValue(el) {
     showTransitionPreview(el, fromVal, original, 0.45);
 }
 
-function buildTransitionSpec(el, fromVal, toVal, dur = 0.25) {
-    return {
-        target:         el.dataset.target,
-        param:          el.dataset.param,
-        layerIdx:       el.dataset.layerIdx !== undefined ? parseInt(el.dataset.layerIdx) : undefined,
-        paletteIdx:     el.dataset.paletteIdx !== undefined ? parseInt(el.dataset.paletteIdx) : undefined,
-        fromVal,
-        toVal,
-        dur,
-        repeatCount:    '1',
-        direction:      'forward',
-        easing:         'easeOut',
-        customSpline:   '',
-        // Prevents animateTransform from auto-firing on the document timeline
-        // before beginElement() is called, which would flash the end-state value.
-        beginIndefinite: true,
-    };
-}
+// rAF handles — cancelled when superseded or stopped.
+let _crossfadeRaf = null; // drag-preview frame sequence
+let _animRaf      = null; // full keyframe animation playback
+// Monotonically incrementing generation counter — stale img.onload callbacks
+// check this and discard their canvas if a newer call has already started.
+let _transitionGen = 0;
 
+// Pre-renders N SVG frames at interpolated parameter values via the off-DOM
+// img → canvas pipeline (same path as setPreviewImg/showStaticPreview) so
+// Chrome computes feTurbulence at the SVG's natural dimensions for every
+// frame, then plays them as a timed sequence. This produces genuine
+// parameter animation (the displacement/blur/opacity actually changes at
+// each frame) while avoiding the inline-SVG rendering discrepancy.
 function showTransitionPreview(el, fromVal, toVal, dur = 0.25) {
     if (!currentGenome) return;
-    // Generate the SVG with the genome reset to fromVal so instance positions
-    // are computed at the start of the animation, not the end.
-    const baseGenome = JSON.parse(JSON.stringify(currentGenome));
-    applyParamToGenome(baseGenome, el, fromVal);
-    const spec = buildTransitionSpec(el, fromVal, toVal, dur);
-    const { W: _W, H: _H, outW: _oW, outH: _oH, viewBox: _vbFrom } = getViewportConfig();
-    const _vpFromOpts = { viewBox: _vbFrom, outW: _oW, outH: _oH };
-    const animSvg = genomeToSVGAnimated(baseGenome, [spec], _W, _H, 'anim', _vpFromOpts);
-    // Snapshot the end-state static SVG NOW (genome at toVal) so that when the
-    // animation finishes we always display the frame we animated TO — not whatever
-    // the slider has moved to in the meantime.
-    const endGenome = JSON.parse(JSON.stringify(baseGenome));
-    applyParamToGenome(endGenome, el, toVal);
-    // For viewport params the viewBox changes but not the genome — recompute it
-    const { viewBox: _vbTo } = getViewportConfig();
-    const _vpToOpts = { viewBox: _vbTo, outW: _oW, outH: _oH };
-    const endSvg = genomeToSVGAnimated(endGenome, null, _W, _H, 'anim', _vpToOpts);
     const wrap = document.getElementById('svgPreviewWrap');
-    wrap.innerHTML = animSvg;
-    // Firefox inherits the page's SMIL timeline for dynamically inserted SVGs,
-    // so begin="0s" (the default) resolves to a time already in the past and
-    // the animation completes instantly. beginElement() starts each animation
-    // explicitly "right now", bypassing the document timeline entirely.
-    wrap.querySelectorAll('animate, animateTransform').forEach(a => {
-        try { a.beginElement(); } catch(e) {}
-    });
+
+    if (_crossfadeRaf !== null) { cancelAnimationFrame(_crossfadeRaf); _crossfadeRaf = null; }
+
+    let canvas = wrap.querySelector('canvas.svg-static-canvas');
+    if (!canvas) { showStaticPreview(); return; }
+
+    const N   = 5;   // frames including start and end
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = canvas.getContext('2d');
+
+    const { W, H, outW, outH } = getViewportConfig();
+
+    // Save viewport globals — applyParamToGenome mutates them for viewport params
+    const savedVpX = vpPanX, savedVpY = vpPanY, savedVpZ = vpZoom;
+
+    const gen          = ++_transitionGen;
+    const loadedFrames = new Array(N).fill(null);
+    let   animStarted  = false;
+    let   animStart    = 0;
+
+    for (let i = 0; i < N; i++) {
+        // Ease-in-out distribution of parameter values across the N frames
+        const tRaw   = i / (N - 1);
+        const tEased = tRaw < 0.5 ? 2 * tRaw * tRaw : -1 + (4 - 2 * tRaw) * tRaw;
+        const frameVal = fromVal + (toVal - fromVal) * tEased;
+
+        // Restore viewport globals before each frame so each frame's viewBox
+        // reflects only the animated viewport param at its interpolated value.
+        vpPanX = savedVpX; vpPanY = savedVpY; vpZoom = savedVpZ;
+
+        // Clone genome and apply interpolated value.
+        // currentGenome already has toVal applied by updateParamRowDisplay —
+        // we overwrite that specific param with frameVal in the clone.
+        const frameGenome = JSON.parse(JSON.stringify(currentGenome));
+        applyParamToGenome(frameGenome, el, frameVal);
+        const { viewBox: frameViewBox } = getViewportConfig();
+
+        const frameSvg = genomeToSVGAnimated(frameGenome, null, W, H, 'anim', { viewBox: frameViewBox, outW, outH });
+
+        const blobUrl = URL.createObjectURL(new Blob([frameSvg], { type: 'image/svg+xml' }));
+        const img  = new Image();
+        const idx  = i;
+        img.onload = () => {
+            if (gen !== _transitionGen) { URL.revokeObjectURL(blobUrl); return; }
+            const fw = Math.round((img.naturalWidth  || BASE_W) * dpr);
+            const fh = Math.round((img.naturalHeight || BASE_H) * dpr);
+            const fc = document.createElement('canvas');
+            fc.width = fw; fc.height = fh;
+            fc.getContext('2d').drawImage(img, 0, 0, fw, fh);
+            URL.revokeObjectURL(blobUrl);
+            loadedFrames[idx] = fc;
+            // Start playback as soon as the first frame is ready
+            if (!animStarted && gen === _transitionGen) {
+                animStarted = true;
+                animStart   = performance.now();
+                tick();
+            }
+        };
+        img.onerror = () => URL.revokeObjectURL(blobUrl);
+        img.src = blobUrl;
+    }
+
+    // Restore globals after the synchronous frame-generation loop
+    vpPanX = savedVpX; vpPanY = savedVpY; vpZoom = savedVpZ;
+
+    function tick() {
+        if (gen !== _transitionGen) return;
+        const elapsed  = performance.now() - animStart;
+        const progress = Math.min(elapsed / (dur * 1000), 1);
+        // Map progress to the nearest frame index
+        const targetIdx = Math.min(Math.round(progress * (N - 1)), N - 1);
+
+        // Use the closest loaded frame at or before targetIdx (fall forward if needed)
+        let frameToShow = null;
+        for (let i = targetIdx; i >= 0; i--) {
+            if (loadedFrames[i]) { frameToShow = loadedFrames[i]; break; }
+        }
+        if (!frameToShow) {
+            for (let i = targetIdx + 1; i < N; i++) {
+                if (loadedFrames[i]) { frameToShow = loadedFrames[i]; break; }
+            }
+        }
+
+        if (frameToShow) {
+            if (canvas.width !== frameToShow.width || canvas.height !== frameToShow.height) {
+                canvas.width = frameToShow.width; canvas.height = frameToShow.height;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(frameToShow, 0, 0);
+        }
+
+        if (elapsed < dur * 1000) {
+            _crossfadeRaf = requestAnimationFrame(tick);
+        } else {
+            _crossfadeRaf = null;
+        }
+    }
+
     clearTimeout(_previewTimer);
-    // Only swap in the static end-frame when not actively dragging.
-    // During drag, SMIL fill="freeze" already holds the end state visually;
-    // swapping here would cause a jump before the next interval chunk fires.
-    _previewTimer = setTimeout(() => { if (!_drag) setPreviewImg(wrap, endSvg); }, spec.dur * 1000 + 20);
+    _previewTimer = setTimeout(() => { if (!_drag) showStaticPreview(); }, dur * 1000 + 300);
 }
 
 // ─── Preview animation chain ──────────────────────────────────────────────
@@ -2763,25 +2846,115 @@ function buildAnimSpec() {
     };
 }
 
+let _animBlobUrl   = null;
+let _animHiddenImg = null;
+
+// Firefox computes feTurbulence in SVG coordinate space regardless of CSS
+// display size, so inline SVG always renders correctly there. Only Chrome
+// needs the hidden-img + rAF canvas pipeline to lock rasterization to 1280×720.
+const _isChrome = !!(window.chrome && (window.chrome.webstore || window.chrome.runtime)) ||
+                  /Chrome\//.test(navigator.userAgent) && !/Edg\/|OPR\//.test(navigator.userAgent);
+
 function applyAnimation() {
     if (!currentGenome || animSpecs.length === 0) return;
-    const opts = {
-        gpuOffload: document.getElementById('gpuToggle').checked,
-        optimizeSpeed: document.getElementById('optimizeSpeedToggle').checked,
-    };
+
+    if (_animRaf      !== null) { cancelAnimationFrame(_animRaf);      _animRaf      = null; }
+    if (_crossfadeRaf !== null) { cancelAnimationFrame(_crossfadeRaf); _crossfadeRaf = null; }
+    ++_transitionGen;
+
+    if (_animHiddenImg) { _animHiddenImg.remove(); _animHiddenImg = null; }
+    if (_animBlobUrl)   { URL.revokeObjectURL(_animBlobUrl); _animBlobUrl = null; }
+
     const { W, H, outW, outH, viewBox } = getViewportConfig();
-    Object.assign(opts, { viewBox, outW, outH });
-    currentAnimatedSVG = embedAllMeta(genomeToSVGAnimated(currentGenome, animSpecs, W, H, 'anim', opts), currentGenome, animSpecs);
+    const opts = {
+        gpuOffload:    document.getElementById('gpuToggle').checked,
+        optimizeSpeed: document.getElementById('optimizeSpeedToggle').checked,
+        viewBox, outW, outH
+    };
+    currentAnimatedSVG = embedAllMeta(
+        genomeToSVGAnimated(currentGenome, animSpecs, W, H, 'anim', opts),
+        currentGenome, animSpecs
+    );
+
     const wrap = document.getElementById('svgPreviewWrap');
-    wrap.innerHTML = currentAnimatedSVG;
-    wrap.querySelectorAll('animate, animateTransform').forEach(a => { try { a.beginElement(); } catch(e) {} });
     wrap.style.display = 'flex';
     document.getElementById('previewEmpty').style.display = 'none';
+
+    const pad      = 32;
+    const wrapRect = wrap.getBoundingClientRect();
+    const scale    = Math.min((wrapRect.width - pad) / BASE_W, (wrapRect.height - pad) / BASE_H, 1);
+    const displayW = Math.round(BASE_W * scale);
+    const displayH = Math.round(BASE_H * scale);
+
+    wrap.innerHTML = '';
+
+    if (_isChrome) {
+        // Chrome: hidden <img> at 1280×720 (no CSS transform) drives correct
+        // filter rasterization; a canvas copies each SMIL frame via rAF.
+        _animBlobUrl = URL.createObjectURL(new Blob([currentAnimatedSVG], { type: 'image/svg+xml' }));
+
+        _animHiddenImg = document.createElement('img');
+        _animHiddenImg.style.cssText = [
+            'position:fixed', 'left:0', 'top:0',
+            `width:${BASE_W}px`, `height:${BASE_H}px`,
+            'max-width:none', 'max-height:none',
+            'opacity:0.001',       // non-zero → browser rasterizes & animates
+            'pointer-events:none',
+            'z-index:-1',          // behind body background, never visible
+        ].join(';') + ';';
+        document.body.appendChild(_animHiddenImg);
+
+        const dpr = window.devicePixelRatio || 1;
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(BASE_W * dpr);
+        canvas.height = Math.round(BASE_H * dpr);
+        canvas.style.cssText = `width:${displayW}px;height:${displayH}px;display:block;border-radius:4px;flex-shrink:0;`;
+        wrap.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
+        const gen = _transitionGen;
+        _animHiddenImg.onload = () => {
+            if (gen !== _transitionGen) return;
+            function tick() {
+                if (gen !== _transitionGen) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(_animHiddenImg, 0, 0, canvas.width, canvas.height);
+                _animRaf = requestAnimationFrame(tick);
+            }
+            _animRaf = requestAnimationFrame(tick);
+        };
+        _animHiddenImg.src = _animBlobUrl;
+    } else {
+        // Firefox (and others): feTurbulence is coordinate-space based so inline
+        // SVG always produces correct filters. Use a positioned container so the
+        // 1280×720 SVG is CSS-scaled to fit without affecting layout.
+        const outer = document.createElement('div');
+        outer.style.cssText = `position:relative;width:${displayW}px;height:${displayH}px;flex-shrink:0;border-radius:4px;overflow:hidden;`;
+
+        const inner = document.createElement('div');
+        inner.style.cssText = `position:absolute;top:0;left:0;width:${BASE_W}px;height:${BASE_H}px;transform:scale(${scale.toFixed(4)});transform-origin:top left;`;
+        inner.innerHTML = currentAnimatedSVG;
+
+        const svgEl = inner.querySelector('svg');
+        if (svgEl) {
+            svgEl.style.cssText = `width:${BASE_W}px;height:${BASE_H}px;display:block;`;
+            inner.querySelectorAll('animate, animateTransform').forEach(a => {
+                try { a.beginElement(); } catch(e) {}
+            });
+        }
+
+        outer.appendChild(inner);
+        wrap.appendChild(outer);
+    }
+
     document.getElementById('animBadge').classList.add('visible');
     showOutputButtons(true);
 }
 
 function stopAnimation() {
+    if (_animRaf      !== null) { cancelAnimationFrame(_animRaf);      _animRaf      = null; }
+    if (_animHiddenImg) { _animHiddenImg.remove(); _animHiddenImg = null; }
+    if (_animBlobUrl)   { URL.revokeObjectURL(_animBlobUrl); _animBlobUrl = null; }
     currentAnimatedSVG = null;
     showStaticPreview();
     document.getElementById('animBadge').classList.remove('visible');

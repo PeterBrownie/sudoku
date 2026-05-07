@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Compare current times across cities worldwide, including US Air Force bases. Instant timezone converter for Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, and hundreds more locations.">
+  <meta name="description" content="Compare current times across cities worldwide, including US Air Force bases. Instant timezone converter for Ramstein AB, Kadena AB, Osan AB, Al Udeid AB, Eglin AFB, and hundreds more locations.">
   <meta property="og:title" content="Timezone Tables — Easily Compare Times Around The World">
-  <meta property="og:description" content="Compare current times across US Air Force bases, Space Force stations, and cities worldwide. Instant timezone converter for Ramstein AB, Kadena AB, Al Udeid AB, Eglin AFB, and hundreds more.">
+  <meta property="og:description" content="Compare current times across US Air Force bases, Space Force stations, and cities worldwide. Instant timezone converter for Ramstein AB, Kadena AB, Osan AB, Al Udeid AB, Eglin AFB, and hundreds more.">
   <meta property="og:url" content="https://peterbrown.space/timezone-converter">
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
   <meta property="og:type" content="website">
@@ -1581,12 +1581,12 @@
     // Header
     let thead = '<tr>';
     active.forEach(col => {
-      const abbr    = tzAbbr(now, col.cityObj.tz);
+      const abbr    = tzAbbr(start, col.cityObj.tz);
       const subPart = col.cityObj.sub ? ` <span class="th-sub">· ${col.cityObj.sub}</span>` : '';
       thead += `
         <th draggable="true" data-slot-id="${col.id}">
           <span class="th-city">${col.cityObj.city}${subPart}</span>
-          <span class="th-date">${fmtDate(now, col.cityObj.tz)}</span>
+          <span class="th-date">${fmtDate(start, col.cityObj.tz)}</span>
           <span class="th-abbr">${abbr}</span>
           <div class="th-actions">
             <button class="th-btn" draggable="false" data-action="edit-slot" data-slot-id="${col.id}">edit</button>
