@@ -1251,7 +1251,7 @@
     return resolved.map((cityObj, i) => ({ id: i + 1, cityObj }));
   }
 
-  let slots = slotsFromURL() ?? [{ id: 1, cityObj: _localCity }, { id: 2, cityObj: null }];
+  let slots = slotsFromURL() ?? (_localCity ? [{ id: 1, cityObj: _localCity }] : [{ id: 1, cityObj: null }]);
   let nextId = slots.length + 1;
   let openDropdownId = null;
   let colDragSrcId = null;
