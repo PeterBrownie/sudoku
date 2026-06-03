@@ -993,6 +993,19 @@ function renderStateChanges(changes, previousEnvironment, previousCharacter) {
     var invLines = [];
     Object.keys(newInvMap).forEach(function(name) { if (!oldInvMap[name]) invLines.push('<span style="color:hsl(var(--accent-h),100%,85%);">+ ' + escapeHtml(name) + '</span>'); });
     Object.keys(oldInvMap).forEach(function(name) { if (!newInvMap[name]) invLines.push('<span style="color:#ffb3b3;">- ' + escapeHtml(name) + '</span>'); });
+    Object.keys(newInvMap).forEach(function(name) {
+        if (!oldInvMap[name]) return;
+        var oldQty = oldInvMap[name].quantity;
+        var newQty = newInvMap[name].quantity;
+        var oldNum = oldQty != null ? Number(oldQty) : null;
+        var newNum = newQty != null ? Number(newQty) : null;
+        if (oldNum !== null && newNum !== null && oldNum !== newNum) {
+            var dir = newNum > oldNum ? '+' : '-';
+            var diff = Math.abs(newNum - oldNum);
+            var color = newNum > oldNum ? 'hsl(var(--accent-h),100%,85%)' : '#ffb3b3';
+            invLines.push('<span style="color:' + color + ';">' + dir + ' ' + escapeHtml(name) + ' (' + oldNum + ' → ' + newNum + ')</span>');
+        }
+    });
     if (invLines.length > 0) {
         html += fmtRow(fmtLabel('Inventory', '<ul style="margin:0.2em 0 0 1.2em;">' + invLines.map(function(l){return '<li>'+l+'</li>';}).join('') + '</ul>', '#ce93d8'));
     }
