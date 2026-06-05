@@ -670,8 +670,8 @@ body {
     border-radius: 0;
     padding: 0;
     min-height: 80px;
-    max-height: none;
-    flex: 1 1 0;
+    /* 240px reserves space for padding, title, button, and gaps */
+    max-height: min(calc(92vh - 240px), 580px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
