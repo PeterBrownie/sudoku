@@ -466,6 +466,30 @@
         #float-restart.visible { opacity: 1; pointer-events: auto; }
         #float-restart:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
 
+        #float-undo, #float-redo {
+            position: absolute;
+            top: 10px;
+            width: 26px;
+            height: 26px;
+            background: rgba(0,0,0,0.45);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.35);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, color 0.15s, background 0.15s;
+            z-index: 50;
+        }
+        #float-undo { left: 42px; }
+        #float-redo { left: 74px; }
+        #float-undo.visible, #float-redo.visible { opacity: 1; pointer-events: auto; }
+        #float-undo:hover, #float-redo:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
+
         #fullscreen-btn {
             position: fixed;
             bottom: 14px;
@@ -1899,6 +1923,8 @@
 <div id="grid-container">
     <div id="grid"></div>
     <button id="float-restart" title="Restart (New Random)">↺</button>
+    <button id="float-undo" title="Undo last evolution">⬅</button>
+    <button id="float-redo" title="Redo evolution">➡</button>
     <button id="reset-view" title="Reset view">Reset view</button>
 </div>
 
@@ -2935,6 +2961,8 @@ function mutateGenome(genome, opts = {}) {
 // ─── UI ──────────────────────────────────────────────────────────────────
 
 const genomes = new Array(9).fill(null);
+const generationHistory = []; // undo stack
+const redoHistory = [];      // redo stack
 let selectedIdx = -1;
 let wrappers = [];
 let canvases = [];
@@ -3099,7 +3127,17 @@ function setSelected(idx) {
     }
 }
 
+function updateHistoryBtns() {
+    document.getElementById('float-undo')?.classList.toggle('visible', generationHistory.length > 0);
+    document.getElementById('float-redo')?.classList.toggle('visible', redoHistory.length > 0);
+}
+
 function evolveFrom(parentIdx) {
+    // Save snapshot before evolving; new evolution clears the redo branch
+    generationHistory.push({ genomes: genomes.map(deepClone), selectedIdx });
+    redoHistory.length = 0;
+    updateHistoryBtns();
+
     const parent = genomes[parentIdx];
     const opts = getOpts();
     const newGenomes = new Array(9);
@@ -3115,6 +3153,26 @@ function evolveFrom(parentIdx) {
     // Re-render all
     for (let i = 0; i < 9; i++) renderCell(i);
     setSelected(4); // select parent in center
+}
+
+function undoEvolution() {
+    if (generationHistory.length === 0) return;
+    redoHistory.push({ genomes: genomes.map(deepClone), selectedIdx });
+    const snapshot = generationHistory.pop();
+    for (let i = 0; i < 9; i++) { genomes[i] = snapshot.genomes[i]; cellCache[i] = null; }
+    for (let i = 0; i < 9; i++) renderCell(i);
+    setSelected(snapshot.selectedIdx);
+    updateHistoryBtns();
+}
+
+function redoEvolution() {
+    if (redoHistory.length === 0) return;
+    generationHistory.push({ genomes: genomes.map(deepClone), selectedIdx });
+    const snapshot = redoHistory.pop();
+    for (let i = 0; i < 9; i++) { genomes[i] = snapshot.genomes[i]; cellCache[i] = null; }
+    for (let i = 0; i < 9; i++) renderCell(i);
+    setSelected(snapshot.selectedIdx);
+    updateHistoryBtns();
 }
 
 let layerPanelCellIdx = -1;
@@ -3578,6 +3636,9 @@ function buildGrid() {
 
 function restart() {
     setSelected(-1);
+    generationHistory.length = 0;
+    redoHistory.length = 0;
+    updateHistoryBtns();
     for (let i = 0; i < 9; i++) { genomes[i] = randomGenome(); cellCache[i] = null; }
     for (let i = 0; i < 9; i++) renderCell(i);
     dismissExpHint();
@@ -5517,6 +5578,7 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
         sidebar.style.width = '280px';
     }
     document.getElementById('float-restart').classList.toggle('visible', isCollapsed);
+    updateHistoryBtns();
     requestAnimationFrame(() => requestAnimationFrame(() => {
         refreshCellRects();
         for (let i = 0; i < 9; i++) {
@@ -5527,6 +5589,8 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
 });
 
 document.getElementById('float-restart').addEventListener('click', restart);
+document.getElementById('float-undo').addEventListener('click', undoEvolution);
+document.getElementById('float-redo').addEventListener('click', redoEvolution);
 
 function closeInfoPopup() {
     document.getElementById('info-popup').classList.remove('open');
