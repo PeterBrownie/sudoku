@@ -641,6 +641,8 @@ body {
     max-width: 98vw;
     width: min(760px, 94vw);
     gap: 1.5em;
+    max-height: 92vh;
+    overflow: hidden;
 }
 
 .centered-phase #phase1-title-row {
@@ -667,8 +669,9 @@ body {
     box-shadow: none;
     border-radius: 0;
     padding: 0;
-    min-height: 0;
-    max-height: 40vh;
+    min-height: 80px;
+    max-height: none;
+    flex: 1 1 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
