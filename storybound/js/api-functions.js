@@ -1179,13 +1179,15 @@ async function getActionResponse(character, environment, inventory, action, hist
       '1b) NPC language should be gramatically coherent and contextually appropriate. Do not allow NPC to speak in broken sentences.\n' +
       '2) Include NPC actions when relevant, not only narration.\n' +
       '3) Do not repeat descriptive phrases previously used in the story. Only describe new aspects of the vibe or nearby sounds, if they have changed.\n' +
+      '3b) Do not open your response by restating or paraphrasing the player\'s action. Jump straight into the unfolding consequence or reaction.\n' +
+      '3c) Do not recycle content from recent assistant turns. Every response must advance the scene with new information, new dialogue, or a new development.\n' +
       '4) Do not control the player\'s choices beyond the action already given.\n' +
       '5) Do not both offer and complete a trade in the same turn. Trade completion requires explicit player confirmation.\n' +
-      '6) Keep output to 1-5 short paragraphs, unless (see next rule)\n' +
+      '6) Aim for 2-4 paragraphs for routine actions. For emotionally significant, action-heavy, or dialogue-rich turns, write 4-7 paragraphs. Never truncate a scene prematurely — let each beat breathe.\n' +
       '7) If player mentions they\'re \'looking around\', you may output additional paragraphs describing the environment (e.g, pathways, buildings, houses, rooms, escape routes, windows, items, people, describe the ceiling height, etc; Whatever is reasonable to be noticed from the player\'s perspective in that moment). \n' +
       '7b) When descring the area around the player, you may provide a formatted list.\n' +
       '8) No bullet points (unless a list is expected), no meta commentary. (Rule 7b is an exception)\n' +
-      '9) Assume NPCs are responsible individuals who have general decency and follow common social behavior, stigmas, and boundaries. The player cannot easily convince a character to do something that violates their established personality or role in the game world.\n' +
+      '9) NPCs have their own personalities, but they are not adversarial by default. They can be persuaded, surprised, charmed, or worn down. Only resist firmly when the established story specifically gives them a reason to — not as a blanket default. Interesting story beats are preferable to flat refusals.\n' +
       '10) Do not try to override attributes listed in the environment/character description (e.g., don\'t specify exact opinion values).\n' +
       '11) Storyline should favor the player when player is in a tough spot, but not every turn.\n' +
       '12) NPCs should act according to their expected personality and role in the game world, especially if NPC specifics are outlined in an objective step\'s hidden context.\n' +
@@ -1222,9 +1224,9 @@ async function getActionResponse(character, environment, inventory, action, hist
       'Current environment: ' + JSON.stringify(environmentContext) + '. ' +
       'Nearby entities by name: ' + JSON.stringify(nearbyNames) + '. ' +
       'The player wants to do the following: ' + action + '. ' +
-      'Your response should be realistic. Remember, this is what the player wants to happen. You should only write the story based off realistic expectations. Don\'t allow the player to assert the actions of others. If the player action is directed at a nearby entity, include that entity\'s spoken reply now. ' +
+      'Default to finding a way to make the player\'s action work. Only redirect or resist if the action is outright physically impossible or directly contradicts a firmly established fact in the current scene — and even then, find the closest plausible version rather than refusing outright. Do not moralize, warn, or lecture the player. Do not have NPCs resist player intent without a clear in-world reason. If the player action is directed at a nearby entity, include that entity\'s spoken reply now. ' +
       'It is not your responsibility to identify when an objective step has been completed. ' +
-      'Now, write the next part of the story after the players desired/intended action, following the rules given above. '
+      'Now, write the next part of the story following the player\'s action, following the rules given above. '
     )
   });
 

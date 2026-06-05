@@ -137,6 +137,7 @@ async function loadSavedCharactersOnStartup() {
         savedHistoryData[record.key] = record.history;
     });
     if (records.length > 0) renderSavedCharacterCards(records);
+    else renderMiniChars();
 }
 
 function renderSavedCharacterCards(records) {
@@ -235,6 +236,112 @@ function renderMiniChars() {
     var miniCharsDiv = document.getElementById('miniChars');
     if (!miniCharsDiv) return;
     miniCharsDiv.innerHTML = '';
+
+    // ── Custom character card (always shown) ──────────────────────────────────
+    (function() {
+        var card = document.createElement('div');
+        card.className = 'character-card character-card--static';
+        card.style.flexDirection = 'column';
+        card.style.alignItems = 'stretch';
+
+        var titleEl = document.createElement('div');
+        titleEl.style.fontSize = '1.02em';
+        titleEl.style.fontWeight = '600';
+        titleEl.style.marginBottom = '0.8em';
+        titleEl.textContent = 'Create your own character';
+        card.appendChild(titleEl);
+
+        var grid = document.createElement('div');
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+        grid.style.gap = '0.6em';
+
+        function makeField(labelText, inputType, placeholder, opts) {
+            var wrap = document.createElement('label');
+            wrap.style.display = 'flex';
+            wrap.style.flexDirection = 'column';
+            wrap.style.gap = '0.25em';
+            wrap.style.fontSize = '0.93em';
+            wrap.style.color = '#b0b3b8';
+            wrap.textContent = labelText;
+            var input = document.createElement('input');
+            input.type = inputType || 'text';
+            input.placeholder = placeholder || '';
+            if (opts && opts.min !== undefined) input.min = opts.min;
+            if (opts && opts.max !== undefined) input.max = opts.max;
+            input.style.background = '#1c2125';
+            input.style.color = '#d9d9d9';
+            input.style.border = '1px solid hsl(var(--accent-h),37%,24%)';
+            input.style.borderRadius = '8px';
+            input.style.padding = '0.45em 0.55em';
+            input.style.fontSize = '0.96em';
+            input.style.width = '100%';
+            input.style.boxSizing = 'border-box';
+            wrap.appendChild(input);
+            grid.appendChild(wrap);
+            return input;
+        }
+
+        var nameInput   = makeField('Name',   'text',   'e.g. Morgan');
+        var genderInput = makeField('Gender', 'text',   'e.g. female');
+        var ageInput    = makeField('Age',    'number', '18', { min: 18, max: 120 });
+        var jobInput    = makeField('Job / Title', 'text', 'e.g. herbalist');
+        card.appendChild(grid);
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = 'Create Character';
+        btn.style.marginTop = '1.15em';
+        btn.style.alignSelf = 'flex-end';
+        btn.style.padding = '0.65em 1.2em';
+        btn.style.fontSize = '0.98em';
+        btn.style.fontWeight = '600';
+        btn.style.borderRadius = '8px';
+        btn.style.border = '1px solid hsl(var(--accent-h),70%,41%)';
+        btn.style.background = 'hsl(var(--accent-h),74%,46%)';
+        btn.style.color = '#ffffff';
+        btn.style.cursor = 'pointer';
+        btn.style.transition = 'background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease';
+        btn.onmouseover = function() {
+            btn.style.background = 'hsl(var(--accent-h),70%,41%)';
+            btn.style.borderColor = '#0f4fa0';
+            btn.style.boxShadow = '0 3px 10px rgba(0,0,0,0.28)';
+        };
+        btn.onmouseout = function() {
+            btn.style.background = 'hsl(var(--accent-h),74%,46%)';
+            btn.style.borderColor = 'hsl(var(--accent-h),70%,41%)';
+            btn.style.boxShadow = 'none';
+        };
+        btn.onclick = async function() {
+            var name   = nameInput.value.trim();
+            var gender = genderInput.value.trim();
+            var age    = parseInt(ageInput.value, 10);
+            var job    = jobInput.value.trim();
+            if (!name)   { nameInput.focus();   return; }
+            if (!gender) { genderInput.focus(); return; }
+            if (!Number.isFinite(age) || age < 18) { ageInput.focus(); return; }
+            if (!job)    { jobInput.focus();    return; }
+            var customMiniChar = { name: name, gender: gender, age: age, position: job };
+            try {
+                selectMiniChar(customMiniChar);
+                isEditingCharacterDetails = false;
+                characterDetailsDraftJson = '';
+                characterDetailsDraftError = '';
+                generatedCharacter = Object.assign({}, customMiniChar);
+                setPhase('details');
+                renderCharacterDetails(false, true);
+                await addCharacter();
+                isAddingCharacter = false;
+                renderCharacterDetails(false, false);
+            } catch (e) {
+                console.error('[customCharBtn] Error in addCharacter:', e);
+                isAddingCharacter = false;
+                renderCharacterDetails(false, false);
+            }
+        };
+        card.appendChild(btn);
+        miniCharsDiv.appendChild(card);
+    }());
 
     var generatedMiniChars = miniChars.filter(function(mini) {
         return !mini.isSaved && isAdultAge(mini.age);
