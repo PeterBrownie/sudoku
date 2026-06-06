@@ -285,6 +285,7 @@
         .tag-action { background: #2a1a1a; color: #fca5a5; border: 1px solid #4a2020; }
         .tag-obj    { background: #2a1f0a; color: #fcd34d; border: 1px solid #4a3510; }
         .tag-scene  { background: #1a1a2a; color: #93c5fd; border: 1px solid #1e2a4a; }
+        .tag-world  { background: #1a2a2a; color: #67e8f9; border: 1px solid #1a3a3a; }
 
         @media (max-width: 640px) {
             .agent-table-header { display: none; }
@@ -522,7 +523,7 @@
             list-style: none;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: repeat(3,auto);
+            grid-template-rows: repeat(4,auto);
             grid-auto-flow: column;
             gap: 6px 32px;
         }
@@ -642,9 +643,10 @@
     <a href="#overview"   class="side-toc-item" data-section="overview">  <span class="side-toc-num">01</span><span class="side-toc-label">Overview</span></a>
     <a href="#pipeline"   class="side-toc-item" data-section="pipeline">  <span class="side-toc-num">02</span><span class="side-toc-label">Agent Pipeline</span></a>
     <a href="#npcs"       class="side-toc-item" data-section="npcs">      <span class="side-toc-num">03</span><span class="side-toc-label">NPC Profiles</span></a>
-    <a href="#characters" class="side-toc-item" data-section="characters"><span class="side-toc-num">04</span><span class="side-toc-label">Living Characters</span></a>
-    <a href="#data"       class="side-toc-item" data-section="data">      <span class="side-toc-num">05</span><span class="side-toc-label">Import / Export</span></a>
-    <a href="#privacy"    class="side-toc-item" data-section="privacy">   <span class="side-toc-num">06</span><span class="side-toc-label">Privacy & Setup</span></a>
+    <a href="#world"      class="side-toc-item" data-section="world">     <span class="side-toc-num">04</span><span class="side-toc-label">World System</span></a>
+    <a href="#characters" class="side-toc-item" data-section="characters"><span class="side-toc-num">05</span><span class="side-toc-label">Living Characters</span></a>
+    <a href="#data"       class="side-toc-item" data-section="data">      <span class="side-toc-num">06</span><span class="side-toc-label">Import / Export</span></a>
+    <a href="#privacy"    class="side-toc-item" data-section="privacy">   <span class="side-toc-num">07</span><span class="side-toc-label">Privacy & Setup</span></a>
 </nav>
 
 <nav class="topnav">
@@ -659,7 +661,7 @@
     <div class="hero">
         <div class="hero-wordmark"><span>Storybound</span>AI</div>
         <p class="hero-tagline">
-            An AI-powered interactive RPG that runs entirely in your browser. Build characters, shape narratives, and watch your world evolve — driven by a pipeline of specialized AI agents.
+            An AI-powered interactive RPG that runs entirely in your browser. <br>Build characters, shape narratives, and watch your world evolve. <br>Driven by a pipeline of specialized AI agents.
         </p>
         <a class="hero-cta" href="/storybound">Play StoryboundAI</a>
     </div>
@@ -671,9 +673,10 @@
             <li><a href="#overview">  <span class="num">01</span> Overview</a></li>
             <li><a href="#pipeline">  <span class="num">02</span> The AI Agent Pipeline</a></li>
             <li><a href="#npcs">      <span class="num">03</span> NPC Opinion Profiles</a></li>
-            <li><a href="#characters"><span class="num">04</span> Living Characters</a></li>
-            <li><a href="#data">      <span class="num">05</span> Import / Export</a></li>
-            <li><a href="#privacy">   <span class="num">06</span> Privacy & Setup</a></li>
+            <li><a href="#world">     <span class="num">04</span> World System</a></li>
+            <li><a href="#characters"><span class="num">05</span> Living Characters</a></li>
+            <li><a href="#data">      <span class="num">06</span> Import / Export</a></li>
+            <li><a href="#privacy">   <span class="num">07</span> Privacy & Setup</a></li>
         </ul>
     </div>
 
@@ -766,7 +769,7 @@
             <div class="agent-row">
                 <div class="agent-name">environment_gen
                 <div class="agent-subtitle">Content Generation</div></div>
-                <div class="agent-desc">Builds the <b>full starting environment</b>: location, time of day, temperature, vibe, sounds, an arrival backstory, and up to 5 NPCs — each with a rich opinion profile.</div>
+                <div class="agent-desc">Builds the <b>full starting environment</b>: location, time of day, temperature, vibe, sounds, an arrival backstory, and up to 5 NPCs.</div>
                 <div><span class="agent-tag tag-env">Environment</span></div>
             </div>
 
@@ -780,7 +783,7 @@
             <div class="agent-row">
                 <div class="agent-name">story_narrator
                 <div class="agent-subtitle">Content Generation</div></div>
-                <div class="agent-desc">The main narrative engine — <b>writes what happens</b> when you take an action. Aware of full world state: character stats, environment, NPCs, history, objectives (including secret objective info), and maturity settings.</div>
+                <div class="agent-desc"><b>The main narrative engine. </b>Writes what happens when you take an action. Aware of full world state: character stats, environment, NPCs, history, objectives (including secret objective info), and maturity settings.</div>
                 <div><span class="agent-tag tag-action">Action</span></div>
             </div>
 
@@ -813,6 +816,13 @@
             </div>
 
             <div class="agent-row">
+                <div class="agent-name">npc_memory_recorder
+                <div class="agent-subtitle">World Memory</div></div>
+                <div class="agent-desc">Runs silently in the background after each turn. <b>Decides if any nearby NPC witnessed something worth remembering</b> (a betrayal of trust, a threat, violence, a broken promise, or a notable act). Only memorable events are recorded; routine interactions produce nothing. Memories persist in world storage and are injected as private GM notes the next time that NPC appears in <b>any character's session</b>, capped at 8 memory entries per NPC.</div>
+                <div><span class="agent-tag tag-world">World</span></div>
+            </div>
+
+            <div class="agent-row">
                 <div class="agent-name">objective_planner
                 <div class="agent-subtitle">Content Generation</div></div>
                 <div class="agent-desc">When a new objective is accepted, <b>writes a step-by-step plan</b>: user-visible steps with hidden AI context to guide NPC behavior toward objective completion.</div>
@@ -829,21 +839,21 @@
             <div class="agent-row">
                 <div class="agent-name">npc_inventory_gen
                 <div class="agent-subtitle">Content Generation</div></div>
-                <div class="agent-desc">Lazily generates an <b>NPC's inventory on demand</b> — only when the player chooses to inspect it. Context-aware based on who the NPC is and what's happening.</div>
+                <div class="agent-desc">Lazily generates an <b>NPC's inventory on demand</b>, when the player chooses to inspect it. Context-aware based on who the NPC is and what's happening.</div>
                 <div><span class="agent-tag tag-env">Environment</span></div>
             </div>
 
             <div class="agent-row">
                 <div class="agent-name">scene_focus_gen
                 <div class="agent-subtitle">Helper - Image Gen</div></div>
-                <div class="agent-desc">Proposes <b>5 visual focus options</b> for scene illustration — specific framing choices based on what's happening in the current moment.</div>
+                <div class="agent-desc">Proposes <b>5 visual focus options</b> for scene illustration. Currently disabled for all sessions.</div>
                 <div><span class="agent-tag tag-scene">Scene</span></div>
             </div>
 
             <div class="agent-row">
                 <div class="agent-name">scene_visual_gen
                 <div class="agent-subtitle">Content Generation</div></div>
-                <div class="agent-desc">Builds a detailed <b>image generation prompt</b> from the chosen focus and full scene context, then calls the image model to produce a visual.</div>
+                <div class="agent-desc">Builds a detailed <b>image generation prompt</b> from the chosen focus and full scene context, then calls the image model to produce a visual. Currently disabled for all sessions.</div>
                 <div><span class="agent-tag tag-scene">Scene</span></div>
             </div>
         </div>
@@ -852,10 +862,13 @@
     <!-- NPC opinion profiles -->
     <div class="section" id="npcs">
         <div class="section-label">World Simulation</div>
-        <h2 class="section-title">NPC opinion profiles</h2>
+        <h2 class="section-title">NPC opinion profiles & memory</h2>
         <div class="section-body">
             <p>
                 Every character in your world has a <strong>five-dimensional opinion profile</strong>, maintained and updated by the AI after every interaction. These aren't cosmetic — they influence how NPCs behave, what actions they offer, and how the narrator portrays their reactions.
+            </p>
+            <p>
+                On top of opinions, NPCs now have <strong>persistent memory</strong>. A background agent quietly decides after each turn whether any nearby NPC witnessed something worth remembering — a betrayal, a threat, an act of violence, or a broken promise. Those memories are stored at the world level and injected back as private GM notes the next time that NPC appears, even in a completely different character's session. If you wronged someone, they'll remember it when your other character asks about you.
             </p>
         </div>
 
@@ -887,7 +900,7 @@
             </div>
         </div>
 
-        <div class="opinion-demo">
+        <!-- <div class="opinion-demo">
             <div class="opinion-demo-title">Example — Tavern keeper, mid-game</div>
             <div class="opinion-row">
                 <div class="opinion-label">overall</div>
@@ -923,6 +936,65 @@
                     <div class="opinion-bar-fill" style="width:7.5%;background:linear-gradient(90deg,#fca5a5,#ef4444);left:50%;transform:scaleX(-1);transform-origin:left;"></div>
                 </div>
                 <div class="opinion-value">−0.15</div>
+            </div>
+        </div> -->
+    </div>
+
+    <!-- World System -->
+    <div class="section" id="world">
+        <div class="section-label">World System</div>
+        <h2 class="section-title">One world, many characters</h2>
+        <div class="section-body">
+            <p>
+                Every story lives inside a <strong>World</strong>. Each world is a shared container that persists independently of any single player character. Worlds are automatically named during environment generation, and you can rename them at any time. Characters within the same world can never meet each other (the AI enforces this narratively), but they share the physical reality of that world: locations, NPCs, and history all carry over.
+            </p>
+            <p>
+                Switching characters works like GTA. You pick a world from the start screen, then choose which character to play. When a new character enters the same world, they receive context from the history left behind: prior characters' story logs shape the environment generation, and known NPCs appear with consistent descriptions and last-known locations.
+            </p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-card-icon">🌐</div>
+                <div class="feature-card-title">Shared world state</div>
+                <div class="feature-card-desc">NPCs, locations, and world history persist across every character in the same world. What one character does shapes what the next one finds.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">🧠</div>
+                <div class="feature-card-title">NPC memory</div>
+                <div class="feature-card-desc">NPCs remember notable events involving other characters. A betrayal by one character will color how that NPC reacts to the next one who asks about them.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">🗺️</div>
+                <div class="feature-card-title">World Knowledge panel</div>
+                <div class="feature-card-desc">Browse all known NPCs (with memories), visited locations, and other characters in your world. Available any time from the in-game sidebar.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">🔀</div>
+                <div class="feature-card-title">Character switching</div>
+                <div class="feature-card-desc">Return to the start screen to switch characters mid-story. Each character has their own history, inventory, and objectives within the shared world.</div>
+            </div>
+        </div>
+
+        <div class="schema-block" style="margin-top: 28px;">
+            <div class="schema-block-header"><span>World storage schema</span></div>
+            <div class="schema-rows">
+                <div class="schema-row">
+                    <div class="schema-key">name</div>
+                    <div class="schema-val">AI-generated world name (2–5 words), produced during the first character's environment generation. <b>Editable inline</b> from the start screen.</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">characters[]</div>
+                    <div class="schema-val">Array of player characters, each with their own environment snapshot, action history, inventory, objectives, and story log.</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">npcs[]</div>
+                    <div class="schema-val">World-level NPC roster with name, description, gender, last known location, which characters have met them, and a <b>memories[]</b> array of notable event notes (capped at 8 per NPC).</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">locations[]</div>
+                    <div class="schema-val">All distinct locations encountered across any character in this world, with last-visited-by tracking.</div>
+                </div>
             </div>
         </div>
     </div>
@@ -970,7 +1042,7 @@
         <h2 class="section-title">Import / Export</h2>
         <div class="section-body">
             <p>
-                Your characters, story history, and settings can be exported as a single JSON file and re-imported at any time — across browsers or devices. The API key is intentionally excluded from exports.
+                Your characters, story history, and settings can be exported as a single JSON file and re-imported at any time. The API key is intentionally excluded from exports.
             </p>
         </div>
 
@@ -979,15 +1051,15 @@
             <div class="schema-rows">
                 <div class="schema-row">
                     <div class="schema-key">_integrity</div>
-                    <div class="schema-val">A <b>SHA-256 hash</b> of the entire payload, computed at export time. On import, the hash is recomputed and compared — a mismatch surfaces a warning but does not block the import. I added this so anyone who "cheats" is acknowledged. Any file with broken integrity is "flagged", but that doesn't really do anything and can probably be easily faked.</div>
+                    <div class="schema-val">A <b>SHA-256 hash</b> of the entire payload, computed at export time. On import, the hash is recomputed and compared. This can detect manual data modifications, but mismatches only surface a warning and does not block the import. I added this so anyone who "cheats" is acknowledged, but allowed.</div>
                 </div>
                 <div class="schema-row">
                     <div class="schema-key">storybound_settings</div>
                     <div class="schema-val">API provider URL, model names, mature content setting. <b>API key is stripped</b> before export.</div>
                 </div>
                 <div class="schema-row">
-                    <div class="schema-key">storybound_characters</div>
-                    <div class="schema-val">Full array of saved characters, each with their environment, NPCs, action history, objectives, and last-played timestamp.</div>
+                    <div class="schema-key">storybound_worlds</div>
+                    <div class="schema-val">Full array of saved worlds, each containing characters, world-level NPCs (with memories), visited locations, and timestamps. Replaces the legacy <span class="chip">storybound_characters</span> key. Old saves are automatically migrated on first load.</div>
                 </div>
             </div>
         </div>
@@ -996,7 +1068,7 @@
             <div class="privacy-icon">🔐</div>
             <div class="privacy-text">
                 <strong>Hash verification</strong>
-                <p>The SHA-256 integrity check detects whether a backup file was manually edited after export. It's a tamper warning, not a restriction — modified files still import successfully with a notice. To the cheaters: I see you...</p>
+                <p>The SHA-256 integrity check detects whether a backup file was manually edited after export. It's a tamper warning, not a restriction. Modified files still import successfully with a notice. To the cheaters: I see you...</p>
             </div>
         </div>
     </div>
