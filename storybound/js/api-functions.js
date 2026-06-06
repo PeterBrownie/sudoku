@@ -935,10 +935,19 @@ function mergeCharacterPatch(currentCharacter, patch) {
   }
 
   if ('abilities' in patch && Array.isArray(patch.abilities)) {
-    var normalizedAbilities = normalizeAbilityList(patch.abilities);
+    var patchAbilities = normalizeAbilityList(patch.abilities);
     var currentAbilities = normalizeAbilityList(currentCharacter.abilities || []);
-    if (JSON.stringify(normalizedAbilities) !== JSON.stringify(currentAbilities)) {
-      merged.abilities = normalizedAbilities;
+    // Merge: update/add from patch, but never remove existing abilities
+    var abilityMap = {};
+    for (var ai = 0; ai < currentAbilities.length; ai++) {
+      abilityMap[currentAbilities[ai].name.toLowerCase()] = currentAbilities[ai];
+    }
+    for (var pi = 0; pi < patchAbilities.length; pi++) {
+      abilityMap[patchAbilities[pi].name.toLowerCase()] = patchAbilities[pi];
+    }
+    var mergedAbilities = Object.values(abilityMap);
+    if (JSON.stringify(mergedAbilities) !== JSON.stringify(currentAbilities)) {
+      merged.abilities = mergedAbilities;
     }
   }
 
@@ -1740,8 +1749,10 @@ async function regenerateEnvironmentState(character, environment, inventory, act
       '- Avoid highly specific or temporary details (exact objects, exact actions, symbolic interpretations, narrative commentary).\n' +
       '- Do not include sentiment labels or parenthetical meta in short_description.\n' +
       '- Do not include dialogue.\n' +
-      '- If ability progression happened, character_patch.abilities must be the FULL final ability list after the change.\n' +
-      '- For ability improvements, update the existing ability description (or name only if truly renamed).\n' +
+      '- If ability progression happened, character_patch.abilities must be the FULL final ability list after the change — include ALL existing abilities plus any new/updated ones.\n' +
+      '- For ability improvements, update the existing ability description (or name only if truly renamed); all other abilities must be carried over unchanged.\n' +
+      '- Do NOT include abilities in character_patch unless ability progression is the specific reason for this character update. If you are only changing agility, flaws, description, or limitations, omit abilities entirely.\n' +
+      '- Never remove an existing ability unless it was explicitly and permanently lost as a direct consequence of the story action (e.g. a magical curse stripped it away). If unsure, keep the ability.\n' +
       '- Do not add temporary buffs/debuffs to character_patch.\n' +
       '- Only update limitations when they have permanently and functionally changed — e.g. a permanent injury, a newly discovered hard constraint, or an existing limitation being fully resolved. Do NOT update limitations for temporary states (fatigue, intoxication, emotional state, short-term conditions) or narrative flavor. If the limitation will likely be gone next turn, do not add it.\n' +
       '- Only update abilities when the player has genuinely learned or meaningfully improved a skill. Do not update abilities for one-off successful actions, temporary boosts, or context-specific advantages.\n' +
@@ -1826,7 +1837,7 @@ async function updateInventory(character, environment, prevInventory, action, re
         'Action taken: ' + action + '\n' +
         'AI response: ' + response + '\n' +
         'Objective tracker with hidden notes (may imply item gains/losses): ' + JSON.stringify(objectiveContextHidden) + '\n' +
-        'Update the player\'s inventory to reflect any changes that should have occurred as a result of the action and its outcome. The item description should try to indicate how the item was acquired. If it was crafted from existing items, purchased, found, stolen, or otherwise acquired. If an item was used up, it should be removed from the inventory. This does not mean empty containers should be removed. Generic descriptions of containments are not helpful; Instead, specific lists of items inside containers should be included in the description of the container item. If describing currency, be specific about the type (e.g., \'Gold coins\', \'Silver coins\'). Each inventory item object will have its own quantity and description values. Ensure you are using the quantity value instead of including the total in the description of the item. If describing clothing, must specify if it is worn or not. Respond in the required JSON schema. '
+        'Update the player\'s inventory to reflect any changes that should have occurred as a result of the action and its outcome. The item description should try to indicate how the item was acquired. If it was crafted from existing items, purchased, found, stolen, or otherwise acquired. If an item was used up, it should be removed from the inventory. This does not mean empty containers should be removed. Generic descriptions of containments are not helpful; Instead, specific lists of items inside containers should be included in the description of the container item. If describing currency, be specific about the type (e.g., \'Gold coins\', \'Silver coins\'). Consolidate currency of the same type into a single inventory entry using the quantity field (e.g. multiple gold coin entries should become one entry with the combined quantity). Each inventory item object will have its own quantity and description values. Ensure you are using the quantity value instead of including the total in the description of the item. If describing clothing, must specify if it is worn or not. Respond in the required JSON schema. '
       )
     }
   ];
