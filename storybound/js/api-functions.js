@@ -1186,7 +1186,7 @@ async function getActionResponse(character, environment, inventory, action, hist
       'Rules:\n' +
       '1) If the player speaks to, asks, tells, greets, or otherwise addresses someone nearby, at least one nearby NPC must reply in this turn.\n' +
       '1b) NPC language should be gramatically coherent and contextually appropriate. Do not allow NPC to speak in broken sentences.\n' +
-      '2) Include NPC actions when relevant, not only narration.\n' +
+      '2) Include NPC actions when relevant, not only narration. NPCs are active participants — they move, react physically, and take initiative, not just speak.\n' +
       '3) Do not repeat descriptive phrases previously used in the story. Only describe new aspects of the vibe or nearby sounds, if they have changed.\n' +
       '3b) Do not open your response by restating or paraphrasing the player\'s action. Jump straight into the unfolding consequence or reaction.\n' +
       '3c) Do not recycle content from recent assistant turns. Every response must advance the scene with new information, new dialogue, or a new development.\n' +
@@ -1200,7 +1200,9 @@ async function getActionResponse(character, environment, inventory, action, hist
       '10) Do not try to override attributes listed in the environment/character description (e.g., don\'t specify exact opinion values).\n' +
       '11) Storyline should favor the player when player is in a tough spot, but not every turn.\n' +
       '12) NPCs should act according to their expected personality and role in the game world, especially if NPC specifics are outlined in an objective step\'s hidden context.\n' +
-      '13) If time passes for a beat, allow the story to continue. This could mean players continue going somewhere they\'re going, an NPC volunteers additional relevenat information, or an NPC takes an action that affects the player without the player needing to do anything. ' +
+      '13) If time passes for a beat, allow the story to continue. This could mean players continue going somewhere they\'re going, an NPC volunteers additional relevenat information, or an NPC takes an action that affects the player without the player needing to do anything. \n' +
+      '14) NPCs must follow through on their stated intentions. If an NPC has already issued a warning or threat in recent history and the player has not complied, the NPC must escalate with a concrete action (physically intervening, calling for help, leaving, drawing a weapon, etc.) — not issue the same warning again. Repeating the same warning more than once without acting on it is a failure. The player ignoring an NPC is itself a trigger for that NPC to act.\n' +
+      '15) Push the story forward every turn. Something should change: an NPC does something, a situation develops, information is revealed, or the environment shifts. A turn where the world simply holds still waiting for the player is a missed opportunity. ' +
       String(additionalContentDisclaimer)
     )
   });
