@@ -980,13 +980,30 @@ function renderStateChanges(changes, previousEnvironment, previousCharacter) {
     Object.keys(charPatch).forEach(function(k) {
         var entry = charPatch[k];
         var label = k.replace(/_/g,' ').replace(/\b\w/g,function(l){return l.toUpperCase();});
-        var newVal = Array.isArray(entry.new)
-            ? '<ul style="margin:0.2em 0 0 1.2em;">' + entry.new.map(function(v) {
+        var newVal;
+        if (k === 'abilities' && Array.isArray(entry.new)) {
+            var oldAbilityMap = {};
+            var oldArr = Array.isArray(entry.old) ? entry.old : [];
+            oldArr.forEach(function(v) { if (v && v.name) oldAbilityMap[v.name.toLowerCase()] = v; });
+            var changedAbilities = entry.new.filter(function(v) {
+                if (!v || !v.name) return false;
+                var prev = oldAbilityMap[v.name.toLowerCase()];
+                // Show if new or description changed
+                return !prev || (String(v.description || '').trim() !== String(prev.description || '').trim());
+            });
+            if (!changedAbilities.length) return;
+            newVal = '<ul style="margin:0.2em 0 0 1.2em;">' + changedAbilities.map(function(v) {
+                return '<li><strong>' + escapeHtml(v.name) + '</strong>' + (v.description ? ' - ' + escapeHtml(v.description) : '') + '</li>';
+            }).join('') + '</ul>';
+        } else if (Array.isArray(entry.new)) {
+            newVal = '<ul style="margin:0.2em 0 0 1.2em;">' + entry.new.map(function(v) {
                 if (typeof v === 'string') return '<li>' + escapeHtml(v) + '</li>';
                 if (v && v.name) return '<li><strong>' + escapeHtml(v.name) + '</strong>' + (v.description ? ' - ' + escapeHtml(v.description) : '') + '</li>';
                 return '';
-              }).join('') + '</ul>'
-            : escapeHtml(String(entry.new));
+              }).join('') + '</ul>';
+        } else {
+            newVal = escapeHtml(String(entry.new));
+        }
         html += fmtRow(fmtLabel(label, newVal, '#a5d6a7'));
     });
 
