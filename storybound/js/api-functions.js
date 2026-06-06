@@ -1191,6 +1191,7 @@ async function getActionResponse(character, environment, inventory, action, hist
       '3b) Do not open your response by restating or paraphrasing the player\'s action. Jump straight into the unfolding consequence or reaction.\n' +
       '3c) Do not recycle content from recent assistant turns. Every response must advance the scene with new information, new dialogue, or a new development.\n' +
       '4) Do not control the player\'s choices beyond the action already given.\n' +
+      '4b) If the player\'s action includes spoken dialogue or muttered words, reproduce their exact words in the response — do not paraphrase or summarize what the player said. This applies only to the player character; NPC dialogue may be omitted or summarized depending on context.\n' +
       '5) Do not both offer and complete a trade in the same turn. Trade completion requires explicit player confirmation.\n' +
       '6) Aim for 2-4 paragraphs for routine actions. For emotionally significant, action-heavy, or dialogue-rich turns, write 4-7 paragraphs. Never truncate a scene prematurely — let each beat breathe.\n' +
       '7) If player mentions they\'re \'looking around\', you may output additional paragraphs describing the environment (e.g, pathways, buildings, houses, rooms, escape routes, windows, items, people, describe the ceiling height, etc; Whatever is reasonable to be noticed from the player\'s perspective in that moment). \n' +
