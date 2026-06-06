@@ -2480,3 +2480,73 @@ button.disabled {
   color: #e57373;
   font-size: 0.95rem;
 }
+
+/* Story log modal */
+#storyLogModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000000;
+  background: rgba(0,0,0,0.65);
+  align-items: center;
+  justify-content: center;
+}
+#storyLogModal.open {
+  display: flex;
+}
+#storyLogModalBox {
+  background: #1a1d21;
+  border: 1px solid hsl(var(--accent-h),30%,30%);
+  border-radius: 12px;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.7);
+  width: min(680px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.4em 1.6em 1.2em;
+}
+#storyLogModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9em;
+}
+#storyLogModalTitle {
+  color: hsl(var(--accent-h),70%,72%);
+  font-size: 1.05em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+#storyLogModalClose {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.3em;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.2em;
+  transition: color 0.15s;
+}
+#storyLogModalClose:hover { color: #ccc; }
+#storyLogModalBody {
+  overflow-y: auto;
+  flex: 1;
+  color: #c5c8ce;
+  font-size: 0.97em;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.story-log-view-btn {
+  background: none;
+  border: none;
+  color: hsl(var(--accent-h),55%,60%);
+  font-size: 0.88em;
+  cursor: pointer;
+  padding: 0 0 0 0.5em;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+  vertical-align: baseline;
+}
+.story-log-view-btn:hover { opacity: 1; }

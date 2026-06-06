@@ -49,6 +49,28 @@ function renderMarkdown(md) {
 // --- Tooltip helpers: show/hide floating tooltip (only visible when mouse is on target) ---
 let tooltipHoverState = { overTarget: false, hideTimeout: null };
 
+function showStoryLogModal(fullLog) {
+    var modal = document.getElementById('storyLogModal');
+    var body = document.getElementById('storyLogModalBody');
+    var closeBtn = document.getElementById('storyLogModalClose');
+    if (!modal || !body) return;
+    body.textContent = fullLog || '(No story log yet.)';
+    modal.classList.add('open');
+    // Scroll to bottom so the most recent entry is visible
+    setTimeout(function() { body.scrollTop = body.scrollHeight; }, 0);
+    function close() {
+        modal.classList.remove('open');
+        modal.removeEventListener('click', onOverlayClick);
+        closeBtn.removeEventListener('click', close);
+        document.removeEventListener('keydown', onKey);
+    }
+    function onOverlayClick(e) { if (e.target === modal) close(); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', onOverlayClick);
+    document.addEventListener('keydown', onKey);
+}
+
 function showGlobalTooltip(html, anchorElem) {
     let tooltip = document.getElementById('global-tooltip');
     if (!tooltip) {

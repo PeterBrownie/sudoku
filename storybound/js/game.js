@@ -819,8 +819,14 @@ async function handleActionLoop(selectedAction) {
       '<div>' + highlightCharacterTermsInHtml(renderMarkdown(response)) + '</div>' +
       (changesHtml ? '<div>' + highlightCharacterTermsInHtml(changesHtml) + '</div>' : '');
 
-    // 14. Wire trait undo buttons now that they're in the DOM
+    // 14. Wire trait undo buttons and story log button now that they're in the DOM
     bindTraitUndoButtons(actionResponseArea);
+    var viewLogBtn = actionResponseArea.querySelector('[data-action="view-story-log"]');
+    if (viewLogBtn) {
+      viewLogBtn.addEventListener('click', function() {
+        showStoryLogModal(currentStoryLog);
+      });
+    }
 
     // 15. Append optional objectives and NPC inventory buttons (must be after innerHTML is set)
     if (Array.isArray(changes.optionalObjectives) && changes.optionalObjectives.length > 0) {
@@ -1015,6 +1021,7 @@ function renderStateChanges(changes, previousEnvironment, previousCharacter) {
         var escaped = escapeHtml(changes.storyLogAddition.trim());
         html += '<div style="margin-top:0.7em;font-size:0.95em;color:#b0b3b8;opacity:0.8;">' +
             '<span style="color:#9fb3c8;">Story log updated:</span>' +
+            '<button class="story-log-view-btn" data-action="view-story-log">View full log</button>' +
             '<div style="margin-top:0.2em;max-height:7.2em;overflow:auto;white-space:pre-wrap;line-height:1.35;">' + escaped + '</div>' +
             '</div>';
     }
