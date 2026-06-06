@@ -10,9 +10,10 @@ var isAddingCharacter = false;
 var isEditingCharacterDetails = false;
 var characterDetailsDraftJson = '';
 var characterDetailsDraftError = '';
-var savedCharacterData = {};
-var savedEnvironmentData = {};
-var savedHistoryData = {};
+
+// Active world/character session IDs (also used by app.js and game.js)
+var currentWorldId = null;
+var currentCharacterId = null;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -126,55 +127,287 @@ function setupCustomActionInput() {
     });
 }
 
-// ─── Load Saved Characters on Startup ────────────────────────────────────────
+// ─── World / Character startup ────────────────────────────────────────────────
 
-async function loadSavedCharactersOnStartup() {
-    var records = loadAllCharacters();
-    if (!Array.isArray(records)) records = [];
-    records.forEach(function(record) {
-        savedCharacterData[record.key] = record.character;
-        savedEnvironmentData[record.key] = record.environment;
-        savedHistoryData[record.key] = record.history;
-    });
-    if (records.length > 0) renderSavedCharacterCards(records);
-    else renderMiniChars();
+async function loadSavedWorldsOnStartup() {
+    var worlds = loadAllWorlds();
+    if (worlds.length > 0) {
+        renderWorldSelectPanel(worlds);
+    } else {
+        // No worlds yet — drop straight into character creation
+        setCharCreationVisible(true);
+        renderMiniChars();
+    }
 }
 
-function renderSavedCharacterCards(records) {
-    // Build miniChars data array from saved records (only adult-age, not already present)
-    records.forEach(function(record) {
+function setCharCreationVisible(visible) {
+    var generateNamesBtn = document.getElementById('generateNamesBtn');
+    var miniCharsDiv = document.getElementById('miniChars');
+    var placeholder = document.getElementById('phase1-placeholder');
+    if (generateNamesBtn) generateNamesBtn.style.display = visible ? '' : 'none';
+    if (miniCharsDiv) miniCharsDiv.style.display = visible ? '' : 'none';
+    if (placeholder) placeholder.style.display = visible ? '' : 'none';
+}
+
+function getOrCreateWorldSelectContainer() {
+    var existing = document.getElementById('worldSelectPanel');
+    if (existing) return existing;
+    var panel = document.createElement('div');
+    panel.id = 'worldSelectPanel';
+    var phase1Box = document.getElementById('phase1-centerbox');
+    if (phase1Box) {
+        var generateNamesBtn = document.getElementById('generateNamesBtn');
+        if (generateNamesBtn) {
+            phase1Box.insertBefore(panel, generateNamesBtn);
+        } else {
+            phase1Box.appendChild(panel);
+        }
+    }
+    return panel;
+}
+
+function renderWorldSelectPanel(worlds) {
+    setCharCreationVisible(false);
+    var panel = getOrCreateWorldSelectContainer();
+    panel.style.display = '';
+    panel.innerHTML = '';
+
+    if (!worlds || worlds.length === 0) {
+        panel.innerHTML = '<div style="color:#888;font-size:0.95em;margin-bottom:0.8em;">No worlds yet. Start by creating a character.</div>';
+    } else {
+        var header = document.createElement('div');
+        header.className = 'world-select-header';
+        header.textContent = 'Your Worlds';
+        panel.appendChild(header);
+
+        worlds.slice().sort(function(a, b) {
+            var at = a.characters.length ? Math.max.apply(null, a.characters.map(function(c) { return new Date(c.lastPlayed || 0).getTime(); })) : new Date(a.createdAt || 0).getTime();
+            var bt = b.characters.length ? Math.max.apply(null, b.characters.map(function(c) { return new Date(c.lastPlayed || 0).getTime(); })) : new Date(b.createdAt || 0).getTime();
+            return bt - at;
+        }).forEach(function(world) {
+            panel.appendChild(buildWorldCard(world));
+        });
+    }
+
+    var newWorldBtn = document.createElement('button');
+    newWorldBtn.className = 'world-new-btn';
+    newWorldBtn.textContent = '+ New World';
+    newWorldBtn.onclick = function() {
+        var world = createWorld('Unnamed World');
+        currentWorldId = world.id;
+        currentCharacterId = null;
+        showCharSelectForWorld(world.id);
+    };
+    panel.appendChild(newWorldBtn);
+}
+
+function buildWorldCard(world) {
+    var card = document.createElement('div');
+    card.className = 'world-card';
+
+    var topRow = document.createElement('div');
+    topRow.className = 'world-card-top';
+
+    // World name (inline editable)
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'world-card-name';
+    nameSpan.textContent = world.name || 'Unnamed World';
+    nameSpan.title = 'Click to rename';
+    nameSpan.onclick = function(e) {
+        e.stopPropagation();
+        startWorldRename(world.id, nameSpan);
+    };
+    topRow.appendChild(nameSpan);
+
+    var actions = document.createElement('div');
+    actions.className = 'world-card-actions';
+
+    var deleteBtn = document.createElement('button');
+    deleteBtn.className = 'world-card-delete';
+    deleteBtn.title = 'Delete world';
+    deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16px" height="16px"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>';
+    deleteBtn.onclick = function(e) {
+        e.stopPropagation();
+        if (!confirm('Delete "' + (world.name || 'this world') + '" and all its characters? This cannot be undone.')) return;
+        deleteWorld(world.id);
+        renderWorldSelectPanel(loadAllWorlds());
+    };
+    actions.appendChild(deleteBtn);
+    topRow.appendChild(actions);
+    card.appendChild(topRow);
+
+    var charCount = Array.isArray(world.characters) ? world.characters.length : 0;
+    var meta = document.createElement('div');
+    meta.className = 'world-card-meta';
+    meta.textContent = charCount === 0 ? 'No characters yet' : charCount + ' character' + (charCount === 1 ? '' : 's');
+    card.appendChild(meta);
+
+    card.onclick = function() {
+        currentWorldId = world.id;
+        currentCharacterId = null;
+        showCharSelectForWorld(world.id);
+    };
+    return card;
+}
+
+function startWorldRename(worldId, nameSpan) {
+    var currentName = nameSpan.textContent;
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.className = 'world-rename-input';
+    input.onclick = function(e) { e.stopPropagation(); };
+
+    nameSpan.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function commit() {
+        var newName = input.value.trim() || currentName;
+        renameWorld(worldId, newName);
+        nameSpan.textContent = newName;
+        input.replaceWith(nameSpan);
+    }
+    input.onblur = commit;
+    input.onkeydown = function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') { input.value = currentName; commit(); }
+    };
+}
+
+// Called from generateEnvironment in app.js to refresh a renamed world name in the DOM
+function refreshWorldNameDisplay(worldId, newName) {
+    // No-op if world select panel is not visible; harmless to call
+}
+
+function showCharSelectForWorld(worldId) {
+    var world = getWorld(worldId);
+    if (!world) return;
+
+    var panel = getOrCreateWorldSelectContainer();
+    panel.style.display = 'none';
+    setCharCreationVisible(true);
+
+    // Reset miniChars to only show this world's saved characters
+    miniChars = miniChars.filter(function(c) { return !c.isSaved; });
+    miniChars = miniChars.filter(function(c) { return !c.isGeneratedForCharSelect; });
+
+    var chars = Array.isArray(world.characters) ? world.characters : [];
+    chars.forEach(function(record) {
         var char = record.character;
         if (!char || !char.name) return;
-        if (!isAdultAge(char.age)) return;
-        var existingMini = miniChars.find(function(c) { return c.isSaved && c.key === record.key; });
-        var lastPlayedValue = record.lastPlayed || (char && char.last_played) || '';
-        if (existingMini) {
-            existingMini.lastPlayed = lastPlayedValue;
-        } else {
-            miniChars.push({
-                key: record.key,
-                name: char.name,
-                gender: char.gender,
-                age: char.age,
-                position: char.position,
-                lastPlayed: lastPlayedValue,
-                isSaved: true,
-                selected: false
-            });
-        }
+        miniChars.push({
+            worldCharId: record.id,
+            worldId: worldId,
+            name: char.name,
+            gender: char.gender,
+            age: char.age,
+            position: char.position,
+            lastPlayed: record.lastPlayed || '',
+            isSaved: true,
+            selected: false
+        });
     });
 
-    renderMiniChars();
+    renderMiniCharsForWorld(worldId, world.name);
 }
 
-function resumeSavedCharacter(key) {
-    var character = savedCharacterData[key];
-    var environment = savedEnvironmentData[key];
-    var history = savedHistoryData[key];
-    if (!character) return;
-    generatedCharacter = Object.assign({}, character);
-    // Delegate to app.js global
-    startGameWithSavedData(character, environment, history);
+function renderMiniCharsForWorld(worldId, worldName) {
+    var miniCharsDiv = document.getElementById('miniChars');
+    if (!miniCharsDiv) return;
+    miniCharsDiv.innerHTML = '';
+
+    // Back button row
+    var backRow = document.createElement('div');
+    backRow.className = 'world-back-row';
+    var backBtn = document.createElement('button');
+    backBtn.className = 'world-back-btn';
+    backBtn.innerHTML = '&#8592; Worlds';
+    backBtn.onclick = function() {
+        miniChars = miniChars.filter(function(c) { return !c.isSaved; });
+        currentWorldId = null;
+        currentCharacterId = null;
+        renderWorldSelectPanel(loadAllWorlds());
+    };
+    var worldLabel = document.createElement('span');
+    worldLabel.className = 'world-back-label';
+    worldLabel.textContent = worldName || 'World';
+    backRow.appendChild(backBtn);
+    backRow.appendChild(worldLabel);
+    miniCharsDiv.appendChild(backRow);
+
+    var savedChars = miniChars
+        .filter(function(c) { return c.isSaved && c.worldId === worldId; })
+        .sort(function(a, b) {
+            var bt = parseLastPlayedTimestamp(b.lastPlayed);
+            var at = parseLastPlayedTimestamp(a.lastPlayed);
+            if (bt === null) bt = -1;
+            if (at === null) at = -1;
+            return bt - at;
+        });
+
+    if (savedChars.length > 0) {
+        var savedHeader = document.createElement('div');
+        savedHeader.style.cssText = 'margin-top:0.5em;margin-bottom:0.4em;font-size:0.92em;color:hsl(var(--accent-h),90%,77%);';
+        savedHeader.textContent = 'Characters';
+        miniCharsDiv.appendChild(savedHeader);
+
+        savedChars.forEach(function(mini) {
+            var card = document.createElement('div');
+            card.className = 'character-card';
+            card.style.cssText = 'cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin:0.2em 0;min-height:unset;font-size:0.97em;';
+
+            var infoDiv = document.createElement('div');
+            infoDiv.style.cssText = 'flex:1;min-width:0;';
+            infoDiv.innerHTML = '<strong>' + escapeHtml(mini.name || '') + '</strong><br>' +
+                '<span style="color:#888;">' + escapeHtml(mini.gender || '') + ', age ' + escapeHtml(String(mini.age || '')) + ', ' + escapeHtml(mini.position || '') + '</span>' +
+                '<span style="color:#b0b3b8;font-size:0.75em;"><br>Last played: ' + formatLastPlayedLabel(mini.lastPlayed) + '</span>';
+
+            var trash = document.createElement('span');
+            trash.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='#FFFFFF' width='20px' height='20px'><path stroke-linecap='round' stroke-linejoin='round' d='m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0'/></svg>";
+            trash.title = 'Remove character';
+            trash.style.cssText = 'opacity:0.5;margin-left:0.7em;cursor:pointer;flex-shrink:0;';
+            trash.onclick = function(e) {
+                e.stopPropagation();
+                if (!confirm('Remove ' + (mini.name || 'this character') + '?')) return;
+                deleteWorldCharacter(worldId, mini.worldCharId);
+                var idx = miniChars.findIndex(function(c) { return c.isSaved && c.worldCharId === mini.worldCharId; });
+                if (idx >= 0) miniChars.splice(idx, 1);
+                renderMiniCharsForWorld(worldId, getWorld(worldId) && getWorld(worldId).name || '');
+            };
+
+            card.appendChild(infoDiv);
+            card.appendChild(trash);
+            card.onclick = function() {
+                resumeSavedCharacter(worldId, mini.worldCharId);
+            };
+            miniCharsDiv.appendChild(card);
+        });
+    }
+
+    // Mix-and-match panel (existing generated chars for new character creation)
+    var generatedMiniChars = miniChars.filter(function(c) { return !c.isSaved && isAdultAge(c.age); });
+    if (generatedMiniChars.length > 0 || true) {
+        // Always show the generate traits section when in a world
+        var newCharHeader = document.createElement('div');
+        newCharHeader.style.cssText = 'margin-top:' + (savedChars.length > 0 ? '1em' : '0.2em') + ';margin-bottom:0.4em;font-size:0.92em;color:hsl(var(--accent-h),90%,77%);';
+        newCharHeader.textContent = 'New Character';
+        miniCharsDiv.appendChild(newCharHeader);
+    }
+
+    // Delegate to existing renderMiniChars for the mix-and-match panel
+    _renderMixAndMatchPanel(miniCharsDiv);
+}
+
+function resumeSavedCharacter(worldId, characterId) {
+    var world = getWorld(worldId);
+    if (!world) return;
+    var record = world.characters.find(function(c) { return c.id === characterId; });
+    if (!record) return;
+    currentWorldId = worldId;
+    currentCharacterId = characterId;
+    generatedCharacter = Object.assign({}, record.character);
+    startGameWithSavedData(record.character, record.environment, record.history, worldId, characterId);
 }
 
 // ─── MiniChar Generation ──────────────────────────────────────────────────────
@@ -203,7 +436,7 @@ async function generateMiniChars() {
         };
         var userMsg = {
             role: 'user',
-            content: 'Generate a list of 10 unique RPG character ideas. For each, provide only: name, gender, age, and position/title. You can use normal, real, and modern names. These characters should be level 2 (there are 20 total levels), which means they are not too powerful. They should each be 25 years old or younger. Do not use any names from this list: Elara, Jax, Kael, Rylan, Toren, Dax, ' + (existingNames.length ? existingNames.join(', ') : 'none') + '. Return as JSON array of objects with fields: name, gender, age, position.'
+            content: 'Generate a list of 10 unique RPG character ideas. For each, provide only: name, gender, age, and position/title. Use first names only — no last names or surnames. You can use normal, real, and modern names. These characters should be level 2 (there are 20 total levels), which means they are not too powerful. They should each be 25 years old or younger. Do not use any names from this list: Elara, Jax, Kael, Rylan, Toren, Dax, ' + (existingNames.length ? existingNames.join(', ') : 'none') + '. Return as JSON array of objects with fields: name, gender, age, position.'
         };
         var miniList = await getGoodMiniChars([systemMsg, userMsg]);
 
@@ -218,7 +451,12 @@ async function generateMiniChars() {
         miniChars = miniChars.concat(newMiniChars.map(function(c) {
             return Object.assign({}, c, { selected: false });
         }));
-        renderMiniChars();
+        if (currentWorldId) {
+            var w = getWorld(currentWorldId);
+            renderMiniCharsForWorld(currentWorldId, w ? w.name : '');
+        } else {
+            renderMiniChars();
+        }
     } catch (err) {
         alert('Error generating characters: ' + err);
     }
@@ -236,19 +474,14 @@ function renderMiniChars() {
     var miniCharsDiv = document.getElementById('miniChars');
     if (!miniCharsDiv) return;
     miniCharsDiv.innerHTML = '';
+    _renderMixAndMatchPanel(miniCharsDiv);
+}
 
+// Renders the mix-and-match generated characters panel into the given container
+function _renderMixAndMatchPanel(miniCharsDiv) {
     var generatedMiniChars = miniChars.filter(function(mini) {
         return !mini.isSaved && isAdultAge(mini.age);
     });
-    var savedMiniChars = miniChars
-        .filter(function(mini) { return !!mini.isSaved && isAdultAge(mini.age); })
-        .sort(function(a, b) {
-            var bTime = parseLastPlayedTimestamp(b.lastPlayed);
-            if (bTime === null) bTime = -1;
-            var aTime = parseLastPlayedTimestamp(a.lastPlayed);
-            if (aTime === null) aTime = -1;
-            return bTime - aTime;
-        });
 
     if (generatedMiniChars.length > 0) {
         var mixPanel = document.createElement('div');
@@ -432,75 +665,6 @@ function renderMiniChars() {
         emptyState.style.color = '#888';
         emptyState.textContent = 'Click "Generate Character Traits" to populate dropdown traits.';
         miniCharsDiv.appendChild(emptyState);
-    }
-
-    if (savedMiniChars.length > 0) {
-        var savedHeader = document.createElement('div');
-        savedHeader.style.marginTop = '0.8em';
-        savedHeader.style.marginBottom = '0.4em';
-        savedHeader.style.fontSize = '0.92em';
-        savedHeader.style.color = 'hsl(var(--accent-h),90%,77%)';
-        savedHeader.textContent = 'Saved Characters';
-        miniCharsDiv.appendChild(savedHeader);
-
-        savedMiniChars.forEach(function(mini) {
-            var lastPlayedValue = mini.lastPlayed
-                || (savedCharacterData[mini.key] && savedCharacterData[mini.key].last_played)
-                || '';
-            var lastPlayedLabel = formatLastPlayedLabel(lastPlayedValue);
-            var card = document.createElement('div');
-            card.className = 'character-card';
-            card.style.cursor = 'pointer';
-            card.style.display = 'flex';
-            card.style.alignItems = 'center';
-            card.style.justifyContent = 'space-between';
-            card.style.margin = '0.2em 0';
-            card.style.minHeight = 'unset';
-            card.style.fontSize = '0.97em';
-
-            var trash = document.createElement('span');
-            trash.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='#FFFFFF' aria-hidden='true' data-slot='icon' stroke-linecap='round' stroke-linejoin='round' width='20px' height='20px'><path stroke-linecap='round' stroke-linejoin='round' d='m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0'/></svg>";
-            trash.title = 'Remove';
-            trash.style.fontSize = '1em';
-            trash.style.opacity = '0.5';
-            trash.style.marginLeft = '0.7em';
-            trash.style.cursor = 'pointer';
-            trash.onclick = function(e) {
-                e.stopPropagation();
-                var deleted = deleteCharacter(mini.key);
-                if (!deleted) {
-                    alert('Failed to remove saved character.');
-                    return;
-                }
-                var idx = miniChars.findIndex(function(c) { return c.isSaved && c.key === mini.key; });
-                if (idx >= 0) miniChars.splice(idx, 1);
-                if (selectedMiniChar && selectedMiniChar.name === mini.name) {
-                    selectedMiniChar = null;
-                    generatedCharacter = null;
-                }
-                delete savedCharacterData[mini.key];
-                delete savedEnvironmentData[mini.key];
-                delete savedHistoryData[mini.key];
-                renderMiniChars();
-                renderCharacterDetails();
-            };
-
-            card.onclick = function() {
-                resumeSavedCharacter(mini.key);
-            };
-
-            var infoDiv = document.createElement('div');
-            infoDiv.style.flex = '1';
-            infoDiv.style.minWidth = '0';
-            infoDiv.innerHTML = '<strong>' + (mini.name || '') + '</strong><br>' +
-                '<span style="color:#888;">' + (mini.gender || '') + ', age ' + (mini.age || '') + ', ' + (mini.position || '') + '</span>' +
-                '<span style="color:hsl(var(--accent-h),90%,77%);font-size:0.75em;margin-left:0.5em;"><br>[saved]</span>' +
-                '<span style="color:#b0b3b8;font-size:0.75em;"><br>Last played: ' + lastPlayedLabel + '</span>';
-
-            card.appendChild(infoDiv);
-            card.appendChild(trash);
-            miniCharsDiv.appendChild(card);
-        });
     }
 }
 

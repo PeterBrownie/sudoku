@@ -739,10 +739,11 @@ async function handleActionLoop(selectedAction) {
   try {
     // 3. Get action response (narrative)
     var secretStoryDetail = typeof _getSecretStoryDetail === 'function' ? _getSecretStoryDetail(generatedCharacter.name) : '';
+    var worldContext = typeof buildWorldContext === 'function' ? buildWorldContext() : null;
     var response = await getActionResponse(
       generatedCharacter, environmentData, generatedCharacter.inventory || [],
       selectedAction, actionHistory, displayedInventories,
-      currentObjectives, currentStoryLog, removedNearbyCharacters, secretStoryDetail
+      currentObjectives, currentStoryLog, removedNearbyCharacters, secretStoryDetail, worldContext
     );
 
     // 4. Display response — keep user action header in blue above narrative
@@ -810,6 +811,27 @@ async function handleActionLoop(selectedAction) {
     generatedCharacter.story_log = currentStoryLog;
     saveFullProgress(generatedCharacter, environmentData, actionHistory);
 
+    // 12b. Fire NPC memory agent in background (non-blocking)
+    (function(nearbyAtTurnEnd, playerNameAtTurnEnd, actionAtTurnEnd, responseAtTurnEnd) {
+      if (typeof updateNpcMemories === 'function' && Array.isArray(nearbyAtTurnEnd) && nearbyAtTurnEnd.length > 0) {
+        updateNpcMemories(nearbyAtTurnEnd, playerNameAtTurnEnd, actionAtTurnEnd, responseAtTurnEnd)
+          .then(function(memUpdates) {
+            if (!Array.isArray(memUpdates)) return;
+            memUpdates.forEach(function(upd) {
+              if (upd.npc_name && upd.memory && typeof appendNpcMemory === 'function' && typeof currentWorldId !== 'undefined') {
+                appendNpcMemory(currentWorldId, upd.npc_name, upd.memory);
+              }
+            });
+          })
+          .catch(function(err) { console.warn('[NPC memory] update failed:', err); });
+      }
+    })(
+      Array.isArray(environmentData.people) ? environmentData.people.slice() : [],
+      generatedCharacter.name,
+      selectedAction,
+      response
+    );
+
     // 13. Render state changes + narrative (final innerHTML write)
     var changesHtml = renderStateChanges(changes, previousEnvironment, previousCharacter);
     actionResponseArea.innerHTML =
@@ -824,7 +846,7 @@ async function handleActionLoop(selectedAction) {
     var viewLogBtn = actionResponseArea.querySelector('[data-action="view-story-log"]');
     if (viewLogBtn) {
       viewLogBtn.addEventListener('click', function() {
-        showStoryLogModal(currentStoryLog);
+        showStoryLogModal(currentStoryLog, updateStoryLog);
       });
     }
 
@@ -1245,4 +1267,13 @@ function renderOptionalObjectives(candidates) {
             }
         });
     });
+}
+
+// Update the story log (called from story log modal edit save)
+function updateStoryLog(newLog) {
+    currentStoryLog = String(newLog || '').trim();
+    if (generatedCharacter) {
+        generatedCharacter.story_log = currentStoryLog;
+        saveFullProgress(generatedCharacter, environmentData, actionHistory);
+    }
 }

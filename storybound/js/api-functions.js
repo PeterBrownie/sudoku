@@ -8,9 +8,14 @@ const SCHEMA_INVENTORY = {
   type:'object', properties:{ inventoryTitle:{type:'string'}, items:{type:'array',items:{type:'object',properties:{name:{type:'string'},description:{type:'string'},quantity:{type:'integer'},weight:{type:'number'}},required:['name','description']}} }, required:['items','inventoryTitle'] 
 };
 const SCHEMA_MINICHAR = { type:'array', items:{type:'object',properties:{name:{type:'string'},gender:{type:'string'},age:{type:'integer'},position:{type:'string'}},required:['name','gender','age','position']} };
-const SCHEMA_ENVIRONMENT = { 
-  type:'object', properties:{ location:{type:'string'}, time_of_day:{type:'string'}, temperature:{type:'string'}, vibe:{type:'string'}, sounds:{type:'string'}, arrival_backstory:{type:'string'}, people:{type:'array',items:{type:'object',properties:{ name:{type:'string'},short_description:{type:'string'},opinion:{type:'number'},opinions:{type:'object',properties:{overall:{type:'number'},familiarity:{type:'number'},trust:{type:'number'},loyalty:{type:'number'},touch_comfort:{type:'number'}},required:['overall','familiarity','trust','loyalty','touch_comfort']},gender:{type:'string'},secret_npc_details:{type:'string'} },required:['name','short_description','opinion','opinions','gender']}} }, required:['location','time_of_day','temperature','vibe','sounds','arrival_backstory','people'] 
+const SCHEMA_ENVIRONMENT = {
+  type:'object', properties:{ location:{type:'string'}, time_of_day:{type:'string'}, temperature:{type:'string'}, vibe:{type:'string'}, sounds:{type:'string'}, arrival_backstory:{type:'string'}, people:{type:'array',items:{type:'object',properties:{ name:{type:'string'},short_description:{type:'string'},opinion:{type:'number'},opinions:{type:'object',properties:{overall:{type:'number'},familiarity:{type:'number'},trust:{type:'number'},loyalty:{type:'number'},touch_comfort:{type:'number'}},required:['overall','familiarity','trust','loyalty','touch_comfort']},gender:{type:'string'},secret_npc_details:{type:'string'} },required:['name','short_description','opinion','opinions','gender']}} }, required:['location','time_of_day','temperature','vibe','sounds','arrival_backstory','people']
 };
+// Extended schema for initial environment generation — includes world_name
+const SCHEMA_ENVIRONMENT_INIT = (function() {
+  var props = Object.assign({ world_name:{type:'string'} }, SCHEMA_ENVIRONMENT.properties);
+  return { type:'object', properties:props, required:['world_name'].concat(SCHEMA_ENVIRONMENT.required) };
+})();
 const SCHEMA_ACTIONS = { type:'object', properties:{ actions:{type:'array',items:{type:'string'}} }, required:['actions'] };
 const SCHEMA_ACTION_STATE_CHANGES = { 
   type:'object', properties:{ environment:{type:'boolean'}, environment_justification:{type:'string'}, character:{type:'boolean'}, character_justification:{type:'string'}, inventory:{type:'boolean'}, needs_npc_inv:{type:'array',items:{type:'string'}}, optional_npc_inv:{type:'array',items:{type:'string'}}, optional_objectives:{type:'array',items:{type:'object',properties:{title:{type:'string'},description:{type:'string'},difficulty:{type:'integer'}}}}, story_log_addition:{type:'string'}, secret_story_detail:{type:'string'} }, required:['environment','character','inventory'] 
@@ -24,6 +29,7 @@ const SCHEMA_WORLD_STATE_PATCH = {
   required:['environment_patch','character_patch']
 };
 const SCHEMA_INVENTORY_CHANGES = { type:'object', properties:{ inventory:{type:'array'} }, required:['inventory'] };
+const SCHEMA_NPC_MEMORY_UPDATE = { type:'object', properties:{ updates:{type:'array',items:{type:'object',properties:{npc_name:{type:'string'},memory:{type:'string'}},required:['npc_name','memory']}} }, required:['updates'] };
 const SCHEMA_STORY_LOG = { type:'object', properties:{ consolidated_story_log:{type:'string'} }, required:['consolidated_story_log'] };
 const SCHEMA_SCENE_FOCUS = { type:'object', properties:{ options:{type:'array',items:{type:'string'}} }, required:['options'] };
 const SCHEMA_SCENE_VISUAL = { type:'object', properties:{ description:{type:'string'} }, required:['description'] };
@@ -1045,21 +1051,67 @@ async function getCharacterInventory(basicInfo, traits) {
 //   Game Loop Functions
 // ============================================================
 
+// NPC MEMORY — background agent that records notable NPC memories after each turn
+async function updateNpcMemories(nearbyNpcs, playerName, action, response) {
+  if (!Array.isArray(nearbyNpcs) || nearbyNpcs.length === 0) return [];
+  var npcNames = nearbyNpcs.map(function(p) { return p.name; }).filter(Boolean);
+  if (!npcNames.length) return [];
+  var messages = [
+    { role: 'system', content: 'You are a background NPC memory recorder for an RPG. Your only job is to decide if any nearby NPC witnessed or experienced something in this turn that they would specifically remember in a future encounter with a different person. Think: betrayals of trust, notable kindnesses, witnessing violence, threats made against them, promises made or broken, unusual displays, reputation-affecting events. Routine or forgettable interactions should NOT produce memories. Be selective — most turns should produce zero or very few memories.' },
+    { role: 'user', content:
+      'Player character: ' + (playerName || 'unknown') + '\n' +
+      'Nearby NPCs: ' + npcNames.join(', ') + '\n' +
+      'Player action: ' + String(action || '') + '\n' +
+      'Story response: ' + String(response || '') + '\n\n' +
+      'For each NPC who witnessed or experienced something they would specifically recall in a future encounter, write a concise 1-2 sentence memory note (written as a factual record, not first-person). Only include NPCs from the nearby list. Return empty updates array if nothing is memorable. ' +
+      'Respond ONLY in this JSON schema: ' + JSON.stringify(SCHEMA_NPC_MEMORY_UPDATE)
+    }
+  ];
+  var result = await apiChat(messages, SCHEMA_NPC_MEMORY_UPDATE);
+  return (result && Array.isArray(result.updates)) ? result.updates : [];
+}
+
 // ENVIRONMENT — generate a starting RPG environment
-async function getEnvironment(startingLocation, character) {
+async function getEnvironment(startingLocation, character, worldContext) {
   var additionalContentDisclaimer = getMessage();
   character = character || {};
+  var worldHistoryStr = '';
+  if (worldContext) {
+    if (worldContext.worldHistory) {
+      worldHistoryStr += ' World history (events that occurred in this world before this character arrived — let these shape the state of locations and NPCs): ' + worldContext.worldHistory + '.';
+    }
+    if (Array.isArray(worldContext.otherCharacters) && worldContext.otherCharacters.length > 0) {
+      worldHistoryStr += ' Other characters who exist in this world (they are elsewhere and will NOT be present at the start): ' +
+        worldContext.otherCharacters.map(function(c) { return c.name + ' (' + (c.position || 'unknown role') + ')'; }).join(', ') + '.';
+    }
+    if (Array.isArray(worldContext.worldNpcs) && worldContext.worldNpcs.length > 0) {
+      worldHistoryStr += ' Known inhabitants of this world (may appear if location is appropriate — keep their established descriptions consistent): ' +
+        worldContext.worldNpcs.map(function(n) {
+          var parts = [n.name];
+          if (n.gender) parts.push(n.gender);
+          if (n.description) parts.push(n.description);
+          if (n.last_location) parts.push('last seen: ' + n.last_location);
+          return parts.join(', ');
+        }).join('; ') + '.';
+    }
+    if (Array.isArray(worldContext.worldLocations) && worldContext.worldLocations.length > 0) {
+      worldHistoryStr += ' Known locations in this world: ' +
+        worldContext.worldLocations.map(function(l) { return l.name; }).join(', ') + '.';
+    }
+  }
   var messages = [
     { role: 'system', content: 'You are an expert RPG environment generator. This means you create location, time, temperature, vibe, sounds, and people. ' },
     { role: 'user', content: (
       'Given the starting location: ' + startingLocation + '. ' +
       'The player character is named ' + (character.name || '') + ', and is ' + (character.position || '') + ' with this short description: ' + (character.short_description || '') + '. ' +
-      'Generate a short environment description for an RPG. Include: location, time_of_day, temperature, vibe, sounds, a short paragraph called arrival_backstory explaining how the character got to this location and how long ago, and a list of 0-5 people nearby. Each person should be an object with name, gender, short_description, opinion (overall float: -0.99 hostile to 0.99 very friendly), opinions (object with overall, familiarity, trust, loyalty, touch_comfort), and optional secret_npc_details (private GM-only note, up to 30 words, may include hidden intention/secret). For touch_comfort: -0.99 means no physical touch allowed, 0 means neutral boundaries, 0.99 means highly comfortable with intimacy. Keep opinion and opinions.overall equal. It\'s important to note that sometimes there should be nobody around the player. Initial people should be fairly neutral in opinion; recommended near 0.00 (plus or minus 0.3). Use American units of measurement. Location should include specific room, general building, city area. The arrival_backstory should not have the character suddenly rushing into the location; instead, the environment should be a neutral and calm setting; good for the start of a story.' +
+      worldHistoryStr +
+      ' Generate a short environment description for an RPG. Include: location, time_of_day, temperature, vibe, sounds, a short paragraph called arrival_backstory explaining how the character got to this location and how long ago, and a list of 0-5 people nearby. Each person should be an object with name, gender, short_description, opinion (overall float: -0.99 hostile to 0.99 very friendly), opinions (object with overall, familiarity, trust, loyalty, touch_comfort), and optional secret_npc_details (private GM-only note, up to 30 words, may include hidden intention/secret). For touch_comfort: -0.99 means no physical touch allowed, 0 means neutral boundaries, 0.99 means highly comfortable with intimacy. Keep opinion and opinions.overall equal. It\'s important to note that sometimes there should be nobody around the player. Initial people should be fairly neutral in opinion; recommended near 0.00 (plus or minus 0.3). Use American units of measurement. Location should include specific room, general building, city area. The arrival_backstory should not have the character suddenly rushing into the location; instead, the environment should be a neutral and calm setting; good for the start of a story.' +
+      ' Also generate world_name: a short evocative name (2-5 words) for the world or realm this story takes place in, based on the location and setting.' +
       additionalContentDisclaimer +
-      ' Respond ONLY in this JSON schema: ' + JSON.stringify(SCHEMA_ENVIRONMENT)
+      ' Respond ONLY in this JSON schema: ' + JSON.stringify(SCHEMA_ENVIRONMENT_INIT)
     )}
   ];
-  return await apiChat(messages, SCHEMA_ENVIRONMENT);
+  return await apiChat(messages, SCHEMA_ENVIRONMENT_INIT);
 }
 
 // ACTIONS — generate 4 suggested player actions
@@ -1162,7 +1214,7 @@ async function getActions(character, environment, inventory, history, displayedI
 }
 
 // ACTION RESPONSE — generate the narrative story response to a player action
-async function getActionResponse(character, environment, inventory, action, history, displayedInventories, objectives, storyLog, removedPeople, secretStoryDetail) {
+async function getActionResponse(character, environment, inventory, action, history, displayedInventories, objectives, storyLog, removedPeople, secretStoryDetail, worldContext) {
   var additionalContentDisclaimer = getMessage('story');
   var messages = [];
   var environmentContext = environmentForPrompt(environment, true);
@@ -1177,6 +1229,40 @@ async function getActionResponse(character, environment, inventory, action, hist
   var playerName = character.name || 'The player';
   var people = (typeof environmentContext === 'object' && environmentContext !== null) ? (environmentContext.people || []) : [];
   var nearbyNames = people.filter(function(p) { return typeof p === 'object' && p !== null && p.name; }).map(function(p) { return p.name; });
+
+  var worldContextStr = '';
+  if (worldContext) {
+    var wcParts = [];
+    if (Array.isArray(worldContext.otherCharacters) && worldContext.otherCharacters.length > 0) {
+      wcParts.push('Other player characters who exist elsewhere in this world — NOT present in this scene and must NOT appear under any circumstances: ' +
+        worldContext.otherCharacters.map(function(c) {
+          return c.name + ' (' + (c.position || 'unknown') + ', last known location: ' + (c.location || 'unknown') + ')';
+        }).join('; ') + '. If the story would naturally bring them nearby, invent a reason they just left or are otherwise unavailable.');
+    }
+    if (Array.isArray(worldContext.worldNpcs) && worldContext.worldNpcs.length > 0) {
+      wcParts.push('Other known inhabitants of this world (not currently present in this scene, but may be referenced or sought out): ' +
+        worldContext.worldNpcs.map(function(n) {
+          var s = n.name;
+          if (n.description) s += ' — ' + n.description;
+          if (n.last_location) s += ' (last seen: ' + n.last_location + ')';
+          return s;
+        }).join('; ') + '.');
+    }
+    if (worldContext.nearbyNpcMemories && typeof worldContext.nearbyNpcMemories === 'object') {
+      var memEntries = Object.keys(worldContext.nearbyNpcMemories).filter(function(k) {
+        return worldContext.nearbyNpcMemories[k] && worldContext.nearbyNpcMemories[k].length > 0;
+      });
+      if (memEntries.length > 0) {
+        wcParts.push('NPC memories (private GM notes — let these silently shape each NPC\'s attitude and behavior; do not quote them directly): ' +
+          memEntries.map(function(name) {
+            return name + ': ' + worldContext.nearbyNpcMemories[name].join(' ');
+          }).join(' | ') + '.');
+      }
+    }
+    if (wcParts.length > 0) {
+      worldContextStr = '\nWorld context: ' + wcParts.join(' ');
+    }
+  }
 
   messages.push({
     role: 'system',
@@ -1204,6 +1290,7 @@ async function getActionResponse(character, environment, inventory, action, hist
       '13) If time passes for a beat, allow the story to continue. This could mean players continue going somewhere they\'re going, an NPC volunteers additional relevenat information, or an NPC takes an action that affects the player without the player needing to do anything. \n' +
       '14) NPCs must follow through on their stated intentions. If an NPC has already issued a warning or threat in recent history and the player has not complied, the NPC must escalate with a concrete action (physically intervening, calling for help, leaving, drawing a weapon, etc.) — not issue the same warning again. Repeating the same warning more than once without acting on it is a failure. The player ignoring an NPC is itself a trigger for that NPC to act.\n' +
       '15) Push the story forward every turn. Something should change: an NPC does something, a situation develops, information is revealed, or the environment shifts. A turn where the world simply holds still waiting for the player is a missed opportunity. ' +
+      worldContextStr +
       String(additionalContentDisclaimer)
     )
   });

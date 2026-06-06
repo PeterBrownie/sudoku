@@ -39,16 +39,124 @@ function setPhase(newPhase) {
 function saveFullProgress(character, environment, history) {
   if (!character) return;
   var env = ensureSecretNpcDetailsForSave(environment);
-  saveCharacter(character, env, history);
+  saveWorldCharacter(currentWorldId, currentCharacterId, character, env, history);
+
+  // Sync world-level NPC and location knowledge from current session state
+  if (currentWorldId && character.name) {
+    var allNpcs = [];
+    if (environment && Array.isArray(environment.people)) {
+      allNpcs = allNpcs.concat(environment.people);
+    }
+    if (typeof removedNearbyCharacters !== 'undefined' && Array.isArray(removedNearbyCharacters)) {
+      removedNearbyCharacters.forEach(function(p) {
+        var already = allNpcs.some(function(n) {
+          return String(n.name).toLowerCase().trim() === String(p.name).toLowerCase().trim();
+        });
+        if (!already) allNpcs.push(p);
+      });
+    }
+    var location = environment && environment.location ? environment.location : '';
+    syncWorldKnowledge(currentWorldId, allNpcs, location, character.name);
+  }
+}
+
+// Build world context for getActionResponse: other characters + world NPCs not currently nearby
+function buildWorldContext() {
+  if (!currentWorldId || !currentCharacterId) return null;
+  var world = getWorld(currentWorldId);
+  if (!world) return null;
+  var others = Array.isArray(world.characters) ? world.characters.filter(function(c) {
+    return c.id !== currentCharacterId && c.character && c.character.name;
+  }) : [];
+
+  // World NPCs that are not currently nearby in this session
+  var nearbyNames = (typeof environmentData !== 'undefined' && Array.isArray(environmentData && environmentData.people))
+    ? environmentData.people.map(function(p) { return String(p.name).toLowerCase().trim(); })
+    : [];
+  var worldNpcs = Array.isArray(world.npcs) ? world.npcs.filter(function(n) {
+    return nearbyNames.indexOf(String(n.name).toLowerCase().trim()) === -1;
+  }) : [];
+
+  // NPC memories for currently nearby NPCs
+  var nearbyNpcMemories = {};
+  if (typeof environmentData !== 'undefined' && Array.isArray(environmentData && environmentData.people)) {
+    var worldNpcMap = {};
+    (Array.isArray(world.npcs) ? world.npcs : []).forEach(function(n) {
+      worldNpcMap[String(n.name).toLowerCase().trim()] = n;
+    });
+    environmentData.people.forEach(function(p) {
+      var wn = worldNpcMap[String(p.name).toLowerCase().trim()];
+      if (wn && Array.isArray(wn.memories) && wn.memories.length > 0) {
+        nearbyNpcMemories[p.name] = wn.memories;
+      }
+    });
+  }
+
+  if (!others.length && !worldNpcs.length && !Object.keys(nearbyNpcMemories).length) return null;
+  return {
+    otherCharacters: others.map(function(c) {
+      return {
+        name: c.character.name,
+        position: c.character.position || '',
+        location: (c.environment && c.environment.location) || 'unknown location'
+      };
+    }),
+    worldNpcs: worldNpcs,
+    nearbyNpcMemories: nearbyNpcMemories
+  };
+}
+
+// Build world context for environment generation: story logs + world-level NPC/location knowledge
+function buildWorldContextForEnv() {
+  if (!currentWorldId || !currentCharacterId) return null;
+  var world = getWorld(currentWorldId);
+  if (!world) return null;
+  var others = Array.isArray(world.characters) ? world.characters.filter(function(c) {
+    return c.id !== currentCharacterId && c.character && c.character.name;
+  }) : [];
+  var storyLogs = others
+    .filter(function(c) { return c.character && c.character.story_log; })
+    .map(function(c) { return c.character.name + ': ' + c.character.story_log; });
+  var worldNpcs = Array.isArray(world.npcs) ? world.npcs : [];
+  var worldLocations = Array.isArray(world.locations) ? world.locations : [];
+  if (!others.length && !worldNpcs.length && !worldLocations.length) return null;
+  return {
+    otherCharacters: others.map(function(c) {
+      return {
+        name: c.character.name,
+        position: c.character.position || '',
+        location: (c.environment && c.environment.location) || ''
+      };
+    }),
+    worldHistory: storyLogs.length ? storyLogs.join(' | ') : null,
+    worldNpcs: worldNpcs,
+    worldLocations: worldLocations
+  };
 }
 
 async function generateEnvironment(startingLocation, character) {
-  var env = await getEnvironment(startingLocation, character);
+  var worldCtx = buildWorldContextForEnv();
+  var env = await getEnvironment(startingLocation, character, worldCtx);
   if (typeof env === 'string') env = JSON.parse(env);
+
+  // Extract and apply world name, then strip it from the environment data
+  var worldName = String(env.world_name || '').trim();
+  delete env.world_name;
+
+  if (worldName && currentWorldId) {
+    var world = getWorld(currentWorldId);
+    if (world && world.name === 'Unnamed World') {
+      renameWorld(currentWorldId, worldName);
+      // Refresh the world name display if the world select panel is around
+      if (typeof refreshWorldNameDisplay === 'function') refreshWorldNameDisplay(currentWorldId, worldName);
+    }
+  }
+
   environmentData = env;
   hydrateRemovedNearbyCharactersFromEnvironment();
   renderGameSidebar();
   setPhase('game');
+
   // Show arrival backstory in action response area
   var actionResponseArea = document.getElementById('actionResponseArea');
   if (actionResponseArea) {
@@ -66,6 +174,15 @@ async function generateEnvironment(startingLocation, character) {
 
 async function renderEnvironmentPhase(character) {
   var startingLocation = character.rpg_starting_location || character.starting_location || '';
+
+  // Ensure we have a world and character ID before saving anything
+  if (!currentWorldId) {
+    var newWorld = createWorld('Unnamed World');
+    currentWorldId = newWorld.id;
+  }
+  if (!currentCharacterId) {
+    currentCharacterId = generateId();
+  }
 
   // Show loading UI while fetching environment
   var loadingContainer = document.getElementById('loading-container');
@@ -105,7 +222,9 @@ async function renderEnvironmentPhase(character) {
   }
 }
 
-async function startGameWithSavedData(character, environment, history) {
+async function startGameWithSavedData(character, environment, history, worldId, characterId) {
+  if (worldId) currentWorldId = worldId;
+  if (characterId) currentCharacterId = characterId;
   generatedCharacter = character;
   environmentData = environment;
   actionHistory = history || [];
@@ -157,6 +276,9 @@ async function startGameWithSavedData(character, environment, history) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Run migration before anything else
+  migrateCharactersToWorlds();
+
   // Create chooseCharacterBtn if not already in DOM (character.js manages it by ID)
   var chooseCharacterBtn = document.getElementById('chooseCharacterBtn');
   if (!chooseCharacterBtn) {
@@ -192,8 +314,8 @@ document.addEventListener('DOMContentLoaded', function() {
     regenerateCharacter();
   });
 
-  // Load saved characters
-  loadSavedCharactersOnStartup();
+  // Load saved worlds
+  loadSavedWorldsOnStartup();
 
   // Wire buttons
   var generateNamesBtn = document.getElementById('generateNamesBtn');

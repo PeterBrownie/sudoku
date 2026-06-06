@@ -49,24 +49,291 @@ function renderMarkdown(md) {
 // --- Tooltip helpers: show/hide floating tooltip (only visible when mouse is on target) ---
 let tooltipHoverState = { overTarget: false, hideTimeout: null };
 
-function showStoryLogModal(fullLog) {
+function showWorldKnowledgeModal() {
+    // Build modal on demand — no persistent DOM element needed
+    var existing = document.getElementById('worldKnowledgeModal');
+    if (existing) existing.remove();
+
+    // --- Gather data ---
+    var worldName = '';
+    var otherChars = [];
+    var worldNpcs = [];    // world-level NPC records
+    var worldLocations = []; // world-level location records
+    if (typeof currentWorldId !== 'undefined' && currentWorldId && typeof getWorld === 'function') {
+        var world = getWorld(currentWorldId);
+        if (world) {
+            worldName = world.name || '';
+            var charId = typeof currentCharacterId !== 'undefined' ? currentCharacterId : null;
+            otherChars = (Array.isArray(world.characters) ? world.characters : []).filter(function(c) {
+                return c.id !== charId && c.character && c.character.name;
+            });
+            worldNpcs = Array.isArray(world.npcs) ? world.npcs : [];
+            worldLocations = Array.isArray(world.locations) ? world.locations : [];
+        }
+    }
+
+    // Current-session badges: nearby vs departed
+    var nearbyNames = new Set(
+        (typeof environmentData !== 'undefined' && Array.isArray(environmentData && environmentData.people)
+            ? environmentData.people : []).map(function(p) { return String(p.name).toLowerCase().trim(); })
+    );
+    var departedNames = new Set(
+        (typeof removedNearbyCharacters !== 'undefined' && Array.isArray(removedNearbyCharacters)
+            ? removedNearbyCharacters : []).map(function(p) { return String(p.name).toLowerCase().trim(); })
+    );
+
+    // Live opinion lookup (current session data) by name
+    var liveNpcMap = {};
+    (typeof environmentData !== 'undefined' && Array.isArray(environmentData && environmentData.people)
+        ? environmentData.people : []).forEach(function(p) {
+        liveNpcMap[String(p.name).toLowerCase().trim()] = p;
+    });
+    (typeof removedNearbyCharacters !== 'undefined' && Array.isArray(removedNearbyCharacters)
+        ? removedNearbyCharacters : []).forEach(function(p) {
+        var k = String(p.name).toLowerCase().trim();
+        if (!liveNpcMap[k]) liveNpcMap[k] = p;
+    });
+
+    var currentLocation = (typeof environmentData !== 'undefined' && environmentData) ? {
+        location: environmentData.location || '',
+        time_of_day: environmentData.time_of_day || '',
+        temperature: environmentData.temperature || '',
+        vibe: environmentData.vibe || '',
+        sounds: environmentData.sounds || ''
+    } : null;
+
+    // --- Build HTML ---
+    function opinionColor(val) {
+        if (val === null || val === undefined || val === '') return '#aaa';
+        var n = parseFloat(val);
+        if (isNaN(n)) return '#aaa';
+        if (n >= 0.6) return '#81c995';
+        if (n >= 0.2) return '#a8c7fa';
+        if (n >= -0.2) return '#c5c8ce';
+        if (n >= -0.6) return '#ffb74d';
+        return '#e57373';
+    }
+
+    function worldNpcHtml(wn) {
+        var key = String(wn.name).toLowerCase().trim();
+        var live = liveNpcMap[key];
+        var op = live ? ((live.opinions && typeof live.opinions.overall === 'number') ? live.opinions.overall : live.opinion) : undefined;
+        var opStr = (op !== undefined && op !== null && !isNaN(parseFloat(op))) ? parseFloat(op).toFixed(2) : '';
+        var opColor = opinionColor(op);
+        var badge = nearbyNames.has(key) ? 'nearby' : (departedNames.has(key) ? 'departed' : '');
+        var desc = (live && live.short_description) ? live.short_description : wn.description;
+        var meta = [];
+        if (wn.gender) meta.push(wn.gender);
+        if (wn.last_location) meta.push('Last seen: ' + wn.last_location);
+        if (Array.isArray(wn.known_by) && wn.known_by.length) meta.push('Known by: ' + wn.known_by.join(', '));
+        var memoriesHtml = '';
+        if (Array.isArray(wn.memories) && wn.memories.length > 0) {
+            memoriesHtml = `<div class="wk-person-memories">
+                <div class="wk-person-memories-label">Memories</div>
+                ${wn.memories.map(function(m) { return `<div class="wk-person-memory-entry">${escapeHtml(m)}</div>`; }).join('')}
+            </div>`;
+        }
+        return `<div class="wk-person">
+            <div class="wk-person-top">
+                <span class="wk-person-name">${escapeHtml(wn.name || '')}</span>
+                ${opStr ? `<span class="wk-person-opinion" style="color:${opColor}">${opStr}</span>` : ''}
+                ${badge ? `<span class="wk-person-badge">${badge}</span>` : ''}
+            </div>
+            ${desc ? `<div class="wk-person-desc">${escapeHtml(desc)}</div>` : ''}
+            ${meta.length ? `<div class="wk-person-meta">${escapeHtml(meta.join(' · '))}</div>` : ''}
+            ${memoriesHtml}
+        </div>`;
+    }
+
+    var otherCharsHtml = otherChars.length
+        ? otherChars.map(function(c) {
+            var ch = c.character;
+            var sub = [ch.position, ch.age ? 'Age ' + ch.age : '', ch.gender].filter(Boolean).join(' · ');
+            return `<div class="wk-char-card">
+                <div class="wk-char-name">${escapeHtml(ch.name || '')}</div>
+                ${sub ? `<div class="wk-char-sub">${escapeHtml(sub)}</div>` : ''}
+                ${ch.description ? `<div class="wk-char-desc">${escapeHtml(ch.description)}</div>` : ''}
+            </div>`;
+        }).join('')
+        : '<div class="wk-empty">No other characters in this world yet.</div>';
+
+    var allPeopleHtml = worldNpcs.length
+        ? worldNpcs.map(worldNpcHtml).join('')
+        : '<div class="wk-empty">No NPCs encountered yet.</div>';
+
+    // Locations: show world-level list with current location highlighted
+    var currentLocName = currentLocation && currentLocation.location ? currentLocation.location.toLowerCase().trim() : '';
+    var locRowsHtml = '';
+    if (worldLocations.length) {
+        locRowsHtml = worldLocations.map(function(l) {
+            var isCurrent = currentLocName && String(l.name).toLowerCase().trim() === currentLocName;
+            return `<div class="wk-location-row${isCurrent ? ' wk-location-current' : ''}">
+                <span class="wk-location-label">${escapeHtml(l.name)}</span>
+                <span class="wk-location-val">${isCurrent ? '<span class="wk-location-badge">here now</span>' : ''}${l.last_visited_by ? escapeHtml('Visited by ' + l.last_visited_by) : ''}</span>
+            </div>`;
+        }).join('');
+    }
+    // Always show current environment details at top of location tab
+    var currentEnvHtml = currentLocation && currentLocation.location ? `
+        <div class="wk-location-env-block">
+            ${currentLocation.time_of_day ? `<div class="wk-location-env-row"><span class="wk-location-env-label">Time</span><span>${escapeHtml(currentLocation.time_of_day)}</span></div>` : ''}
+            ${currentLocation.temperature ? `<div class="wk-location-env-row"><span class="wk-location-env-label">Temp</span><span>${escapeHtml(currentLocation.temperature)}</span></div>` : ''}
+            ${currentLocation.vibe ? `<div class="wk-location-env-row"><span class="wk-location-env-label">Vibe</span><span>${escapeHtml(currentLocation.vibe)}</span></div>` : ''}
+            ${currentLocation.sounds ? `<div class="wk-location-env-row"><span class="wk-location-env-label">Sounds</span><span>${escapeHtml(currentLocation.sounds)}</span></div>` : ''}
+        </div>` : '';
+    var locationHtml = (locRowsHtml || currentEnvHtml)
+        ? (locRowsHtml ? `<div class="wk-location-list-header">Visited Locations</div>${locRowsHtml}` : '') + currentEnvHtml
+        : '<div class="wk-empty">No location data available.</div>';
+
+    // --- Assemble modal ---
+    var modal = document.createElement('div');
+    modal.id = 'worldKnowledgeModal';
+    modal.className = 'wk-modal';
+    modal.innerHTML = `
+        <div class="wk-box">
+            <div class="wk-header">
+                <span class="wk-title">${worldName ? escapeHtml(worldName) : 'World Knowledge'}</span>
+                <button class="wk-close" aria-label="Close">&#x2715;</button>
+            </div>
+            <div class="wk-tabs">
+                <button class="wk-tab active" data-tab="people">People</button>
+                <button class="wk-tab" data-tab="characters">Characters</button>
+                <button class="wk-tab" data-tab="location">Location</button>
+            </div>
+            <div class="wk-body">
+                <div class="wk-panel active" data-panel="people">${allPeopleHtml}</div>
+                <div class="wk-panel" data-panel="characters">${otherCharsHtml}</div>
+                <div class="wk-panel" data-panel="location">${locationHtml}</div>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    // Tab switching
+    modal.querySelectorAll('.wk-tab').forEach(function(tab) {
+        tab.onclick = function() {
+            modal.querySelectorAll('.wk-tab').forEach(function(t) { t.classList.remove('active'); });
+            modal.querySelectorAll('.wk-panel').forEach(function(p) { p.classList.remove('active'); });
+            tab.classList.add('active');
+            var panel = modal.querySelector('.wk-panel[data-panel="' + tab.getAttribute('data-tab') + '"]');
+            if (panel) panel.classList.add('active');
+        };
+    });
+
+    function close() {
+        modal.remove();
+        document.removeEventListener('keydown', onKey);
+    }
+    modal.querySelector('.wk-close').onclick = close;
+    modal.onclick = function(e) { if (e.target === modal) close(); };
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    // Animate in
+    requestAnimationFrame(function() { modal.classList.add('open'); });
+}
+
+function showStoryLogModal(fullLog, onSave) {
     var modal = document.getElementById('storyLogModal');
     var body = document.getElementById('storyLogModalBody');
     var closeBtn = document.getElementById('storyLogModalClose');
-    if (!modal || !body) return;
-    body.textContent = fullLog || '(No story log yet.)';
+    var header = document.getElementById('storyLogModalHeader');
+    if (!modal || !body || !header) return;
+
+    var isEditing = false;
+
+    function renderViewMode() {
+        isEditing = false;
+        body.innerHTML = '';
+        body.style.whiteSpace = 'pre-wrap';
+        body.textContent = fullLog || '(No story log yet.)';
+        setTimeout(function() { body.scrollTop = body.scrollHeight; }, 0);
+
+        // Header: title + edit btn + close
+        header.innerHTML = '';
+        var title = document.createElement('span');
+        title.id = 'storyLogModalTitle';
+        title.textContent = 'Story Log';
+        header.appendChild(title);
+        var rightBtns = document.createElement('div');
+        rightBtns.style.cssText = 'display:flex;gap:0.5em;align-items:center;';
+        if (typeof onSave === 'function') {
+            var editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit';
+            editBtn.style.cssText = 'background:none;border:1px solid hsl(var(--accent-h),40%,38%);color:hsl(var(--accent-h),70%,72%);border-radius:6px;padding:0.2em 0.7em;font-size:0.9em;cursor:pointer;';
+            editBtn.onclick = function() { renderEditMode(); };
+            rightBtns.appendChild(editBtn);
+        }
+        var closeBtnNew = document.createElement('button');
+        closeBtnNew.id = 'storyLogModalClose';
+        closeBtnNew.setAttribute('aria-label', 'Close story log');
+        closeBtnNew.textContent = '✕';
+        closeBtnNew.style.cssText = 'background:none;border:none;color:#888;font-size:1.3em;cursor:pointer;line-height:1;padding:0 0.2em;';
+        closeBtnNew.onmouseenter = function() { closeBtnNew.style.color = '#ccc'; };
+        closeBtnNew.onmouseleave = function() { closeBtnNew.style.color = '#888'; };
+        closeBtnNew.onclick = close;
+        rightBtns.appendChild(closeBtnNew);
+        header.appendChild(rightBtns);
+    }
+
+    function renderEditMode() {
+        isEditing = true;
+        body.innerHTML = '';
+        body.style.whiteSpace = '';
+
+        var textarea = document.createElement('textarea');
+        textarea.value = fullLog || '';
+        textarea.style.cssText = 'width:100%;height:100%;min-height:12em;resize:none;background:#181b1e;color:#c5c8ce;border:1px solid hsl(var(--accent-h),30%,30%);border-radius:8px;padding:0.7em;font-size:0.97em;line-height:1.65;box-sizing:border-box;font-family:inherit;';
+        body.appendChild(textarea);
+        setTimeout(function() { textarea.focus(); textarea.setSelectionRange(textarea.value.length, textarea.value.length); }, 0);
+
+        // Header: title + save + cancel + close
+        header.innerHTML = '';
+        var title = document.createElement('span');
+        title.id = 'storyLogModalTitle';
+        title.textContent = 'Story Log';
+        header.appendChild(title);
+        var rightBtns = document.createElement('div');
+        rightBtns.style.cssText = 'display:flex;gap:0.5em;align-items:center;';
+
+        var saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save';
+        saveBtn.style.cssText = 'background:hsl(var(--accent-h),55%,42%);border:none;color:#fff;border-radius:6px;padding:0.2em 0.8em;font-size:0.9em;cursor:pointer;';
+        saveBtn.onclick = function() {
+            fullLog = textarea.value;
+            if (typeof onSave === 'function') onSave(fullLog);
+            renderViewMode();
+        };
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = 'background:none;border:1px solid #555;color:#aaa;border-radius:6px;padding:0.2em 0.7em;font-size:0.9em;cursor:pointer;';
+        cancelBtn.onclick = function() { renderViewMode(); };
+
+        var closeBtnNew = document.createElement('button');
+        closeBtnNew.setAttribute('aria-label', 'Close story log');
+        closeBtnNew.textContent = '✕';
+        closeBtnNew.style.cssText = 'background:none;border:none;color:#888;font-size:1.3em;cursor:pointer;line-height:1;padding:0 0.2em;';
+        closeBtnNew.onclick = close;
+
+        rightBtns.appendChild(saveBtn);
+        rightBtns.appendChild(cancelBtn);
+        rightBtns.appendChild(closeBtnNew);
+        header.appendChild(rightBtns);
+    }
+
     modal.classList.add('open');
-    // Scroll to bottom so the most recent entry is visible
-    setTimeout(function() { body.scrollTop = body.scrollHeight; }, 0);
+    renderViewMode();
+
     function close() {
         modal.classList.remove('open');
         modal.removeEventListener('click', onOverlayClick);
-        closeBtn.removeEventListener('click', close);
         document.removeEventListener('keydown', onKey);
     }
     function onOverlayClick(e) { if (e.target === modal) close(); }
-    function onKey(e) { if (e.key === 'Escape') close(); }
-    closeBtn.addEventListener('click', close);
+    function onKey(e) {
+        if (e.key === 'Escape') {
+            if (isEditing) { renderViewMode(); } else { close(); }
+        }
+    }
     modal.addEventListener('click', onOverlayClick);
     document.addEventListener('keydown', onKey);
 }
@@ -486,6 +753,8 @@ function renderGameSidebar() {
     const details = document.getElementById('sidebarCharDetails');
     if (summary && details) {
         details.innerHTML = renderSidebarCharDetailsHTML(generatedCharacter);
+        var wkBtn = details.querySelector('#worldKnowledgeBtn');
+        if (wkBtn) wkBtn.onclick = function(e) { e.stopPropagation(); showWorldKnowledgeModal(); };
         summary.onclick = function(e) {
             e.stopPropagation();
             const isOpen = details.classList.toggle('open');
@@ -535,6 +804,7 @@ function renderSidebarCharDetailsHTML(char) {
         ${char.flaws      ? `<div class="schar-section"><div class="schar-section-label">Flaws</div><div class="schar-section-body">${char.flaws}</div></div>` : ''}
         <div class="schar-section"><div class="schar-section-label">Limitations</div>${limitationsHtml}</div>
         ${abilitiesHtml}
+        <button class="world-knowledge-btn" id="worldKnowledgeBtn" type="button">World Knowledge</button>
     `;
 }
 // --- Render action buttons ---
