@@ -551,6 +551,9 @@
 
   // ── City data ──────────────────────────────────────────────────────────────
   const CITIES = [
+    // Universal
+    { city: "UTC",               sub: "Universal Time",tz: "Etc/UTC",                        region: "Universal" },
+
     // Countries — single timezone only
     { city: "United Kingdom",    sub: "",              tz: "Europe/London",                  region: "Countries" },
     { city: "Ireland",           sub: "",              tz: "Europe/Dublin",                  region: "Countries" },
@@ -901,6 +904,9 @@
   // Countries: representative/capital city.  US States: state capital.
   // All coordinates are AI generated; Scrape at your own risk.
   const _COORDS = {
+    // Universal — prime meridian at the equator, where UTC's solar day lines up
+    "Etc/UTC:UTC":                                      [  0.00,    0.00],
+
     // Countries
     "Europe/London:United Kingdom":                    [ 51.51,   -0.13],
     "Europe/Dublin:Ireland":                           [ 53.33,   -6.25],
