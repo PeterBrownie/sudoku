@@ -1,0 +1,86 @@
+{
+  "comment": "Add a font by dropping a .ttf/.otf/.woff here and appending an entry. opentype.js cannot read .woff2. Each weight is a separate file.",
+  "fonts": [
+    {
+      "id": "inter-regular",
+      "family": "Inter",
+      "label": "Inter Regular",
+      "file": "Inter-Regular.ttf",
+      "weight": 400,
+      "category": "grotesque",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "inter-bold",
+      "family": "Inter",
+      "label": "Inter Bold",
+      "file": "Inter-Bold.ttf",
+      "weight": 700,
+      "category": "grotesque",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "archivo-black",
+      "family": "Archivo Black",
+      "label": "Archivo Black",
+      "file": "ArchivoBlack-Regular.ttf",
+      "weight": 900,
+      "category": "poster",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "bebas-neue",
+      "family": "Bebas Neue",
+      "label": "Bebas Neue",
+      "file": "BebasNeue-Regular.ttf",
+      "weight": 400,
+      "category": "condensed",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "playfair-regular",
+      "family": "Playfair Display",
+      "label": "Playfair Regular",
+      "file": "PlayfairDisplay-Regular.ttf",
+      "weight": 400,
+      "category": "serif",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "playfair-bold",
+      "family": "Playfair Display",
+      "label": "Playfair Bold",
+      "file": "PlayfairDisplay-Bold.ttf",
+      "weight": 700,
+      "category": "serif",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "poppins-regular",
+      "family": "Poppins",
+      "label": "Poppins Regular",
+      "file": "Poppins-Regular.ttf",
+      "weight": 400,
+      "category": "geometric",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "poppins-bold",
+      "family": "Poppins",
+      "label": "Poppins Bold",
+      "file": "Poppins-Bold.ttf",
+      "weight": 700,
+      "category": "geometric",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "space-mono",
+      "family": "Space Mono",
+      "label": "Space Mono",
+      "file": "SpaceMono-Regular.ttf",
+      "weight": 400,
+      "category": "mono",
+      "license": "OFL-1.1"
+    }
+  ]
+}

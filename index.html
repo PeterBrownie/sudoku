@@ -60,49 +60,58 @@
 			display: flex;
 			flex-wrap: wrap;
 			justify-content: center;
-			gap: 20px;
-			max-width: 1080px;
+			gap: 16px;
+			max-width: 900px;
 			width: 100%;
 		}
 		.card {
-			flex: 0 0 calc(33.333% - 14px);
-			min-width: 220px;
-			background: #1e1e2e;
-			border: 1px solid #2a2a3e;
-			border-radius: 12px;
-			padding: 28px 24px;
+			flex: 0 0 calc(33.333% - 11px);
+			min-width: 190px;
+			background: #1b1b1b;
+			border: 1px solid #2c2c2c;
+			border-radius: 10px;
+			padding: 20px 18px;
 			text-decoration: none;
 			color: white;
 			transition: border-color 0.2s, transform 0.2s, background 0.2s;
 			display: flex;
 			flex-direction: column;
-			gap: 10px;
+			gap: 8px;
 		}
 		.card:hover {
-			border-color: #4a4a6e;
-			background: #22223a;
+			border-color: #4a4a4a;
+			background: #232323;
 			transform: translateY(-2px);
 		}
 		.card-icon {
-			font-size: 2rem;
+			font-size: 1.75rem;
 			line-height: 1;
+			height: 28px;
+			display: flex;
+			align-items: center;
+		}
+		.card-icon img {
+			width: 28px;
+			height: 28px;
+			border-radius: 7px;
+			display: block;
 		}
 		.card-title {
-			font-size: 1.2rem;
+			font-size: 1.08rem;
 			font-weight: 600;
 			margin: 0;
 		}
 		.card-desc {
-			font-size: 0.88rem;
+			font-size: 0.82rem;
 			color: #888;
 			margin: 0;
 			line-height: 1.5;
 		}
 		.card-arrow {
 			margin-top: auto;
-			padding-top: 12px;
+			padding-top: 10px;
 			color: #555;
-			font-size: 0.85rem;
+			font-size: 0.82rem;
 			display: flex;
 			align-items: center;
 			gap: 4px;
@@ -113,24 +122,24 @@
 		}
 		.card-buttons {
 			margin-top: auto;
-			padding-top: 12px;
+			padding-top: 10px;
 			display: flex;
 			gap: 8px;
 		}
 		.card-btn {
-			font-size: 0.85rem;
-			padding: 6px 14px;
+			font-size: 0.82rem;
+			padding: 5px 12px;
 			border-radius: 6px;
 			text-decoration: none;
 			transition: background 0.2s, color 0.2s;
 		}
 		.card-btn-primary {
-			background: #2e2e4e;
+			background: #2a2a2a;
 			color: #bbb;
-			border: 1px solid #67597a;
+			border: 1px solid #565656;
 		}
 		.card-btn-primary:hover {
-			background: #3a3a6e;
+			background: #383838;
 			color: #eee;
 		}
 		.card-btn-secondary {
@@ -139,7 +148,7 @@
 			border: 1px solid #333;
 		}
 		.card-btn-secondary:hover {
-			background: #1a1a2a;
+			background: #222;
 			color: #aaa;
 		}
 		.github-link {
@@ -228,6 +237,12 @@
 		<h2>Space</h2>
 	</div>
 	<div class="grid">
+		<a href="https://mineracer.com" class="card" target="_blank" rel="noopener noreferrer">
+			<div class="card-icon"><img src="mineracer-icon.png" alt="" width="28" height="28"></div>
+			<p class="card-title">Mineracer</p>
+			<p class="card-desc">Competitive real-time multiplayer Minesweeper. Race others to clear the board first.</p>
+			<span class="card-arrow">Play →</span>
+		</a>
 		<div class="card">
 			<div class="card-icon">🎆</div>
 			<p class="card-title">evolveSVG</p>
@@ -264,7 +279,6 @@
 			<p class="card-desc">Math-based cage puzzle. Choose grid size from 4×4 to 8×8 with uniquely solvable puzzles.</p>
 			<span class="card-arrow">Play →</span>
 		</a>
-		
 
 	</div>
 	<a href="https://github.com/PeterBrownie/projects" class="github-link" target="_blank" rel="noopener noreferrer">github.com/PeterBrownie</a>
